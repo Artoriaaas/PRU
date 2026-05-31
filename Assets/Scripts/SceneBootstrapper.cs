@@ -58,6 +58,11 @@ public class SceneBootstrapper : MonoBehaviour
     {
         var builder = new BattleSceneBuilder(this);
         builder.Build();
+
+        // Add managers if missing
+        if (GetComponent<GameManager>() == null) gameObject.AddComponent<GameManager>();
+        if (GetComponent<UIManager>() == null) gameObject.AddComponent<UIManager>();
+        if (GetComponent<PlacementController>() == null) gameObject.AddComponent<PlacementController>();
     }
 }
 
@@ -79,7 +84,7 @@ public class BattleSceneBuilder
     public void Clear()
     {
         string[] roots = { "BattleTerrain", "BattleForest", "InnerCastle", 
-                           "OuterCitadelWall", "BattleGrid", "BattleCamera", "BattleLight" };
+                           "OuterCitadelWall", "BattleGrid", "EnemyGrid", "BattleCamera", "BattleLight" };
         foreach (var r in roots)
         {
             var go = GameObject.Find(r);
@@ -504,7 +509,7 @@ public class BattleSceneBuilder
                 bool even = (r + c) % 2 == 0;
                 var tile = Cube($"Tile_{r}_{c}", pos,
                     new Vector3(cs * 0.97f, 0.07f, cs * 0.97f),
-                    even ? _matTileA : _matTileB);
+                    even ? _matTileA : _matTileB, true);
                 tile.transform.SetParent(gridRoot.transform);
 
                 // Green "+" highlight on each tile
@@ -531,6 +536,41 @@ public class BattleSceneBuilder
         bB.transform.SetParent(gridRoot.transform);
         bL.transform.SetParent(gridRoot.transform);
         bR.transform.SetParent(gridRoot.transform);
+
+        // Build Enemy Grid near the castle
+        var enemyGridRoot = new GameObject("EnemyGrid");
+        Vector3 enemyOrigin = new Vector3(-totalW * 0.5f, 0.01f, 12f);
+        
+        for (int r = 0; r < rows; r++)
+        {
+            for (int c = 0; c < cols; c++)
+            {
+                float x = enemyOrigin.x + c * cs + cs * 0.5f;
+                float z = enemyOrigin.z + r * cs + cs * 0.5f;
+                Vector3 pos = new Vector3(x, 0.01f, z);
+
+                bool even = (r + c) % 2 == 0;
+                var tile = Cube($"EnemyTile_{r}_{c}", pos,
+                    new Vector3(cs * 0.97f, 0.07f, cs * 0.97f),
+                    even ? _matTileA : _matTileB, true);
+                tile.transform.SetParent(enemyGridRoot.transform);
+
+                PlacePlus(pos + Vector3.up * 0.05f, cs, tile.transform);
+            }
+        }
+        
+        var eF = Cube("EnemyGridBorder_F", new Vector3(0, by, enemyOrigin.z - edge * 0.5f),
+            new Vector3(totalW + edge * 2f, hy, edge), _matDirt);
+        var eB = Cube("EnemyGridBorder_B", new Vector3(0, by, enemyOrigin.z + totalD + edge * 0.5f),
+            new Vector3(totalW + edge * 2f, hy, edge), _matDirt);
+        var eL = Cube("EnemyGridBorder_L", new Vector3(enemyOrigin.x - edge * 0.5f, by, enemyOrigin.z + totalD * 0.5f),
+            new Vector3(edge, hy, totalD), _matDirt);
+        var eR = Cube("EnemyGridBorder_R", new Vector3(-enemyOrigin.x + edge * 0.5f, by, enemyOrigin.z + totalD * 0.5f),
+            new Vector3(edge, hy, totalD), _matDirt);
+        eF.transform.SetParent(enemyGridRoot.transform);
+        eB.transform.SetParent(enemyGridRoot.transform);
+        eL.transform.SetParent(enemyGridRoot.transform);
+        eR.transform.SetParent(enemyGridRoot.transform);
     }
 
     void PlacePlus(Vector3 center, float cs, Transform parent)
@@ -602,15 +642,18 @@ public class BattleSceneBuilder
     // ══════════════════════════════════════════════════════════════
     //  HELPERS
     // ══════════════════════════════════════════════════════════════
-    GameObject Cube(string name, Vector3 pos, Vector3 scale, Material mat)
+    GameObject Cube(string name, Vector3 pos, Vector3 scale, Material mat, bool keepCollider = false)
     {
         var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
         go.name = name;
         go.transform.position   = pos;
         go.transform.localScale = scale;
         go.GetComponent<Renderer>().material = mat;
-        var col = go.GetComponent<Collider>();
-        if (col) Object.Destroy(col);
+        if (!keepCollider) 
+        {
+            var col = go.GetComponent<Collider>();
+            if (col) Object.Destroy(col);
+        }
         return go;
     }
 

@@ -83,8 +83,7 @@ public class BattleGridController : MonoBehaviour
         go.transform.position   = worldPos;
         go.transform.localScale = new Vector3(cellSize * 0.98f, 0.08f, cellSize * 0.98f);
         go.GetComponent<Renderer>().material = mat;
-        var col2 = go.GetComponent<Collider>();
-        if (col2 != null) Destroy(col2);
+        // Keep the collider so we can raycast against tiles
         return go;
     }
 
