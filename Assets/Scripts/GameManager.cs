@@ -75,6 +75,11 @@ public class GameManager : MonoBehaviour
         unitObj.transform.position = position + Vector3.up * 1f; // Adjust height for capsule
         unitObj.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
         
+        Rigidbody rb = unitObj.AddComponent<Rigidbody>();
+        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        rb.mass = 1f;
+        rb.linearDamping = 1f;
+        
         Unit unit = unitObj.AddComponent<Unit>();
         unit.isPlayer = isPlayer;
 

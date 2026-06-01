@@ -19,6 +19,12 @@ public class Unit : MonoBehaviour
 
     private float _lastAttackTime;
     private Unit _target;
+    private Rigidbody _rb;
+
+    void Awake()
+    {
+        _rb = GetComponent<Rigidbody>();
+    }
 
     void Update()
     {
@@ -37,6 +43,7 @@ public class Unit : MonoBehaviour
                 if (distance <= attackRange)
                 {
                     state = UnitState.Attacking;
+                    if (_rb != null) _rb.linearVelocity = new Vector3(0, _rb.linearVelocity.y, 0); // Stop
                     Attack();
                 }
                 else
@@ -48,6 +55,7 @@ public class Unit : MonoBehaviour
             else
             {
                 state = UnitState.Idle;
+                if (_rb != null) _rb.linearVelocity = new Vector3(0, _rb.linearVelocity.y, 0); // Stop
             }
         }
     }
@@ -76,7 +84,22 @@ public class Unit : MonoBehaviour
     {
         Vector3 direction = (_target.transform.position - transform.position).normalized;
         direction.y = 0; // Keep movement on flat plane
-        transform.position += direction * speed * Time.deltaTime;
+        
+        if (_rb != null)
+        {
+            _rb.linearVelocity = new Vector3(direction.x * speed, _rb.linearVelocity.y, direction.z * speed);
+            
+            // Optionally, rotate towards target
+            if (direction != Vector3.zero)
+            {
+                Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
+                transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
+            }
+        }
+        else
+        {
+            transform.position += direction * speed * Time.deltaTime;
+        }
     }
 
     void Attack()
@@ -107,20 +130,15 @@ public class Unit : MonoBehaviour
         state = UnitState.Dead;
         GameManager.Instance.ReportDeath(this);
         
-        // Simple visual feedback: shrink and destroy
-        StartCoroutine(DieRoutine());
-    }
-
-    IEnumerator DieRoutine()
-    {
-        float t = 0;
-        Vector3 startScale = transform.localScale;
-        while (t < 1f)
+        // "Ragdoll" effect cho Capsule
+        if (_rb != null)
         {
-            t += Time.deltaTime * 2f;
-            transform.localScale = Vector3.Lerp(startScale, Vector3.zero, t);
-            yield return null;
+            _rb.constraints = RigidbodyConstraints.None; // Bỏ khoá xoay
+            Vector3 randomForce = new Vector3(Random.Range(-1f, 1f), 1f, Random.Range(-1f, 1f)).normalized * 5f;
+            _rb.AddForce(randomForce, ForceMode.Impulse);
+            _rb.AddTorque(Random.insideUnitSphere * 10f, ForceMode.Impulse);
         }
-        Destroy(gameObject);
+        
+        Destroy(gameObject, 2f);
     }
 }
