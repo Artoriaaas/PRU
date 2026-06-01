@@ -44,8 +44,8 @@ public class SceneBootstrapper : MonoBehaviour
     [Range(0.8f, 3f)] public float cellSize = 1.6f;
 
     [Header("─── Camera ─────────────────────────────────────────────")]
-    public Vector3 cameraPosition = new Vector3(9.513777f, 19f, 12.63755f);
-    public Vector3 cameraRotation = new Vector3(51f, -87.369f, 0.011f);
+    public Vector3 cameraPosition = new Vector3(14f, 26f, 6f);
+    public Vector3 cameraRotation = new Vector3(58f, -78f, 0f);
     [Range(30f, 90f)] public float cameraFOV = 60f;
 
     // ── Runtime build ──────────────────────────────────────────────
@@ -146,15 +146,27 @@ public class BattleSceneBuilder
         Cube("Ground", new Vector3(0f, -0.25f, 8f),
              new Vector3(90f, 0.5f, 90f), _matGround);
 
-        // Sandy battle area
-        Cube("ArenaFloor", new Vector3(0f, -0.05f, 0f),
-             new Vector3(14f, 0.10f, 14f), _matDirt);
+        // Sandy battle area (extended to cover both grids and the new gap)
+        Cube("ArenaFloor", new Vector3(0f, -0.05f, 0.5f),
+             new Vector3(14f, 0.10f, 36f), _matDirt);
 
         // Slightly raised hill behind the arena (makes castle feel elevated)
-        Cube("HillBack", new Vector3(0f, 0.4f, 28f),
+        Cube("HillBack", new Vector3(0f, 0.4f, 29f),
              new Vector3(30f, 0.8f, 18f), _matGround);
-        Cube("HillMid",  new Vector3(0f, 0.15f, 18f),
+        Cube("HillMid",  new Vector3(0f, 0.15f, 22f),
              new Vector3(22f, 0.3f, 10f), _matGround);
+
+        GameObject wallLeft = new GameObject("InvisibleWallLeft");
+        wallLeft.layer = 2; // Ignore Raycast layer
+        wallLeft.transform.position = new Vector3(-5.5f, 5f, 5.5f);
+        BoxCollider bcLeft = wallLeft.AddComponent<BoxCollider>();
+        bcLeft.size = new Vector3(1f, 10f, 30f);
+
+        GameObject wallRight = new GameObject("InvisibleWallRight");
+        wallRight.layer = 2; // Ignore Raycast layer
+        wallRight.transform.position = new Vector3(5.5f, 5f, 5.5f);
+        BoxCollider bcRight = wallRight.AddComponent<BoxCollider>();
+        bcRight.size = new Vector3(1f, 10f, 30f);
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -165,9 +177,8 @@ public class BattleSceneBuilder
         var forestParent = new GameObject("Forest");
 
         // ── Compute grid exclusion bounds (with safety margin) ────
-        // Grid is centered at (0,0,0), size = columns*cellSize × rows*cellSize
-        float halfGridX = (_cfg.gridColumns * _cfg.cellSize) * 0.5f + 2.0f;  // +2 margin
-        float halfGridZ = (_cfg.gridRows    * _cfg.cellSize) * 0.5f + 2.0f;
+        // We now exclude the entire ArenaFloor so trees don't spawn inside either grid or the middle gap
+        float arenaHalfX = 8.0f; 
 
         for (int i = 0; i < _cfg.treeCount; i++)
         {
@@ -177,11 +188,11 @@ public class BattleSceneBuilder
             float x = Mathf.Sin(angle) * radius;
             float z = Mathf.Cos(angle) * radius + 10f;
 
-            // ── Skip if inside the battle grid ─────────────────────
-            if (Mathf.Abs(x) < halfGridX && Mathf.Abs(z) < halfGridZ) continue;
+            // ── Skip if inside the entire Arena Floor ─────────────────────
+            if (Mathf.Abs(x) < arenaHalfX && z > -19f && z < 20f) continue;
 
             // Keep area too far in front clear
-            if (z < -14f) continue;
+            if (z < -19f) continue;
             // Keep approach corridor to castle clear
             if (z > 22f && z < 33f && Mathf.Abs(x) < 14f) continue;
 
@@ -496,7 +507,8 @@ public class BattleSceneBuilder
 
         float totalW = cols * cs;
         float totalD = rows * cs;
-        Vector3 origin = new Vector3(-totalW * 0.5f, 0.01f, -totalD * 0.5f);
+        float playerZOffset = -10f;
+        Vector3 origin = new Vector3(-totalW * 0.5f, 0.01f, (-totalD * 0.5f) + playerZOffset);
 
         for (int r = 0; r < rows; r++)
         {
@@ -524,22 +536,26 @@ public class BattleSceneBuilder
         // Front / Back
         var bF = Cube("GridBorder_F", new Vector3(0, by, origin.z - edge * 0.5f),
             new Vector3(totalW + edge * 2f, hy, edge), _matDirt);
-        var bB = Cube("GridBorder_B", new Vector3(0, by, -origin.z + edge * 0.5f),
+        var bB = Cube("GridBorder_B", new Vector3(0, by, origin.z + totalD + edge * 0.5f),
             new Vector3(totalW + edge * 2f, hy, edge), _matDirt);
         // Left / Right
-        var bL = Cube("GridBorder_L", new Vector3(origin.x - edge * 0.5f, by, 0),
+        var bL = Cube("GridBorder_L", new Vector3(origin.x - edge * 0.5f, by, origin.z + totalD * 0.5f),
             new Vector3(edge, hy, totalD), _matDirt);
-        var bR = Cube("GridBorder_R", new Vector3(-origin.x + edge * 0.5f, by, 0),
+        var bR = Cube("GridBorder_R", new Vector3(-origin.x + edge * 0.5f, by, origin.z + totalD * 0.5f),
             new Vector3(edge, hy, totalD), _matDirt);
 
         bF.transform.SetParent(gridRoot.transform);
         bB.transform.SetParent(gridRoot.transform);
         bL.transform.SetParent(gridRoot.transform);
         bR.transform.SetParent(gridRoot.transform);
+        Object.DestroyImmediate(bF.GetComponent<BoxCollider>());
+        Object.DestroyImmediate(bB.GetComponent<BoxCollider>());
+        Object.DestroyImmediate(bL.GetComponent<BoxCollider>());
+        Object.DestroyImmediate(bR.GetComponent<BoxCollider>());
 
         // Build Enemy Grid near the castle
         var enemyGridRoot = new GameObject("EnemyGrid");
-        Vector3 enemyOrigin = new Vector3(-totalW * 0.5f, 0.01f, 12f);
+        Vector3 enemyOrigin = new Vector3(-totalW * 0.5f, 0.256f, 6f);
         
         for (int r = 0; r < rows; r++)
         {
@@ -547,7 +563,7 @@ public class BattleSceneBuilder
             {
                 float x = enemyOrigin.x + c * cs + cs * 0.5f;
                 float z = enemyOrigin.z + r * cs + cs * 0.5f;
-                Vector3 pos = new Vector3(x, 0.01f, z);
+                Vector3 pos = new Vector3(x, enemyOrigin.y, z);
 
                 bool even = (r + c) % 2 == 0;
                 var tile = Cube($"EnemyTile_{r}_{c}", pos,
@@ -559,18 +575,23 @@ public class BattleSceneBuilder
             }
         }
         
-        var eF = Cube("EnemyGridBorder_F", new Vector3(0, by, enemyOrigin.z - edge * 0.5f),
+        float eby = enemyOrigin.y + 0.04f;
+        var eF = Cube("EnemyGridBorder_F", new Vector3(0, eby, enemyOrigin.z - edge * 0.5f),
             new Vector3(totalW + edge * 2f, hy, edge), _matDirt);
-        var eB = Cube("EnemyGridBorder_B", new Vector3(0, by, enemyOrigin.z + totalD + edge * 0.5f),
+        var eB = Cube("EnemyGridBorder_B", new Vector3(0, eby, enemyOrigin.z + totalD + edge * 0.5f),
             new Vector3(totalW + edge * 2f, hy, edge), _matDirt);
-        var eL = Cube("EnemyGridBorder_L", new Vector3(enemyOrigin.x - edge * 0.5f, by, enemyOrigin.z + totalD * 0.5f),
+        var eL = Cube("EnemyGridBorder_L", new Vector3(enemyOrigin.x - edge * 0.5f, eby, enemyOrigin.z + totalD * 0.5f),
             new Vector3(edge, hy, totalD), _matDirt);
-        var eR = Cube("EnemyGridBorder_R", new Vector3(-enemyOrigin.x + edge * 0.5f, by, enemyOrigin.z + totalD * 0.5f),
+        var eR = Cube("EnemyGridBorder_R", new Vector3(-enemyOrigin.x + edge * 0.5f, eby, enemyOrigin.z + totalD * 0.5f),
             new Vector3(edge, hy, totalD), _matDirt);
         eF.transform.SetParent(enemyGridRoot.transform);
         eB.transform.SetParent(enemyGridRoot.transform);
         eL.transform.SetParent(enemyGridRoot.transform);
         eR.transform.SetParent(enemyGridRoot.transform);
+        Object.DestroyImmediate(eF.GetComponent<BoxCollider>());
+        Object.DestroyImmediate(eB.GetComponent<BoxCollider>());
+        Object.DestroyImmediate(eL.GetComponent<BoxCollider>());
+        Object.DestroyImmediate(eR.GetComponent<BoxCollider>());
     }
 
     void PlacePlus(Vector3 center, float cs, Transform parent)
@@ -595,16 +616,12 @@ public class BattleSceneBuilder
         var old = cam.GetComponent<LockedCamera>();
         if (old != null) Object.DestroyImmediate(old);
 
-        var lc = cam.gameObject.AddComponent<LockedCamera>();
-        lc.position     = _cfg.cameraPosition;
-        lc.rotation     = _cfg.cameraRotation;
-        lc.fieldOfView  = _cfg.cameraFOV;
+        var cc = cam.gameObject.GetComponent<CameraController>();
+        if (cc == null) cc = cam.gameObject.AddComponent<CameraController>();
         
-        lc.skyColor     = new Color(0.44f, 0.67f, 0.94f, 1f);
-        lc.clearMode    = CameraClearFlags.SolidColor;
-        lc.lockPosition = true;
-        lc.lockRotation = true;
-        lc.Apply();
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = new Color(0.44f, 0.67f, 0.94f, 1f);
+        cam.fieldOfView = _cfg.cameraFOV;
     }
 
     // ══════════════════════════════════════════════════════════════

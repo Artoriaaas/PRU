@@ -69,69 +69,87 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    [Header("Model Settings")]
+    public Vector3 modelRotationOffset = new Vector3(-90f, 0f, 0f);
+    public Vector3 modelPositionOffset = new Vector3(0f, 0f, 0f);
+    public float modelScale = 1.0f;
+    public bool autoAlignBottom = true;
+
     public void SpawnUnit(bool isPlayer, Vector3 position)
     {
-        GameObject unitObj = null;
+        GameObject rootObj = new GameObject(isPlayer ? "PlayerUnit" : "EnemyUnit");
+        rootObj.transform.position = position;
+
+        bool isCapsule = false;
 
 #if UNITY_EDITOR
         GameObject loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/medieval+knight+3d+model (1)/tripo_convert_723d231f-acab-4514-9370-c6d57d482cd7.fbx");
         if (loadedModel != null)
         {
-            unitObj = Instantiate(loadedModel);
-            unitObj.transform.position = position; // adjust as needed
-        }
-#endif
+            GameObject graphics = Instantiate(loadedModel, rootObj.transform);
+            graphics.transform.localPosition = Vector3.zero;
+            // Override prefab's local rotation with our offset to fix face-planting
+            graphics.transform.localRotation = Quaternion.Euler(modelRotationOffset);
+            graphics.transform.localScale = new Vector3(modelScale, modelScale, modelScale);
 
-        bool isCapsule = false;
-        if (unitObj == null)
+            if (autoAlignBottom)
+            {
+                var renderers = graphics.GetComponentsInChildren<Renderer>();
+                if (renderers.Length > 0)
+                {
+                    Bounds b = renderers[0].bounds;
+                    for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+
+                    float lowestY = b.min.y;
+                    float offsetY = rootObj.transform.position.y - lowestY;
+                    graphics.transform.position += new Vector3(0, offsetY, 0);
+                }
+            }
+            
+            // Apply manual offset for fine-tuning
+            graphics.transform.localPosition += modelPositionOffset;
+        }
+        else
         {
-            unitObj = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            unitObj.transform.position = position + Vector3.up * 1f; // Adjust height for capsule
-            unitObj.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
             isCapsule = true;
         }
+#else
+        isCapsule = true;
+#endif
 
-        Rigidbody rb = unitObj.GetComponent<Rigidbody>();
-        if (rb == null) rb = unitObj.AddComponent<Rigidbody>();
+        if (isCapsule)
+        {
+            GameObject graphics = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            graphics.transform.SetParent(rootObj.transform);
+            graphics.transform.localPosition = Vector3.up * 1f;
+            graphics.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
+            
+            Renderer rend = graphics.GetComponent<Renderer>();
+            if (rend != null) rend.material.color = isPlayer ? Color.blue : Color.red;
+        }
+
+        Rigidbody rb = rootObj.AddComponent<Rigidbody>();
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         rb.mass = 1f;
         rb.linearDamping = 1f;
         
-        Unit unit = unitObj.GetComponent<Unit>();
-        if (unit == null) unit = unitObj.AddComponent<Unit>();
-        unit.isPlayer = isPlayer;
+        CapsuleCollider col = rootObj.AddComponent<CapsuleCollider>();
+        col.height = 2f;
+        col.center = new Vector3(0, 1f, 0);
 
-        // Visuals
-        if (isCapsule)
-        {
-            Renderer rend = unitObj.GetComponent<Renderer>();
-            if (rend != null)
-            {
-                rend.material.color = isPlayer ? Color.blue : Color.red;
-            }
-        }
-        else
-        {
-            // For custom model, add a generic collider if missing
-            if (unitObj.GetComponentInChildren<Collider>() == null)
-            {
-                CapsuleCollider col = unitObj.AddComponent<CapsuleCollider>();
-                col.height = 2f;
-                col.center = new Vector3(0, 1f, 0);
-            }
-        }
+        Unit unit = rootObj.AddComponent<Unit>();
+        unit.isPlayer = isPlayer;
 
         if (isPlayer)
         {
             playerUnits.Add(unit);
-            unitObj.name = "PlayerUnit";
+            rootObj.transform.rotation = Quaternion.Euler(0, 0, 0);
         }
         else
         {
             enemyUnits.Add(unit);
-            unitObj.name = "EnemyUnit";
-            // Rotate enemy to face opposite direction
-            if (!isCapsule) unitObj.transform.rotation = Quaternion.Euler(0, 180, 0);
+            // Rotate the wrapper (root) so the unit faces the player
+            rootObj.transform.rotation = Quaternion.Euler(0, 180, 0);
         }
     }
 
@@ -143,6 +161,11 @@ public class GameManager : MonoBehaviour
         if (UIManager.Instance != null)
         {
             UIManager.Instance.HidePlacementUI();
+        }
+
+        if (CameraController.Instance != null)
+        {
+            CameraController.Instance.SetView(CameraView.Battle);
         }
     }
 

@@ -11,6 +11,10 @@ public class UIManager : MonoBehaviour
     private GameObject _gameOverPanel;
     private Text _gameOverText;
     private Text _placementHint;
+    
+    private GameObject _bottomPanel;
+    private Button _switchViewBtn;
+    private Text _switchViewText;
 
     void Awake()
     {
@@ -27,7 +31,6 @@ public class UIManager : MonoBehaviour
 
     void CreateUI()
     {
-        // EventSystem is required for UI interaction
         GameObject eventSystemObj = new GameObject("EventSystem");
         eventSystemObj.AddComponent<UnityEngine.EventSystems.EventSystem>();
 #if ENABLE_INPUT_SYSTEM
@@ -71,11 +74,11 @@ public class UIManager : MonoBehaviour
         _placementHint.alignment = TextAnchor.LowerCenter;
         
         // Bottom Panel
-        GameObject panelObj = new GameObject("BottomPanel");
-        panelObj.transform.SetParent(_canvasObj.transform, false);
-        Image pImg = panelObj.AddComponent<Image>();
+        _bottomPanel = new GameObject("BottomPanel");
+        _bottomPanel.transform.SetParent(_canvasObj.transform, false);
+        Image pImg = _bottomPanel.AddComponent<Image>();
         pImg.color = new Color(0, 0, 0, 0.5f);
-        RectTransform rtPanel = panelObj.GetComponent<RectTransform>();
+        RectTransform rtPanel = _bottomPanel.GetComponent<RectTransform>();
         rtPanel.anchorMin = new Vector2(0, 0);
         rtPanel.anchorMax = new Vector2(1, 0);
         rtPanel.pivot = new Vector2(0.5f, 0);
@@ -84,7 +87,7 @@ public class UIManager : MonoBehaviour
 
         // Unit Card
         GameObject cardObj = new GameObject("UnitCard");
-        cardObj.transform.SetParent(panelObj.transform, false);
+        cardObj.transform.SetParent(_bottomPanel.transform, false);
         Image cardImg = cardObj.AddComponent<Image>();
         cardImg.color = Color.blue;
         RectTransform rtCard = cardObj.GetComponent<RectTransform>();
@@ -93,7 +96,6 @@ public class UIManager : MonoBehaviour
         rtCard.anchoredPosition = Vector2.zero;
         rtCard.sizeDelta = new Vector2(80, 80);
         
-        // Add Drag logic
         cardObj.AddComponent<DragDropCard>();
 
         // Text inside card
@@ -112,7 +114,7 @@ public class UIManager : MonoBehaviour
         rtHint.anchorMin = new Vector2(0.5f, 0);
         rtHint.anchorMax = new Vector2(0.5f, 0);
         rtHint.pivot = new Vector2(0.5f, 0);
-        rtHint.anchoredPosition = new Vector2(0, 130); // Move above panel
+        rtHint.anchoredPosition = new Vector2(0, 130);
         rtHint.sizeDelta = new Vector2(800, 50);
 
         // Start Button
@@ -143,6 +145,34 @@ public class UIManager : MonoBehaviour
             GameManager.Instance.StartBattle();
         });
 
+        // Switch View Button
+        GameObject switchBtnObj = new GameObject("SwitchViewButton");
+        switchBtnObj.transform.SetParent(_canvasObj.transform, false);
+        Image switchImg = switchBtnObj.AddComponent<Image>();
+        switchImg.color = new Color(0.8f, 0.5f, 0.1f);
+        _switchViewBtn = switchBtnObj.AddComponent<Button>();
+        
+        GameObject switchTextObj = new GameObject("Text");
+        switchTextObj.transform.SetParent(switchBtnObj.transform, false);
+        _switchViewText = switchTextObj.AddComponent<Text>();
+        _switchViewText.font = arial;
+        _switchViewText.text = "View Enemy >";
+        _switchViewText.fontSize = 20;
+        _switchViewText.color = Color.white;
+        _switchViewText.alignment = TextAnchor.MiddleCenter;
+        _switchViewText.rectTransform.sizeDelta = new Vector2(160, 50);
+
+        RectTransform rtSwitch = switchBtnObj.GetComponent<RectTransform>();
+        rtSwitch.anchorMin = new Vector2(0, 0);
+        rtSwitch.anchorMax = new Vector2(0, 0);
+        rtSwitch.pivot = new Vector2(0, 0);
+        rtSwitch.anchoredPosition = new Vector2(20, 20);
+        rtSwitch.sizeDelta = new Vector2(160, 50);
+
+        _switchViewBtn.onClick.AddListener(() => {
+            ToggleView();
+        });
+
         // Game Over Panel
         _gameOverPanel = new GameObject("GameOverPanel");
         _gameOverPanel.transform.SetParent(_canvasObj.transform, false);
@@ -168,6 +198,32 @@ public class UIManager : MonoBehaviour
         _gameOverPanel.SetActive(false);
     }
 
+    private void ToggleView()
+    {
+        if (CameraController.Instance == null) return;
+
+        if (CameraController.Instance.GetCurrentView() == CameraView.PlayerSetup)
+        {
+            CameraController.Instance.SetView(CameraView.EnemySetup);
+            _switchViewText.text = "< View Player";
+            
+            _bottomPanel.SetActive(false);
+            _placementHint.gameObject.SetActive(false);
+            _unitsText.gameObject.SetActive(false);
+            _startBtn.gameObject.SetActive(false);
+        }
+        else if (CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
+        {
+            CameraController.Instance.SetView(CameraView.PlayerSetup);
+            _switchViewText.text = "View Enemy >";
+            
+            _bottomPanel.SetActive(true);
+            _placementHint.gameObject.SetActive(true);
+            _unitsText.gameObject.SetActive(true);
+            _startBtn.gameObject.SetActive(true);
+        }
+    }
+
     public void UpdatePlacementUI()
     {
         if (GameManager.Instance != null)
@@ -179,9 +235,11 @@ public class UIManager : MonoBehaviour
 
     public void HidePlacementUI()
     {
-        _unitsText.gameObject.SetActive(false);
-        _startBtn.gameObject.SetActive(false);
-        _placementHint.gameObject.SetActive(false);
+        if (_unitsText != null) _unitsText.gameObject.SetActive(false);
+        if (_startBtn != null) _startBtn.gameObject.SetActive(false);
+        if (_placementHint != null) _placementHint.gameObject.SetActive(false);
+        if (_bottomPanel != null) _bottomPanel.SetActive(false);
+        if (_switchViewBtn != null) _switchViewBtn.gameObject.SetActive(false);
     }
 
     public void ShowGameOver(bool playerWon)
