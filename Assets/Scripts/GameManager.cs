@@ -37,29 +37,34 @@ public class GameManager : MonoBehaviour
     {
         // Find all enemy tiles
         GameObject gridRoot = GameObject.Find("EnemyGrid");
-        if (gridRoot == null) return;
-
-        List<Transform> enemyTiles = new List<Transform>();
-        
-        foreach (Transform child in gridRoot.transform)
+        if (gridRoot != null)
         {
-            if (child.name.StartsWith("EnemyTile_"))
+            List<Transform> enemyTiles = new List<Transform>();
+            
+            foreach (Transform child in gridRoot.transform)
             {
-                enemyTiles.Add(child);
+                if (child.name.StartsWith("EnemyTile_"))
+                {
+                    enemyTiles.Add(child);
+                }
+            }
+
+            // Spawn 5 to 10 enemies
+            int numEnemies = Random.Range(5, 11);
+            for (int i = 0; i < numEnemies; i++)
+            {
+                if (enemyTiles.Count == 0) break;
+                
+                int randIndex = Random.Range(0, enemyTiles.Count);
+                Transform tile = enemyTiles[randIndex];
+                enemyTiles.RemoveAt(randIndex);
+
+                SpawnUnit(false, tile.position);
             }
         }
-
-        // Spawn 5 to 10 enemies
-        int numEnemies = Random.Range(5, 11);
-        for (int i = 0; i < numEnemies; i++)
+        else
         {
-            if (enemyTiles.Count == 0) break;
-            
-            int randIndex = Random.Range(0, enemyTiles.Count);
-            Transform tile = enemyTiles[randIndex];
-            enemyTiles.RemoveAt(randIndex);
-
-            SpawnUnit(false, tile.position);
+            Debug.Log("EnemyGrid not found, skipping enemy unit generation.");
         }
 
         currentState = GameState.Placement;
@@ -73,45 +78,52 @@ public class GameManager : MonoBehaviour
     public Vector3 modelRotationOffset = new Vector3(-90f, 0f, 0f);
     public Vector3 modelPositionOffset = new Vector3(0f, 0f, 0f);
     public float modelScale = 1.0f;
+    public float capsuleScale = 15f; // Scale up the capsules to be clearly visible
     public bool autoAlignBottom = true;
+
+    [Header("Testing")]
+    public bool forceCapsuleForTesting = true;
 
     public void SpawnUnit(bool isPlayer, Vector3 position)
     {
         GameObject rootObj = new GameObject(isPlayer ? "PlayerUnit" : "EnemyUnit");
         rootObj.transform.position = position;
 
-        bool isCapsule = false;
+        bool isCapsule = forceCapsuleForTesting;
 
 #if UNITY_EDITOR
-        GameObject loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/medieval+knight+3d+model (1)/tripo_convert_723d231f-acab-4514-9370-c6d57d482cd7.fbx");
-        if (loadedModel != null)
+        if (!isCapsule)
         {
-            GameObject graphics = Instantiate(loadedModel, rootObj.transform);
-            graphics.transform.localPosition = Vector3.zero;
-            // Override prefab's local rotation with our offset to fix face-planting
-            graphics.transform.localRotation = Quaternion.Euler(modelRotationOffset);
-            graphics.transform.localScale = new Vector3(modelScale, modelScale, modelScale);
-
-            if (autoAlignBottom)
+            GameObject loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/medieval+knight+3d+model (1)/tripo_convert_723d231f-acab-4514-9370-c6d57d482cd7.fbx");
+            if (loadedModel != null)
             {
-                var renderers = graphics.GetComponentsInChildren<Renderer>();
-                if (renderers.Length > 0)
-                {
-                    Bounds b = renderers[0].bounds;
-                    for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+                GameObject graphics = Instantiate(loadedModel, rootObj.transform);
+                graphics.transform.localPosition = Vector3.zero;
+                // Override prefab's local rotation with our offset to fix face-planting
+                graphics.transform.localRotation = Quaternion.Euler(modelRotationOffset);
+                graphics.transform.localScale = new Vector3(modelScale, modelScale, modelScale);
 
-                    float lowestY = b.min.y;
-                    float offsetY = rootObj.transform.position.y - lowestY;
-                    graphics.transform.position += new Vector3(0, offsetY, 0);
+                if (autoAlignBottom)
+                {
+                    var renderers = graphics.GetComponentsInChildren<Renderer>();
+                    if (renderers.Length > 0)
+                    {
+                        Bounds b = renderers[0].bounds;
+                        for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+
+                        float lowestY = b.min.y;
+                        float offsetY = rootObj.transform.position.y - lowestY;
+                        graphics.transform.position += new Vector3(0, offsetY, 0);
+                    }
                 }
+                
+                // Apply manual offset for fine-tuning
+                graphics.transform.localPosition += modelPositionOffset;
             }
-            
-            // Apply manual offset for fine-tuning
-            graphics.transform.localPosition += modelPositionOffset;
-        }
-        else
-        {
-            isCapsule = true;
+            else
+            {
+                isCapsule = true;
+            }
         }
 #else
         isCapsule = true;
@@ -121,8 +133,8 @@ public class GameManager : MonoBehaviour
         {
             GameObject graphics = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             graphics.transform.SetParent(rootObj.transform);
-            graphics.transform.localPosition = Vector3.up * 1f;
-            graphics.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
+            graphics.transform.localPosition = Vector3.up * capsuleScale;
+            graphics.transform.localScale = new Vector3(capsuleScale * 0.8f, capsuleScale * 0.8f, capsuleScale * 0.8f);
             
             Renderer rend = graphics.GetComponent<Renderer>();
             if (rend != null) rend.material.color = isPlayer ? Color.blue : Color.red;
@@ -134,8 +146,8 @@ public class GameManager : MonoBehaviour
         rb.linearDamping = 1f;
         
         CapsuleCollider col = rootObj.AddComponent<CapsuleCollider>();
-        col.height = 2f;
-        col.center = new Vector3(0, 1f, 0);
+        col.height = 2f * capsuleScale;
+        col.center = new Vector3(0, capsuleScale, 0);
 
         Unit unit = rootObj.AddComponent<Unit>();
         unit.isPlayer = isPlayer;

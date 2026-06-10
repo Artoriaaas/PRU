@@ -60,7 +60,7 @@ public class SetupGridTool
 
         // 3. Draw Grid Lines (Cubes as line segments)
         int cols = 4;
-        int rows = 3;
+        int rows = 4;
 
         // Create Materials folder if it doesn't exist
         if (!AssetDatabase.IsValidFolder("Assets/Materials"))
