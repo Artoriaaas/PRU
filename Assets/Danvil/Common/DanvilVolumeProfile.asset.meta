@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 74cd17d8ff9c44d479d8a6647ba9fba8
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 358880
+  packageName: Sword and Shield
+  packageVersion: 1.0
+  assetPath: Assets/Danvil/Common/DanvilVolumeProfile.asset
+  uploadId: 864406
