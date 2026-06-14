@@ -29,6 +29,7 @@ public class UIManager : MonoBehaviour
     private Text _placementHint;
     
     private GameObject _bottomPanel;
+    public GameObject bottomPanel => _bottomPanel;
     private Button _switchViewBtn;
     private Text _switchViewText;
 
@@ -124,7 +125,7 @@ public class UIManager : MonoBehaviour
         }
         else
         {
-            Destroy(gameObject);
+            Destroy(this);
         }
     }
 
@@ -399,30 +400,64 @@ public class UIManager : MonoBehaviour
         {
             CameraController.Instance.SetView(CameraView.EnemySetup);
             _switchViewText.text = "< View Player";
-            
-            _bottomPanel.SetActive(false);
-            _placementHint.gameObject.SetActive(false);
-            _unitsText.gameObject.SetActive(false);
-            _startBtn.gameObject.SetActive(false);
         }
         else if (CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
         {
             CameraController.Instance.SetView(CameraView.PlayerSetup);
             _switchViewText.text = "View Enemy >";
-            
-            _bottomPanel.SetActive(true);
-            _placementHint.gameObject.SetActive(true);
-            _unitsText.gameObject.SetActive(true);
-            _startBtn.gameObject.SetActive(true);
         }
+
+        UpdatePlacementUI();
     }
 
     public void UpdatePlacementUI()
     {
-        if (GameManager.Instance != null)
+        if (GameManager.Instance == null) return;
+
+        bool isPlayer = true;
+        if (CameraController.Instance != null && CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
         {
-            int remaining = GameManager.Instance.maxPlayerUnits - GameManager.Instance.placedPlayerUnits;
+            isPlayer = false;
+        }
+
+        int remaining = isPlayer ? 
+            (GameManager.Instance.maxPlayerUnits - GameManager.Instance.placedPlayerUnits) : 0;
+
+        if (_unitsText != null)
+        {
+            _unitsText.gameObject.SetActive(isPlayer);
             _unitsText.text = $"Available Units: {remaining}";
+        }
+
+        if (_bottomPanel != null)
+        {
+            _bottomPanel.SetActive(isPlayer);
+        }
+
+        if (_placementHint != null)
+        {
+            _placementHint.text = isPlayer ? 
+                "Drag the blue card onto the grid to place units." : 
+                "Viewing enemy setup (Pre-configured from Level Editor)";
+        }
+
+        // Update card color and text dynamically if active
+        if (isPlayer && _bottomPanel != null)
+        {
+            Transform cardTrans = _bottomPanel.transform.Find("UnitCard");
+            if (cardTrans != null)
+            {
+                Image cardImg = cardTrans.GetComponent<Image>();
+                if (cardImg != null)
+                {
+                    cardImg.color = new Color(0.1f, 0.4f, 0.8f, 1f);
+                }
+                Text cardText = cardTrans.Find("CardText")?.GetComponent<Text>();
+                if (cardText != null)
+                {
+                    cardText.text = "Player\nUnit";
+                }
+            }
         }
     }
 

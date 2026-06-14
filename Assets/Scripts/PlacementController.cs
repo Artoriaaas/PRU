@@ -9,6 +9,8 @@ public class PlacementController : MonoBehaviour
 
     private Camera _cam;
     private GameObject _clickPreviewCapsule;
+    private Unit _draggedUnit;
+    private Vector3 _draggedUnitOriginalPos;
 
     void Awake()
     {
@@ -18,7 +20,7 @@ public class PlacementController : MonoBehaviour
         }
         else
         {
-            Destroy(gameObject);
+            Destroy(this);
         }
     }
 
@@ -54,10 +56,12 @@ public class PlacementController : MonoBehaviour
         GameObject bestPad = null;
         float bestDist = float.MaxValue;
 
+        string prefix = "PlayerPad_";
+
         foreach (var hit in hits)
         {
             if (hit.collider != null &&
-                (hit.collider.name.StartsWith("PlayerPad_") || hit.collider.name.StartsWith("Tile_")))
+                (hit.collider.name.StartsWith(prefix) || hit.collider.name.StartsWith("Tile_")))
             {
                 if (hit.distance < bestDist)
                 {
@@ -129,6 +133,22 @@ public class PlacementController : MonoBehaviour
                 _clickPreviewCapsule = null;
             }
             return;
+        }
+
+        bool isPlayer = true;
+        if (CameraController.Instance != null && CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
+        {
+            isPlayer = false;
+        }
+
+        if (!isPlayer)
+        {
+            if (_clickPreviewCapsule != null)
+            {
+                Destroy(_clickPreviewCapsule);
+                _clickPreviewCapsule = null;
+            }
+            return; // Do not show placement previews or allow placing on enemy setup view at runtime
         }
 
         // Click-to-place logic & preview shadow management
@@ -213,6 +233,93 @@ public class PlacementController : MonoBehaviour
                 _clickPreviewCapsule = null;
             }
         }
+
+        // Click and drag placed units logic
+        if (WasLeftClickPressed())
+        {
+            if (UnityEngine.EventSystems.EventSystem.current == null ||
+                !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            {
+                Ray ray = _cam.ScreenPointToRay(GetMouseScreenPos());
+                if (Physics.Raycast(ray, out RaycastHit hit, 1000f))
+                {
+                    Unit clickedUnit = hit.collider.GetComponentInParent<Unit>();
+                    if (clickedUnit != null && clickedUnit.isPlayer)
+                    {
+                        if (selectedCard != null)
+                        {
+                            selectedCard.SetSelected(false);
+                        }
+
+                        _draggedUnit = clickedUnit;
+                        _draggedUnitOriginalPos = _draggedUnit.transform.position;
+                        Debug.Log("Started dragging unit: " + _draggedUnit.name);
+                    }
+                }
+            }
+        }
+
+        if (_draggedUnit != null)
+        {
+            if (IsLeftClickHeld())
+            {
+                Vector2 mousePos = GetMouseScreenPos();
+                if (GetPreviewPosition(mousePos, out Vector3 targetWorldPos))
+                {
+                    GameObject padHit = RaycastForPad(mousePos);
+                    if (padHit != null)
+                    {
+                        if (!IsTileOccupied(padHit.transform.position, true, _draggedUnit))
+                        {
+                            _draggedUnit.transform.position = padHit.transform.position;
+                        }
+                        else
+                        {
+                            _draggedUnit.transform.position = targetWorldPos;
+                        }
+                    }
+                    else
+                    {
+                        _draggedUnit.transform.position = targetWorldPos;
+                    }
+                }
+            }
+            else
+            {
+                Vector2 mousePos = GetMouseScreenPos();
+
+                if (IsPointerOverBottomPanel(mousePos))
+                {
+                    Debug.Log("Unit dragged to card panel. Removing unit: " + _draggedUnit.name);
+                    GameManager.Instance.playerUnits.Remove(_draggedUnit);
+                    GameManager.Instance.placedPlayerUnits = Mathf.Max(0, GameManager.Instance.placedPlayerUnits - 1);
+
+                    Destroy(_draggedUnit.gameObject);
+                    _draggedUnit = null;
+
+                    if (UIManager.Instance != null)
+                    {
+                        UIManager.Instance.UpdatePlacementUI();
+                    }
+                }
+                else
+                {
+                    GameObject padHit = RaycastForPad(mousePos);
+                    if (padHit != null && !IsTileOccupied(padHit.transform.position, true, _draggedUnit))
+                    {
+                        _draggedUnit.transform.position = padHit.transform.position;
+                        Debug.Log("Successfully moved unit to: " + padHit.name);
+                        _draggedUnit = null;
+                    }
+                    else
+                    {
+                        _draggedUnit.transform.position = _draggedUnitOriginalPos;
+                        Debug.Log("Invalid placement. Returned unit to original position.");
+                        _draggedUnit = null;
+                    }
+                }
+            }
+        }
     }
 
     public void AttemptPlacement(GameObject tileObj)
@@ -220,16 +327,44 @@ public class PlacementController : MonoBehaviour
         if (GameManager.Instance == null || GameManager.Instance.currentState != GameState.Placement)
             return;
 
-        if (GameManager.Instance.placedPlayerUnits >= GameManager.Instance.maxPlayerUnits)
+        if (tileObj == null || tileObj.name.StartsWith("EnemyPad"))
+        {
+            Debug.LogWarning("PlacementController: Placement on EnemyPad is not allowed at runtime!");
             return;
+        }
+
+        bool isPlayer = true;
+        if (CameraController.Instance != null && CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
+        {
+            isPlayer = false;
+        }
+
+        // Do not allow placing units on enemy side at runtime (only via Level Editor)
+        if (!isPlayer) return;
+
+        int maxUnits = isPlayer ? GameManager.Instance.maxPlayerUnits : GameManager.Instance.maxEnemyUnits;
+        int placedUnits = isPlayer ? GameManager.Instance.placedPlayerUnits : GameManager.Instance.placedEnemyUnits;
+
+        if (placedUnits >= maxUnits)
+            return;
+
+        string prefix = isPlayer ? "PlayerPad_" : "EnemyPad_";
             
-        if (tileObj.name.StartsWith("PlayerPad_") || tileObj.name.StartsWith("Tile_"))
+        if (tileObj.name.StartsWith(prefix) || tileObj.name.StartsWith("Tile_"))
         {
             // Check if tile is empty
-            if (!IsTileOccupied(tileObj.transform.position))
+            if (!IsTileOccupied(tileObj.transform.position, isPlayer))
             {
-                GameManager.Instance.SpawnUnit(true, tileObj.transform.position);
-                GameManager.Instance.placedPlayerUnits++;
+                GameManager.Instance.SpawnUnit(isPlayer, tileObj.transform.position);
+                if (isPlayer)
+                {
+                    GameManager.Instance.placedPlayerUnits++;
+                }
+                else
+                {
+                    GameManager.Instance.placedEnemyUnits++;
+                }
+
                 if (UIManager.Instance != null)
                 {
                     UIManager.Instance.UpdatePlacementUI();
@@ -248,11 +383,29 @@ public class PlacementController : MonoBehaviour
         }
     }
 
-    bool IsTileOccupied(Vector3 position)
+    private bool IsLeftClickHeld()
     {
-        // Simple check based on distance to existing player units
-        foreach (var unit in GameManager.Instance.playerUnits)
+#if ENABLE_INPUT_SYSTEM
+        return UnityEngine.InputSystem.Mouse.current != null &&
+               UnityEngine.InputSystem.Mouse.current.leftButton.isPressed;
+#else
+        return Input.GetMouseButton(0);
+#endif
+    }
+
+    private bool IsPointerOverBottomPanel(Vector2 screenPos)
+    {
+        if (UIManager.Instance == null || UIManager.Instance.bottomPanel == null) return false;
+        RectTransform rect = UIManager.Instance.bottomPanel.GetComponent<RectTransform>();
+        return RectTransformUtility.RectangleContainsScreenPoint(rect, screenPos, null);
+    }
+
+    public bool IsTileOccupied(Vector3 position, bool checkPlayer, Unit ignoreUnit = null)
+    {
+        var units = checkPlayer ? GameManager.Instance.playerUnits : GameManager.Instance.enemyUnits;
+        foreach (var unit in units)
         {
+            if (unit == ignoreUnit) continue;
             Vector3 unitPos = unit.transform.position;
             unitPos.y = position.y; // ignore height difference
             if (Vector3.Distance(unitPos, position) < 0.5f)

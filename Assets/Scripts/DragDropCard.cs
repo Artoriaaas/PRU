@@ -4,7 +4,6 @@ using UnityEngine.UI;
 
 public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
 {
-    private RectTransform _dragIcon;
     private Canvas _canvas;
     private Image _image;
     private Color _originalColor;
@@ -43,10 +42,12 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
         GameObject bestPad = null;
         float bestDist = float.MaxValue;
 
+        string prefix = "PlayerPad_";
+
         foreach (var hit in hits)
         {
             if (hit.collider != null &&
-                (hit.collider.name.StartsWith("PlayerPad_") || hit.collider.name.StartsWith("Tile_")))
+                (hit.collider.name.StartsWith(prefix) || hit.collider.name.StartsWith("Tile_")))
             {
                 if (hit.distance < bestDist)
                 {
@@ -91,18 +92,26 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
     public void OnBeginDrag(PointerEventData eventData)
     {
         if (GameManager.Instance == null || GameManager.Instance.currentState != GameState.Placement) return;
-        if (GameManager.Instance.placedPlayerUnits >= GameManager.Instance.maxPlayerUnits) return;
+
+        bool isPlayer = true;
+        if (CameraController.Instance != null && CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
+        {
+            isPlayer = false;
+        }
+
+        // Do not allow dragging/placing enemy units at runtime (only via Level Editor)
+        if (!isPlayer) return;
+
+        int maxUnits = isPlayer ? GameManager.Instance.maxPlayerUnits : GameManager.Instance.maxEnemyUnits;
+        int placedUnits = isPlayer ? GameManager.Instance.placedPlayerUnits : GameManager.Instance.placedEnemyUnits;
+
+        if (placedUnits >= maxUnits) return;
 
         // Clear click selection if we drag
         SetSelected(false);
 
-        // Create a temporary icon to follow mouse
-        GameObject iconObj = new GameObject("DragIcon");
-        iconObj.transform.SetParent(_canvas.transform, false);
-        Image img = iconObj.AddComponent<Image>();
-        img.color = new Color(0.2f, 0.2f, 1f, 0.7f); // semi-transparent blue
-        _dragIcon = iconObj.GetComponent<RectTransform>();
-        _dragIcon.sizeDelta = new Vector2(50, 50);
+        // Color scheme depending on player vs enemy
+        Color previewColor = isPlayer ? new Color(0.2f, 0.6f, 1f, 0.5f) : new Color(1f, 0.2f, 0.2f, 0.5f);
 
         // Create capsule preview shadow
         _previewCapsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -116,7 +125,7 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
             Material previewMat = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
             if (previewMat != null)
             {
-                previewMat.color = new Color(0.2f, 0.6f, 1f, 0.5f);
+                previewMat.color = previewColor;
                 previewMat.SetFloat("_Surface", 1); // Transparent
                 previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
                 previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
@@ -126,7 +135,7 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
             }
             else
             {
-                previewRend.material.color = new Color(0.2f, 0.6f, 1f, 0.5f);
+                previewRend.material.color = previewColor;
             }
         }
         float capScale = 15f;
@@ -136,17 +145,10 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
         }
         _previewCapsule.transform.localScale = new Vector3(capScale * 0.8f, capScale * 0.8f, capScale * 0.8f);
         _previewCapsule.SetActive(false);
-
-        UpdateDragPosition(eventData);
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (_dragIcon != null)
-        {
-            UpdateDragPosition(eventData);
-        }
-
         if (_previewCapsule != null)
         {
             if (RaycastForWorldPos(eventData.position, out Vector3 worldPos))
@@ -174,29 +176,23 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
             _previewCapsule = null;
         }
 
-        if (_dragIcon != null)
+        // Check if dropped on a pad
+        GameObject padHit = RaycastForPad(eventData.position);
+        if (padHit != null)
         {
-            Destroy(_dragIcon.gameObject);
-            _dragIcon = null;
-
-            // Check if dropped on a pad
-            GameObject padHit = RaycastForPad(eventData.position);
-            if (padHit != null)
+            PlacementController pc = PlacementController.Instance;
+            if (pc != null)
             {
-                PlacementController pc = PlacementController.Instance;
-                if (pc != null)
-                {
-                    pc.AttemptPlacement(padHit);
-                }
-                else
-                {
-                    Debug.LogWarning("PlacementController not found in scene!");
-                }
+                pc.AttemptPlacement(padHit);
             }
             else
             {
-                Debug.Log("Drag ended but no pad was hit.");
+                Debug.LogWarning("PlacementController not found in scene!");
             }
+        }
+        else
+        {
+            Debug.Log("Drag ended but no pad was hit.");
         }
     }
 
@@ -206,7 +202,20 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
         if (eventData.dragging) return;
 
         if (GameManager.Instance == null || GameManager.Instance.currentState != GameState.Placement) return;
-        if (GameManager.Instance.placedPlayerUnits >= GameManager.Instance.maxPlayerUnits) return;
+
+        bool isPlayer = true;
+        if (CameraController.Instance != null && CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
+        {
+            isPlayer = false;
+        }
+
+        // Do not allow card selection/clicking when in enemy setup view
+        if (!isPlayer) return;
+
+        int maxUnits = isPlayer ? GameManager.Instance.maxPlayerUnits : GameManager.Instance.maxEnemyUnits;
+        int placedUnits = isPlayer ? GameManager.Instance.placedPlayerUnits : GameManager.Instance.placedEnemyUnits;
+
+        if (placedUnits >= maxUnits) return;
 
         ToggleSelection();
     }
@@ -250,16 +259,7 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
         }
     }
 
-    private void UpdateDragPosition(PointerEventData eventData)
-    {
-        Vector2 localPointerPosition;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            _canvas.GetComponent<RectTransform>(), 
-            eventData.position, 
-            eventData.pressEventCamera, 
-            out localPointerPosition);
-        _dragIcon.localPosition = localPointerPosition;
-    }
+
 
     void OnDisable()
     {

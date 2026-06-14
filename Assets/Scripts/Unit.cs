@@ -85,6 +85,11 @@ public class Unit : MonoBehaviour
         Vector3 direction = (_target.transform.position - transform.position).normalized;
         direction.y = 0; // Keep movement on flat plane
         
+        if (Time.frameCount % 60 == 0)
+        {
+            Debug.Log($"[Diagnostic] {name} moving towards {_target.name}. direction: {direction}, speed: {speed}, rb: {(_rb != null)}, isKinematic: {(_rb != null && _rb.isKinematic)}, useGravity: {(_rb != null && _rb.useGravity)}, velocity: {(_rb != null ? _rb.linearVelocity : Vector3.zero)}");
+        }
+
         if (_rb != null)
         {
             _rb.linearVelocity = new Vector3(direction.x * speed, _rb.linearVelocity.y, direction.z * speed);
