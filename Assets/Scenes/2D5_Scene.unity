@@ -919,12 +919,14 @@ MonoBehaviour:
   maxEnemyUnits: 10
   placedEnemyUnits: 0
   activeLevel: {fileID: 11400000, guid: 4dd9a5cb7ba251d42ad380aee004a562, type: 2}
-  modelRotationOffset: {x: -90, y: 0, z: 0}
+  unitModelPrefab: {fileID: 919132149155446097, guid: da3df4d01ccd7f74aabcd5569ea83423, type: 3}
+  modelRotationOffset: {x: 0, y: 0, z: 0}
   modelPositionOffset: {x: 0, y: 0, z: 0}
-  modelScale: 1
+  modelScale: 30
   capsuleScale: 15
   autoAlignBottom: 1
-  forceCapsuleForTesting: 1
+  unitAnimatorController: {fileID: 0}
+  forceCapsuleForTesting: 0
 --- !u!4 &153215031
 Transform:
   m_ObjectHideFlags: 0
@@ -3029,35 +3031,35 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 198631955826503808, guid: 364008a861c837840b9ebe98c806959c, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1033.2258
+      value: 1051.8682
       objectReference: {fileID: 0}
     - target: {fileID: 198631955826503808, guid: 364008a861c837840b9ebe98c806959c, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.7947506
+      value: 20.15651
       objectReference: {fileID: 0}
     - target: {fileID: 198631955826503808, guid: 364008a861c837840b9ebe98c806959c, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 82.389404
+      value: 168.77754
       objectReference: {fileID: 0}
     - target: {fileID: 198631955826503808, guid: 364008a861c837840b9ebe98c806959c, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.5127444
       objectReference: {fileID: 0}
     - target: {fileID: 198631955826503808, guid: 364008a861c837840b9ebe98c806959c, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0.5787016
       objectReference: {fileID: 0}
     - target: {fileID: 198631955826503808, guid: 364008a861c837840b9ebe98c806959c, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0.47467428
       objectReference: {fileID: 0}
     - target: {fileID: 198631955826503808, guid: 364008a861c837840b9ebe98c806959c, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0.42057344
       objectReference: {fileID: 0}
     - target: {fileID: 198631955826503808, guid: 364008a861c837840b9ebe98c806959c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -96.916
       objectReference: {fileID: 0}
     - target: {fileID: 198631955826503808, guid: 364008a861c837840b9ebe98c806959c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -3065,7 +3067,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 198631955826503808, guid: 364008a861c837840b9ebe98c806959c, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: -78.72
       objectReference: {fileID: 0}
     - target: {fileID: 687500546392992314, guid: 364008a861c837840b9ebe98c806959c, type: 3}
       propertyPath: m_Name
@@ -4669,11 +4671,13 @@ MonoBehaviour:
   maxEnemyUnits: 10
   placedEnemyUnits: 0
   activeLevel: {fileID: 0}
+  unitModelPrefab: {fileID: 0}
   modelRotationOffset: {x: -90, y: 0, z: 0}
   modelPositionOffset: {x: 0, y: 0, z: 0}
   modelScale: 1
   capsuleScale: 15
   autoAlignBottom: 1
+  unitAnimatorController: {fileID: 0}
   forceCapsuleForTesting: 1
 --- !u!4 &1753165086
 Transform:

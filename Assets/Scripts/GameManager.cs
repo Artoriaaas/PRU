@@ -29,7 +29,11 @@ public class GameManager : MonoBehaviour
         else
         {
             Destroy(this);
+            return;
         }
+
+        // Force forceCapsuleForTesting to false to override Unity Inspector's serialized value
+        forceCapsuleForTesting = false;
     }
 
     void Start()
@@ -119,14 +123,20 @@ public class GameManager : MonoBehaviour
     }
 
     [Header("Model Settings")]
-    public Vector3 modelRotationOffset = new Vector3(-90f, 0f, 0f);
+    [Tooltip("Drag your ModelQuanLinh FBX/Prefab here. If left empty, it will auto-load from Assets/Models/ModelQuanLinh.fbx in Editor.")]
+    public GameObject unitModelPrefab;
+    public Vector3 modelRotationOffset = new Vector3(0f, 0f, 0f); // default to 0 for ModelQuanLinh, user can adjust
     public Vector3 modelPositionOffset = new Vector3(0f, 0f, 0f);
     public float modelScale = 1.0f;
     public float capsuleScale = 15f; // Scale up the capsules to be clearly visible
     public bool autoAlignBottom = true;
 
+    [Header("Animation Settings")]
+    [Tooltip("Assign your Animator Controller for the ModelQuanLinh here.")]
+    public RuntimeAnimatorController unitAnimatorController;
+
     [Header("Testing")]
-    public bool forceCapsuleForTesting = true;
+    public bool forceCapsuleForTesting = false;
 
     public void LoadLevelEnemies()
     {
@@ -172,43 +182,55 @@ public class GameManager : MonoBehaviour
 
         bool isCapsule = forceCapsuleForTesting;
 
+        GameObject loadedModel = unitModelPrefab;
 #if UNITY_EDITOR
-        if (!isCapsule)
+        if (!isCapsule && loadedModel == null)
         {
-            GameObject loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/medieval+knight+3d+model (1)/tripo_convert_723d231f-acab-4514-9370-c6d57d482cd7.fbx");
-            if (loadedModel != null)
-            {
-                GameObject graphics = Instantiate(loadedModel, rootObj.transform);
-                graphics.transform.localPosition = Vector3.zero;
-                // Override prefab's local rotation with our offset to fix face-planting
-                graphics.transform.localRotation = Quaternion.Euler(modelRotationOffset);
-                graphics.transform.localScale = new Vector3(modelScale, modelScale, modelScale);
-
-                if (autoAlignBottom)
-                {
-                    var renderers = graphics.GetComponentsInChildren<Renderer>();
-                    if (renderers.Length > 0)
-                    {
-                        Bounds b = renderers[0].bounds;
-                        for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
-
-                        float lowestY = b.min.y;
-                        float offsetY = rootObj.transform.position.y - lowestY;
-                        graphics.transform.position += new Vector3(0, offsetY, 0);
-                    }
-                }
-                
-                // Apply manual offset for fine-tuning
-                graphics.transform.localPosition += modelPositionOffset;
-            }
-            else
-            {
-                isCapsule = true;
-            }
+            loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/ModelQuanLinh.fbx");
         }
-#else
-        isCapsule = true;
 #endif
+
+        if (!isCapsule && loadedModel != null)
+        {
+            GameObject graphics = Instantiate(loadedModel, rootObj.transform);
+            graphics.transform.localPosition = Vector3.zero;
+            // Override prefab's local rotation with our offset to fix face-planting
+            graphics.transform.localRotation = Quaternion.Euler(modelRotationOffset);
+            graphics.transform.localScale = new Vector3(modelScale, modelScale, modelScale);
+
+            // Setup animator controller
+            Animator animator = graphics.GetComponent<Animator>();
+            if (animator == null)
+            {
+                animator = graphics.AddComponent<Animator>();
+            }
+            animator.applyRootMotion = false; // Disable root motion to prevent tilting forward
+            if (unitAnimatorController != null)
+            {
+                animator.runtimeAnimatorController = unitAnimatorController;
+            }
+
+            if (autoAlignBottom)
+            {
+                var renderers = graphics.GetComponentsInChildren<Renderer>();
+                if (renderers.Length > 0)
+                {
+                    Bounds b = renderers[0].bounds;
+                    for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+
+                    float lowestY = b.min.y;
+                    float offsetY = rootObj.transform.position.y - lowestY;
+                    graphics.transform.position += new Vector3(0, offsetY, 0);
+                }
+            }
+            
+            // Apply manual offset for fine-tuning
+            graphics.transform.localPosition += modelPositionOffset;
+        }
+        else
+        {
+            isCapsule = true;
+        }
 
         if (isCapsule)
         {
@@ -247,13 +269,14 @@ public class GameManager : MonoBehaviour
         if (isPlayer)
         {
             playerUnits.Add(unit);
-            rootObj.transform.rotation = Quaternion.Euler(0, 0, 0);
+            // Rotate towards the enemy on the left (-X direction)
+            rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
         }
         else
         {
             enemyUnits.Add(unit);
-            // Rotate the wrapper (root) so the unit faces the player
-            rootObj.transform.rotation = Quaternion.Euler(0, 180, 0);
+            // Rotate towards the player on the right (+X direction)
+            rootObj.transform.rotation = Quaternion.Euler(0, 90, 0);
         }
     }
 

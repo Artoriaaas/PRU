@@ -20,15 +20,24 @@ public class Unit : MonoBehaviour
     private float _lastAttackTime;
     private Unit _target;
     private Rigidbody _rb;
+    private Animator _animator;
 
     void Awake()
     {
         _rb = GetComponent<Rigidbody>();
+        _animator = GetComponentInChildren<Animator>();
     }
 
     void Update()
     {
         if (state == UnitState.Dead) return;
+
+        // Sync animator state variables
+        if (_animator != null)
+        {
+            _animator.SetBool("IsMoving", state == UnitState.Moving);
+            _animator.SetBool("IsAttacking", state == UnitState.Attacking);
+        }
 
         if (GameManager.Instance != null && GameManager.Instance.currentState == GameState.Battle)
         {
@@ -113,6 +122,10 @@ public class Unit : MonoBehaviour
         {
             _target.TakeDamage(atk);
             _lastAttackTime = Time.time;
+            if (_animator != null)
+            {
+                _animator.SetTrigger("Attack");
+            }
         }
     }
 
@@ -135,13 +148,31 @@ public class Unit : MonoBehaviour
         state = UnitState.Dead;
         GameManager.Instance.ReportDeath(this);
         
+        if (_animator != null)
+        {
+            _animator.SetBool("IsDead", true);
+            _animator.SetTrigger("Die");
+        }
+
         // "Ragdoll" effect cho Capsule
         if (_rb != null)
         {
-            _rb.constraints = RigidbodyConstraints.None; // Bỏ khoá xoay
-            Vector3 randomForce = new Vector3(Random.Range(-1f, 1f), 1f, Random.Range(-1f, 1f)).normalized * 5f;
-            _rb.AddForce(randomForce, ForceMode.Impulse);
-            _rb.AddTorque(Random.insideUnitSphere * 10f, ForceMode.Impulse);
+            _rb.isKinematic = false;
+            if (_animator == null)
+            {
+                _rb.constraints = RigidbodyConstraints.None; // Bỏ khoá xoay
+                Vector3 randomForce = new Vector3(Random.Range(-1f, 1f), 1f, Random.Range(-1f, 1f)).normalized * 5f;
+                _rb.AddForce(randomForce, ForceMode.Impulse);
+                _rb.AddTorque(Random.insideUnitSphere * 10f, ForceMode.Impulse);
+            }
+            else
+            {
+                Collider col = GetComponent<Collider>();
+                if (col != null) col.enabled = false;
+
+                _rb.linearVelocity = Vector3.zero;
+                _rb.angularVelocity = Vector3.zero;
+            }
         }
         
         Destroy(gameObject, 2f);
