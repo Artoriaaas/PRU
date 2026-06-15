@@ -19,12 +19,27 @@ public class MainMenuController : MonoBehaviour
     public CanvasGroup creditPanelGroup;
     public CanvasGroup mainMenuGroup;
 
+    [Header("Transitions")]
+    public CanvasGroup fadeOverlay;
+    public Text messageText;
+    public float startFadeDuration = 0.6f;
+    public float messageDuration = 2f;
+
+    [Header("Audio")]
+    public AudioClip hoverSound;
+    public AudioClip clickSound;
+
     [Header("Behavior")]
     public bool continueEnabled = true;
+    public bool hasSaveData = false;
     public string gameplaySceneName = string.Empty;
+    public MainMenuIntro menuIntro;
+
     [Range(0.05f, 1f)] public float panelFadeDuration = 0.2f;
 
     private Coroutine panelRoutine;
+    private Coroutine messageRoutine;
+    private bool menuReady;
 
     private void Awake()
     {
@@ -32,6 +47,64 @@ public class MainMenuController : MonoBehaviour
         BindButtons();
         InitializePanels();
         ApplyContinueState();
+        ApplyButtonSounds();
+        HideMessage();
+
+        if (fadeOverlay != null)
+        {
+            fadeOverlay.alpha = 0f;
+            fadeOverlay.blocksRaycasts = false;
+            fadeOverlay.interactable = false;
+            UpdateFadeOverlayRaycast(false);
+        }
+
+        menuReady = menuIntro == null || menuIntro.introOverlayGroup == null;
+        if (mainMenuGroup != null && menuIntro != null)
+        {
+            mainMenuGroup.interactable = false;
+            mainMenuGroup.blocksRaycasts = false;
+        }
+    }
+
+    private void Update()
+    {
+        if (!menuReady && menuIntro != null && menuIntro.IntroFinished)
+        {
+            menuReady = true;
+            EnableMenuAfterIntro();
+        }
+    }
+
+    private void EnableMenuAfterIntro()
+    {
+        SetMainMenuInteractable(true);
+
+        if (menuIntro != null && menuIntro.menuLayers != null)
+        {
+            for (int i = 0; i < menuIntro.menuLayers.Length; i++)
+            {
+                var layer = menuIntro.menuLayers[i];
+                if (layer == null) continue;
+                layer.alpha = 1f;
+                layer.interactable = true;
+                layer.blocksRaycasts = true;
+                layer.gameObject.SetActive(true);
+            }
+        }
+    }
+
+    private void UpdateFadeOverlayRaycast(bool block)
+    {
+        if (fadeOverlay == null) return;
+
+        fadeOverlay.blocksRaycasts = block;
+        fadeOverlay.interactable = block;
+
+        var image = fadeOverlay.GetComponent<Image>();
+        if (image != null)
+        {
+            image.raycastTarget = block;
+        }
     }
 
     private void ValidateReferences()
@@ -67,11 +140,24 @@ public class MainMenuController : MonoBehaviour
         if (creditCloseButton != null) creditCloseButton.onClick.AddListener(ClosePanels);
     }
 
+    private void ApplyButtonSounds()
+    {
+        var effects = FindObjectsOfType<UIButtonEffect>(true);
+        for (int i = 0; i < effects.Length; i++)
+        {
+            if (hoverSound != null) effects[i].hoverSound = hoverSound;
+            if (clickSound != null) effects[i].clickSound = clickSound;
+        }
+    }
+
     private void InitializePanels()
     {
         SetPanelVisible(settingPanelGroup, false, true);
         SetPanelVisible(creditPanelGroup, false, true);
-        SetMainMenuInteractable(true);
+        if (menuIntro == null)
+        {
+            SetMainMenuInteractable(true);
+        }
     }
 
     private void ApplyContinueState()
@@ -88,33 +174,75 @@ public class MainMenuController : MonoBehaviour
 
     public void OnStartClicked()
     {
+        if (!menuReady) return;
+        StartCoroutine(StartGameRoutine());
+    }
+
+    private IEnumerator StartGameRoutine()
+    {
+        SetMainMenuInteractable(false);
+
+        if (fadeOverlay != null)
+        {
+            fadeOverlay.gameObject.SetActive(true);
+            UpdateFadeOverlayRaycast(true);
+            float elapsed = 0f;
+            float duration = Mathf.Max(0.01f, startFadeDuration);
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                fadeOverlay.alpha = Mathf.Clamp01(elapsed / duration);
+                yield return null;
+            }
+            fadeOverlay.alpha = 1f;
+        }
+
         if (!string.IsNullOrWhiteSpace(gameplaySceneName) && Application.CanStreamedLevelBeLoaded(gameplaySceneName))
         {
             SceneManager.LoadScene(gameplaySceneName);
-            return;
+            yield break;
         }
 
-        Debug.Log("Start Game clicked");
+        Debug.Log("Gameplay Scene Not Assigned");
+
+        if (fadeOverlay != null)
+        {
+            float elapsed = 0f;
+            float duration = Mathf.Max(0.01f, startFadeDuration * 0.5f);
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                fadeOverlay.alpha = 1f - Mathf.Clamp01(elapsed / duration);
+                yield return null;
+            }
+            fadeOverlay.alpha = 0f;
+            UpdateFadeOverlayRaycast(false);
+        }
+
+        SetMainMenuInteractable(true);
     }
 
     public void OnContinueClicked()
     {
-        if (!continueEnabled)
-        {
-            Debug.Log("Continue is disabled");
-            return;
-        }
+        if (!menuReady) return;
 
-        Debug.Log("Continue clicked");
+        Debug.Log("Continue Clicked");
+
+        if (!hasSaveData)
+        {
+            ShowMessage("No Save Data");
+        }
     }
 
     public void OpenSettings()
     {
+        if (!menuReady) return;
         StartPanelTransition(settingPanelGroup);
     }
 
     public void OpenCredits()
     {
+        if (!menuReady) return;
         StartPanelTransition(creditPanelGroup);
     }
 
@@ -125,12 +253,57 @@ public class MainMenuController : MonoBehaviour
 
     private void OnQuitClicked()
     {
-        Debug.Log("Quit clicked");
-#if UNITY_EDITOR
-        // Keep editor session running; only log in editor.
-#else
+        if (!menuReady) return;
+
+        Debug.Log("Quit Clicked");
+#if !UNITY_EDITOR
         Application.Quit();
 #endif
+    }
+
+    private void ShowMessage(string text)
+    {
+        if (messageText == null)
+        {
+            Debug.Log(text);
+            return;
+        }
+
+        if (messageRoutine != null)
+        {
+            StopCoroutine(messageRoutine);
+        }
+        messageRoutine = StartCoroutine(ShowMessageRoutine(text));
+    }
+
+    private void HideMessage()
+    {
+        if (messageText == null) return;
+        messageText.gameObject.SetActive(false);
+    }
+
+    private IEnumerator ShowMessageRoutine(string text)
+    {
+        messageText.gameObject.SetActive(true);
+        messageText.text = text;
+        Color c = messageText.color;
+        c.a = 1f;
+        messageText.color = c;
+
+        yield return new WaitForSecondsRealtime(messageDuration);
+
+        float elapsed = 0f;
+        float duration = 0.25f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            c.a = 1f - Mathf.Clamp01(elapsed / duration);
+            messageText.color = c;
+            yield return null;
+        }
+
+        messageText.gameObject.SetActive(false);
+        messageRoutine = null;
     }
 
     private void StartPanelTransition(CanvasGroup targetPanel)
