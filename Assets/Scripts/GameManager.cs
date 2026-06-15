@@ -130,6 +130,8 @@ public class GameManager : MonoBehaviour
     public float modelScale = 1.0f;
     public float capsuleScale = 15f; // Scale up the capsules to be clearly visible
     public bool autoAlignBottom = true;
+    [Tooltip("Drag the texture JPEG/PNG for ModelQuanLinh here. If left empty, it will auto-detect from .fbm folders in Editor.")]
+    public Texture2D unitBaseColorTexture;
 
     [Header("Animation Settings")]
     [Tooltip("Assign your Animator Controller for the ModelQuanLinh here.")]
@@ -208,6 +210,31 @@ public class GameManager : MonoBehaviour
             if (unitAnimatorController != null)
             {
                 animator.runtimeAnimatorController = unitAnimatorController;
+            }
+
+            // Setup textures dynamically to fix white character model issue
+            Texture2D textureToApply = unitBaseColorTexture;
+#if UNITY_EDITOR
+            if (textureToApply == null)
+            {
+                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/Animation/animation_chay_dibo_doi/tripo_convert_30e22a2e-fa1d-47e5-9789-c90ed61d0183.fbm/animation_chay_dibo_doi_basecolor.JPEG");
+                if (textureToApply == null)
+                {
+                    textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/medieval+knight+3d+model (1)/tripo_convert_723d231f-acab-4514-9370-c6d57d482cd7.fbm/medievalknight3dmodel_basecolor.JPEG");
+                }
+            }
+#endif
+            if (textureToApply != null)
+            {
+                var rends = graphics.GetComponentsInChildren<Renderer>();
+                foreach (var r in rends)
+                {
+                    if (r.material != null)
+                    {
+                        r.material.SetTexture("_BaseMap", textureToApply);
+                        r.material.SetTexture("_MainTex", textureToApply);
+                    }
+                }
             }
 
             if (autoAlignBottom)
