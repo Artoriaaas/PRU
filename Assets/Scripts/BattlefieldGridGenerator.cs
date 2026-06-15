@@ -390,6 +390,8 @@ public class BattlefieldGridGenerator : MonoBehaviour
         var renderer = go.GetComponent<Renderer>();
         if (renderer != null)
         {
+            if (mat == null) return; // Do not overwrite with null if slot is empty
+
             Undo.RecordObject(renderer, "Change Material");
             renderer.sharedMaterial = mat;
         }

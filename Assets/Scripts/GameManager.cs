@@ -200,6 +200,13 @@ public class GameManager : MonoBehaviour
             graphics.transform.localRotation = Quaternion.Euler(modelRotationOffset);
             graphics.transform.localScale = new Vector3(modelScale, modelScale, modelScale);
 
+            // Destroy all built-in child colliders on the imported model to prevent collision conflicts
+            Collider[] modelColliders = graphics.GetComponentsInChildren<Collider>(true);
+            foreach (var c in modelColliders)
+            {
+                Destroy(c);
+            }
+
             // Setup animator controller
             Animator animator = graphics.GetComponent<Animator>();
             if (animator == null)
@@ -273,14 +280,47 @@ public class GameManager : MonoBehaviour
         }
 
         Rigidbody rb = rootObj.AddComponent<Rigidbody>();
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        // Freeze all rotations and Y position to prevent capsule climbing/floating
+        rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
         rb.mass = 1f;
         rb.linearDamping = 1f;
         rb.isKinematic = true; // Kinematic during placement phase to prevent sliding/offsetting
         
         CapsuleCollider col = rootObj.AddComponent<CapsuleCollider>();
-        col.height = 2f * capsuleScale;
-        col.center = new Vector3(0, capsuleScale, 0);
+        float colHeight = 2f * capsuleScale;
+        float colRadius = capsuleScale * 0.4f;
+        Vector3 colCenter = new Vector3(0, capsuleScale, 0);
+
+        if (!isCapsule)
+        {
+            var renderers = rootObj.GetComponentsInChildren<Renderer>();
+            if (renderers.Length > 0)
+            {
+                Bounds bounds = renderers[0].bounds;
+                for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+
+                Vector3 localCenter = rootObj.transform.InverseTransformPoint(bounds.center);
+                Vector3 localSize = rootObj.transform.InverseTransformVector(bounds.size);
+
+                colHeight = localSize.y;
+                colCenter = localCenter;
+                // Avoid zero radius or extremely wide/thin capsules.
+                // Avoid zero radius or extremely thin capsules, letting it scale naturally with bounds.
+                float calculatedRadius = Mathf.Max(localSize.x, localSize.z) * 0.25f;
+                colRadius = Mathf.Max(calculatedRadius, 0.35f);
+            }
+            else
+            {
+                colHeight = 2f;
+                colCenter = new Vector3(0, 1f, 0);
+                colRadius = 0.4f;
+            }
+        }
+
+        col.height = colHeight;
+        col.center = colCenter;
+        col.radius = colRadius;
+        col.isTrigger = true; // Use triggers to prevent physics stutters and allow smooth bypassing
 
         Unit unit = rootObj.AddComponent<Unit>();
         unit.isPlayer = isPlayer;
@@ -290,7 +330,15 @@ public class GameManager : MonoBehaviour
         if (gridGen != null)
         {
             unit.speed = gridGen.rowSpacing * 0.5f;
-            unit.attackRange = gridGen.rowSpacing * 0.25f;
+            // Ensure attackRange is larger than physical contact distance (colRadius * 2)
+            unit.attackRange = Mathf.Max(gridGen.rowSpacing * 0.35f, colRadius * 2.2f);
+        }
+        else
+        {
+            // Fallback for runtime: scale speed and range relative to collider radius
+            float scaleFactor = colRadius / 0.4f;
+            unit.speed = 3f * scaleFactor;
+            unit.attackRange = 1.5f * scaleFactor;
         }
 
         if (isPlayer)

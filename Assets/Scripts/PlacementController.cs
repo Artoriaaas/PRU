@@ -241,7 +241,7 @@ public class PlacementController : MonoBehaviour
                 !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
             {
                 Ray ray = _cam.ScreenPointToRay(GetMouseScreenPos());
-                if (Physics.Raycast(ray, out RaycastHit hit, 1000f))
+                if (Physics.Raycast(ray, out RaycastHit hit, 1000f, Physics.AllLayers, QueryTriggerInteraction.Collide))
                 {
                     Unit clickedUnit = hit.collider.GetComponentInParent<Unit>();
                     if (clickedUnit != null && clickedUnit.isPlayer)

@@ -41,6 +41,26 @@ public class Unit : MonoBehaviour
 
         if (GameManager.Instance != null && GameManager.Instance.currentState == GameState.Battle)
         {
+            // Dynamic boundaries based on the scene layout scale (large grid system vs legacy bootstrapper)
+            float minX = -5.2f;
+            float maxX = 5.2f;
+            float minZ = -17f;
+            float maxZ = 25f;
+
+            BattlefieldGridGenerator gridGen = Object.FindAnyObjectByType<BattlefieldGridGenerator>();
+            if (gridGen != null)
+            {
+                minX = -1100f;
+                maxX = 1100f;
+                minZ = -145f;
+                maxZ = 230f;
+            }
+
+            // Clamp position within arena boundaries to prevent walking through background quads or walls
+            float clampedX = Mathf.Clamp(transform.position.x, minX, maxX);
+            float clampedZ = Mathf.Clamp(transform.position.z, minZ, maxZ);
+            transform.position = new Vector3(clampedX, transform.position.y, clampedZ);
+
             if (_target == null || _target.state == UnitState.Dead)
             {
                 FindTarget();
@@ -52,7 +72,20 @@ public class Unit : MonoBehaviour
                 if (distance <= attackRange)
                 {
                     state = UnitState.Attacking;
-                    if (_rb != null) _rb.linearVelocity = new Vector3(0, _rb.linearVelocity.y, 0); // Stop
+                    if (_rb != null)
+                    {
+                        _rb.linearVelocity = new Vector3(0, _rb.linearVelocity.y, 0); // Stop horizontal movement but allow gravity
+                    }
+                    
+                    // Rotate towards target during attack
+                    Vector3 direction = (_target.transform.position - transform.position).normalized;
+                    direction.y = 0;
+                    if (direction != Vector3.zero)
+                    {
+                        Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
+                        transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
+                    }
+
                     Attack();
                 }
                 else
@@ -64,7 +97,10 @@ public class Unit : MonoBehaviour
             else
             {
                 state = UnitState.Idle;
-                if (_rb != null) _rb.linearVelocity = new Vector3(0, _rb.linearVelocity.y, 0); // Stop
+                if (_rb != null)
+                {
+                    _rb.linearVelocity = new Vector3(0, _rb.linearVelocity.y, 0); // Stop horizontal movement but allow gravity
+                }
             }
         }
     }
@@ -91,28 +127,200 @@ public class Unit : MonoBehaviour
 
     void MoveTowardsTarget()
     {
-        Vector3 direction = (_target.transform.position - transform.position).normalized;
-        direction.y = 0; // Keep movement on flat plane
+        Vector3 targetDir = (_target.transform.position - transform.position).normalized;
+        targetDir.y = 0; // Keep movement on flat plane
+        
+        // Local Avoidance: steer away from nearby teammates to prevent overlapping
+        Vector3 avoidance = Vector3.zero;
+        int neighborCount = 0;
+        
+        CapsuleCollider col = GetComponent<CapsuleCollider>();
+        float avoidanceRange = col != null ? col.radius * 2.2f : 1.2f;
+        
+        if (GameManager.Instance != null)
+        {
+            List<Unit> teammates = isPlayer ? GameManager.Instance.playerUnits : GameManager.Instance.enemyUnits;
+            foreach (var teammate in teammates)
+            {
+                if (teammate == this || teammate.state == UnitState.Dead) continue;
+                
+                float dist = Vector3.Distance(transform.position, teammate.transform.position);
+                if (dist < avoidanceRange)
+                {
+                    Vector3 diff = transform.position - teammate.transform.position;
+                    diff.y = 0;
+                    
+                    // Project avoidance vector laterally (perpendicular to targetDir) to only push sideways
+                    Vector3 tangent = Vector3.Cross(Vector3.up, targetDir).normalized;
+                    float dot = Vector3.Dot(diff, tangent);
+                    
+                    // If they are exactly aligned, choose a random side
+                    if (Mathf.Abs(dot) < 0.05f)
+                    {
+                        dot = Random.value > 0.5f ? 0.1f : -0.1f;
+                    }
+                    
+                    Vector3 sideDir = tangent * Mathf.Sign(dot);
+                    avoidance += sideDir * (avoidanceRange - dist);
+                    neighborCount++;
+                }
+            }
+        }
+        
+        Vector3 finalDirection = targetDir;
+        if (neighborCount > 0)
+        {
+            // Combine target direction and lateral avoidance.
+            // Weighting avoidance makes them naturally slide around each other laterally.
+            finalDirection = (targetDir + avoidance * 2.0f).normalized;
+        }
+
+        // Slide along boundaries if trying to move past them to prevent getting stuck
+        float minX = -5.2f;
+        float maxX = 5.2f;
+        float minZ = -17f;
+        float maxZ = 25f;
+
+        BattlefieldGridGenerator gridGen = Object.FindAnyObjectByType<BattlefieldGridGenerator>();
+        if (gridGen != null)
+        {
+            minX = -1100f;
+            maxX = 1100f;
+            minZ = -145f;
+            maxZ = 230f;
+        }
+
+        if (transform.position.z <= minZ && finalDirection.z < 0)
+        {
+            finalDirection.z = 0;
+            if (finalDirection != Vector3.zero) finalDirection = finalDirection.normalized;
+        }
+        else if (transform.position.z >= maxZ && finalDirection.z > 0)
+        {
+            finalDirection.z = 0;
+            if (finalDirection != Vector3.zero) finalDirection = finalDirection.normalized;
+        }
+
+        if (transform.position.x <= minX && finalDirection.x < 0)
+        {
+            finalDirection.x = 0;
+            if (finalDirection != Vector3.zero) finalDirection = finalDirection.normalized;
+        }
+        else if (transform.position.x >= maxX && finalDirection.x > 0)
+        {
+            finalDirection.x = 0;
+            if (finalDirection != Vector3.zero) finalDirection = finalDirection.normalized;
+        }
         
         if (Time.frameCount % 60 == 0)
         {
-            Debug.Log($"[Diagnostic] {name} moving towards {_target.name}. direction: {direction}, speed: {speed}, rb: {(_rb != null)}, isKinematic: {(_rb != null && _rb.isKinematic)}, useGravity: {(_rb != null && _rb.useGravity)}, velocity: {(_rb != null ? _rb.linearVelocity : Vector3.zero)}");
+            Debug.Log($"[Diagnostic] {name} moving towards {_target.name}. finalDirection: {finalDirection}, speed: {speed}");
         }
 
         if (_rb != null)
         {
-            _rb.linearVelocity = new Vector3(direction.x * speed, _rb.linearVelocity.y, direction.z * speed);
+            Vector3 targetVelocity = new Vector3(finalDirection.x * speed, _rb.linearVelocity.y, finalDirection.z * speed);
+            // Smoothly interpolate velocity to eliminate high-frequency jitter/stutters
+            _rb.linearVelocity = Vector3.Lerp(_rb.linearVelocity, targetVelocity, Time.deltaTime * 6f);
             
             // Optionally, rotate towards target
-            if (direction != Vector3.zero)
+            if (finalDirection != Vector3.zero)
             {
-                Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
+                Quaternion toRotation = Quaternion.LookRotation(finalDirection, Vector3.up);
                 transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
             }
         }
         else
         {
-            transform.position += direction * speed * Time.deltaTime;
+            transform.position += finalDirection * speed * Time.deltaTime;
+        }
+    }
+
+    void OnTriggerStay(Collider other)
+    {
+        if (state == UnitState.Dead) return;
+        if (GameManager.Instance == null || GameManager.Instance.currentState != GameState.Battle) return;
+        
+        Unit otherUnit = other.GetComponentInParent<Unit>();
+        // Only push teammates to prevent visual overlapping, do not push enemies during combat
+        if (otherUnit != null && otherUnit.state != UnitState.Dead && otherUnit.isPlayer == this.isPlayer)
+        {
+            Vector3 pushDir = transform.position - otherUnit.transform.position;
+            pushDir.y = 0;
+            if (pushDir == Vector3.zero)
+            {
+                pushDir = new Vector3(Random.Range(-0.1f, 0.1f), 0, Random.Range(-0.1f, 0.1f));
+            }
+            
+            // Project push direction laterally (perpendicular to targetDir) to prevent pushing units backwards
+            Vector3 targetDir = _target != null ? (_target.transform.position - transform.position).normalized : transform.forward;
+            targetDir.y = 0;
+            Vector3 tangent = Vector3.Cross(Vector3.up, targetDir).normalized;
+            float dot = Vector3.Dot(pushDir, tangent);
+            
+            // If they are exactly aligned, choose a random side
+            if (Mathf.Abs(dot) < 0.05f)
+            {
+                dot = Random.value > 0.5f ? 0.1f : -0.1f;
+            }
+            Vector3 lateralPushDir = tangent * Mathf.Sign(dot);
+            
+            // Gently push them apart by modifying position.
+            // Since they are triggers, this is extremely smooth and won't conflict with physics solver!
+            CapsuleCollider col = GetComponent<CapsuleCollider>();
+            float scaleFactor = col != null ? col.radius / 0.4f : 1.0f;
+            float pushAmount = 0.04f * scaleFactor * Time.deltaTime * 60f; // framerate independent
+            if (state == UnitState.Attacking)
+            {
+                pushAmount *= 0.5f;
+            }
+            transform.position += lateralPushDir * pushAmount;
+
+            // Clamp immediately to prevent push from exceeding boundaries
+            float minX = -5.2f;
+            float maxX = 5.2f;
+            float minZ = -17f;
+            float maxZ = 25f;
+
+            BattlefieldGridGenerator gridGen = Object.FindAnyObjectByType<BattlefieldGridGenerator>();
+            if (gridGen != null)
+            {
+                minX = -1100f;
+                maxX = 1100f;
+                minZ = -145f;
+                maxZ = 230f;
+            }
+            float clampedX = Mathf.Clamp(transform.position.x, minX, maxX);
+            float clampedZ = Mathf.Clamp(transform.position.z, minZ, maxZ);
+            transform.position = new Vector3(clampedX, transform.position.y, clampedZ);
+        }
+    }
+
+    void LateUpdate()
+    {
+        if (state == UnitState.Dead) return;
+
+        if (GameManager.Instance != null && GameManager.Instance.currentState == GameState.Battle)
+        {
+            // Dynamic boundaries based on the scene layout scale (large grid system vs legacy bootstrapper)
+            float minX = -5.2f;
+            float maxX = 5.2f;
+            float minZ = -17f;
+            float maxZ = 25f;
+
+            BattlefieldGridGenerator gridGen = Object.FindAnyObjectByType<BattlefieldGridGenerator>();
+            if (gridGen != null)
+            {
+                minX = -1100f;
+                maxX = 1100f;
+                minZ = -145f;
+                maxZ = 230f;
+            }
+
+            // Final clamp to prevent any physics/OnTriggerStay push from pushing units past the boundaries
+            float clampedX = Mathf.Clamp(transform.position.x, minX, maxX);
+            float clampedZ = Mathf.Clamp(transform.position.z, minZ, maxZ);
+            transform.position = new Vector3(clampedX, transform.position.y, clampedZ);
         }
     }
 
@@ -151,6 +359,8 @@ public class Unit : MonoBehaviour
         if (_animator != null)
         {
             _animator.SetBool("IsDead", true);
+            _animator.SetBool("IsMoving", false);
+            _animator.SetBool("IsAttacking", false);
             _animator.SetTrigger("Die");
         }
 
