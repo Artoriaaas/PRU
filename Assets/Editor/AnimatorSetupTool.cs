@@ -9,14 +9,10 @@ public class AnimatorSetupTool
 {
     static AnimatorSetupTool()
     {
-        // Auto-run once on project compilation if the animator controller doesn't exist yet
-        string controllerPath = "Assets/Art/Animations/QuanLinhAnimatorController.controller";
-        if (!File.Exists(controllerPath))
-        {
-            EditorApplication.delayCall += () => {
-                SetupAnimator();
-            };
-        }
+        // Auto-run on project compilation to keep the animator controller synced
+        EditorApplication.delayCall += () => {
+            SetupAnimator();
+        };
     }
 
     [MenuItem("Tools/PRU/Setup Animator Controller")]
@@ -99,9 +95,11 @@ public class AnimatorSetupTool
         {
             Undo.RecordObject(manager, "Assign Animator Controller");
             manager.unitAnimatorController = controller;
+            manager.unitModelPrefab = null;
+            manager.unitBaseColorTexture = null;
             EditorUtility.SetDirty(manager);
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(manager.gameObject.scene);
-            Debug.Log("Assigned Animator Controller to GameManager in scene!");
+            Debug.Log("Assigned Animator Controller to GameManager in scene and cleared legacy model/texture references!");
         }
         else
         {
@@ -158,11 +156,25 @@ public class AnimatorSetupTool
 
     private static void AddAnyStateTransitionIfNotExists(AnimatorStateMachine stateMachine, AnimatorState to, AnimatorCondition[] conditions)
     {
-        if (stateMachine.anyStateTransitions.Any(t => t.destinationState == to)) return;
+        string targetParam = conditions.Length > 0 ? conditions[0].parameter : "";
+        AnimatorStateTransition transition = stateMachine.anyStateTransitions.FirstOrDefault(
+            t => t.destinationState == to && t.conditions.Any(c => c.parameter == targetParam)
+        );
+        if (transition == null)
+        {
+            transition = stateMachine.AddAnyStateTransition(to);
+        }
 
-        AnimatorStateTransition transition = stateMachine.AddAnyStateTransition(to);
         transition.hasExitTime = false;
         transition.duration = 0.1f;
+        transition.canTransitionToSelf = false;
+
+        // Clear and rebuild conditions to keep them synced
+        var existingConditions = transition.conditions.ToList();
+        foreach (var c in existingConditions)
+        {
+            transition.RemoveCondition(c);
+        }
         foreach (var cond in conditions)
         {
             transition.AddCondition(cond.mode, cond.threshold, cond.parameter);
@@ -171,14 +183,21 @@ public class AnimatorSetupTool
 
     private static void AssignClipsToStates(AnimatorState idleState, AnimatorState runState, AnimatorState attackState, AnimatorState dieState)
     {
-        // Log all animation clips to help find the correct ones
-        Debug.Log("--- START LISTING ALL ANIMATION CLIPS ---");
+        Debug.Log("--- START ASSIGNING CLIPS FROM NEWMODEL FOLDER ---");
         
+        // Clear existing motions first to ensure we overwrite them
+        idleState.motion = null;
+        runState.motion = null;
+        attackState.motion = null;
+        dieState.motion = null;
+
         string[] guids = AssetDatabase.FindAssets("t:AnimationClip");
         foreach (string guid in guids)
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
-            if (!path.Contains("Assets/Models") && !path.Contains("Assets/Art")) continue;
+            
+            // Only look inside the Assets/Models/NewModel folder
+            if (!path.Replace('\\', '/').Contains("Assets/Models/NewModel")) continue;
 
             Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
             foreach (Object asset in allAssets)
@@ -187,64 +206,42 @@ public class AnimatorSetupTool
                 if (clip == null) continue;
                 if (clip.name.StartsWith("__preview__")) continue;
 
+                string clipName = clip.name.ToLower();
+                string pathName = path.ToLower().Replace('\\', '/');
+
                 Debug.Log($"Found Clip: '{clip.name}' in path: '{path}'");
 
-                string clipName = clip.name.ToLower();
-                string pathName = path.ToLower();
-
-                // Explicit rule for chay_dibo_doi folder to ensure correct mapping of NlaTrack clips
-                if (pathName.Contains("chay_dibo_doi"))
-                {
-                    if (clip.name.EndsWith("NlaTrack"))
-                    {
-                        runState.motion = clip;
-                        EnableLoopTime(clip);
-                        Debug.Log(">> Explicitly Assigned Run (chay) clip: " + clip.name + " (" + path + ")");
-                    }
-                    else if (clip.name.EndsWith("NlaTrack.002"))
-                    {
-                        idleState.motion = clip;
-                        EnableLoopTime(clip);
-                        Debug.Log(">> Explicitly Assigned Idle (doi) clip: " + clip.name + " (" + path + ")");
-                    }
-                    else if (clip.name.EndsWith("NlaTrack.001"))
-                    {
-                        Debug.Log(">> Found Walk (dibo) clip (skipped, not used as state): " + clip.name + " (" + path + ")");
-                    }
-                    continue;
-                }
-
-                // Check both clip name and file path for keywords
-                bool isIdle = clipName.Contains("idle") || pathName.Contains("idle") || pathName.Contains("doi");
-                bool isRun = clipName.Contains("run") || clipName.Contains("walk") || pathName.Contains("chay") || pathName.Contains("dibo");
-                bool isAttack = clipName.Contains("attack") || clipName.Contains("hit") || clipName.Contains("slash");
-                bool isDie = clipName.Contains("die") || clipName.Contains("death") || clipName.Contains("dead") || clipName.Contains("dying") || pathName.Contains("dying");
+                // Check paths and names
+                bool isIdle = pathName.Contains("trang_thai_cho") || clipName.Contains("idle") || pathName.Contains("doi") || pathName.Contains("cho");
+                bool isRun = pathName.Contains("run") || clipName.Contains("run") || clipName.Contains("walk") || pathName.Contains("chay") || pathName.Contains("dibo");
+                bool isAttack = pathName.Contains("slash") || clipName.Contains("attack") || clipName.Contains("hit") || clipName.Contains("slash");
+                bool isDie = pathName.Contains("death") || clipName.Contains("die") || clipName.Contains("dead");
 
                 if (isIdle && idleState.motion == null)
                 {
                     idleState.motion = clip;
                     EnableLoopTime(clip);
-                    Debug.Log(">> Assigned Idle clip: " + clip.name + " (" + path + ")");
+                    Debug.Log(">> Assigned Idle clip from NewModel: " + clip.name + " (" + path + ")");
                 }
                 else if (isRun && runState.motion == null)
                 {
                     runState.motion = clip;
                     EnableLoopTime(clip);
-                    Debug.Log(">> Assigned Run/Walk clip: " + clip.name + " (" + path + ")");
+                    Debug.Log(">> Assigned Run clip from NewModel: " + clip.name + " (" + path + ")");
                 }
                 else if (isAttack && attackState.motion == null)
                 {
                     attackState.motion = clip;
-                    Debug.Log(">> Assigned Attack clip: " + clip.name + " (" + path + ")");
+                    Debug.Log(">> Assigned Attack clip from NewModel: " + clip.name + " (" + path + ")");
                 }
                 else if (isDie && dieState.motion == null)
                 {
                     dieState.motion = clip;
-                    Debug.Log(">> Assigned Die clip: " + clip.name + " (" + path + ")");
+                    Debug.Log(">> Assigned Die clip from NewModel: " + clip.name + " (" + path + ")");
                 }
             }
         }
-        Debug.Log("--- END LISTING ALL ANIMATION CLIPS ---");
+        Debug.Log("--- END ASSIGNING CLIPS FROM NEWMODEL FOLDER ---");
     }
 
     private static void EnableLoopTime(AnimationClip clip)
@@ -307,7 +304,7 @@ public class AnimatorSetupTool
                         // Check if it should loop
                         bool shouldLoop = nameLower.Contains("idle") || nameLower.Contains("run") || 
                                           nameLower.Contains("walk") || nameLower.Contains("track") ||
-                                          pathLower.Contains("chay") || pathLower.Contains("dibo") || pathLower.Contains("doi");
+                                          pathLower.Contains("chay") || pathLower.Contains("dibo") || pathLower.Contains("doi") || pathLower.Contains("cho");
                         
                         if (shouldLoop && !clip.loopTime)
                         {

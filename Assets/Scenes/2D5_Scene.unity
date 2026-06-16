@@ -919,10 +919,10 @@ MonoBehaviour:
   maxEnemyUnits: 10
   placedEnemyUnits: 0
   activeLevel: {fileID: 11400000, guid: 4dd9a5cb7ba251d42ad380aee004a562, type: 2}
-  unitModelPrefab: {fileID: 919132149155446097, guid: da3df4d01ccd7f74aabcd5569ea83423, type: 3}
+  unitModelPrefab: {fileID: 0}
   modelRotationOffset: {x: 0, y: 0, z: 0}
   modelPositionOffset: {x: 0, y: 0, z: 0}
-  modelScale: 75
+  modelScale: 50
   capsuleScale: 15
   autoAlignBottom: 1
   unitBaseColorTexture: {fileID: 0}

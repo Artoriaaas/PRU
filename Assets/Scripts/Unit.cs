@@ -69,7 +69,11 @@ public class Unit : MonoBehaviour
             if (_target != null)
             {
                 float distance = Vector3.Distance(transform.position, _target.transform.position);
-                if (distance <= attackRange)
+                
+                // Hysteresis threshold to prevent chattering/oscillation pushing behavior
+                float currentRangeThreshold = (state == UnitState.Attacking) ? (attackRange * 1.25f) : attackRange;
+                
+                if (distance <= currentRangeThreshold)
                 {
                     state = UnitState.Attacking;
                     if (_rb != null)
@@ -352,6 +356,8 @@ public class Unit : MonoBehaviour
 
     void Die()
     {
+        Debug.Log($"[PRU Debug] {name} has entered Die()! state={state}, hp={hp}, _animator={(_animator != null ? _animator.name : "null")}, _rb={_rb != null}");
+        
         hp = 0;
         state = UnitState.Dead;
         GameManager.Instance.ReportDeath(this);
@@ -362,29 +368,38 @@ public class Unit : MonoBehaviour
             _animator.SetBool("IsMoving", false);
             _animator.SetBool("IsAttacking", false);
             _animator.SetTrigger("Die");
+            Debug.Log($"[PRU Debug] {name} animator parameters set: IsDead=true, Die trigger fired.");
+        }
+        else
+        {
+            Debug.LogWarning($"[PRU Debug] {name} has NO animator inside Die()!");
         }
 
         // "Ragdoll" effect cho Capsule
         if (_rb != null)
         {
-            _rb.isKinematic = false;
             if (_animator == null)
             {
+                _rb.isKinematic = false;
                 _rb.constraints = RigidbodyConstraints.None; // Bỏ khoá xoay
                 Vector3 randomForce = new Vector3(Random.Range(-1f, 1f), 1f, Random.Range(-1f, 1f)).normalized * 5f;
                 _rb.AddForce(randomForce, ForceMode.Impulse);
                 _rb.AddTorque(Random.insideUnitSphere * 10f, ForceMode.Impulse);
+                Debug.Log($"[PRU Debug] {name} ragdoll force applied.");
             }
             else
             {
+                _rb.isKinematic = true;
                 Collider col = GetComponent<Collider>();
                 if (col != null) col.enabled = false;
 
                 _rb.linearVelocity = Vector3.zero;
                 _rb.angularVelocity = Vector3.zero;
+                Debug.Log($"[PRU Debug] {name} kinematic set to true and collider disabled.");
             }
         }
         
+        Debug.Log($"[PRU Debug] {name} destroying in 2.0s");
         Destroy(gameObject, 2f);
     }
 }

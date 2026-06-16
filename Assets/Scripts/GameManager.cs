@@ -184,13 +184,24 @@ public class GameManager : MonoBehaviour
 
         bool isCapsule = forceCapsuleForTesting;
 
-        GameObject loadedModel = unitModelPrefab;
+        GameObject loadedModel = null;
 #if UNITY_EDITOR
-        if (!isCapsule && loadedModel == null)
+        if (!isCapsule)
         {
-            loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/ModelQuanLinh.fbx");
+            if (isPlayer)
+            {
+                loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta-20260616T082614Z-3-001/Model quân ta/Model_quan_ta.fbx");
+            }
+            else
+            {
+                loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch-20260616T082614Z-3-001/Model quân địch/Trang_thai_cho_quan_dich.fbx");
+            }
         }
 #endif
+        if (loadedModel == null)
+        {
+            loadedModel = unitModelPrefab;
+        }
 
         if (!isCapsule && loadedModel != null)
         {
@@ -220,17 +231,21 @@ public class GameManager : MonoBehaviour
             }
 
             // Setup textures dynamically to fix white character model issue
-            Texture2D textureToApply = unitBaseColorTexture;
+            Texture2D textureToApply = null;
 #if UNITY_EDITOR
-            if (textureToApply == null)
+            if (isPlayer)
             {
-                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/Animation/animation_chay_dibo_doi/tripo_convert_30e22a2e-fa1d-47e5-9789-c90ed61d0183.fbm/animation_chay_dibo_doi_basecolor.JPEG");
-                if (textureToApply == null)
-                {
-                    textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/medieval+knight+3d+model (1)/tripo_convert_723d231f-acab-4514-9370-c6d57d482cd7.fbm/medievalknight3dmodel_basecolor.JPEG");
-                }
+                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta-20260616T082614Z-3-001/Model quân ta/model_quan_ta/tripo_convert_74080320-2742-4915-ab54-fe52dd1aaaa6.fbm/model_quan_ta_basecolor.JPEG");
+            }
+            else
+            {
+                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân địch-20260616T082614Z-3-001/Model quân địch/medieval+knight+3d+model/tripo_convert_0e217662-40c2-483b-9f6e-5f6498668c72.fbm/medieval_knight_3d_model_basecolor.JPEG");
             }
 #endif
+            if (textureToApply == null)
+            {
+                textureToApply = unitBaseColorTexture;
+            }
             if (textureToApply != null)
             {
                 var rends = graphics.GetComponentsInChildren<Renderer>();
