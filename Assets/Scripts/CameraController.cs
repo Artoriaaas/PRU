@@ -8,15 +8,15 @@ public class CameraController : MonoBehaviour
 
     [Header("Player Setup View (Looking down at grid)")]
     public Vector3 playerViewPos = new Vector3(-34.4f, 273.51f, 485.3f);
-    public Vector3 playerViewRot = new Vector3(31.6f, -180f, 0f);
+    public Vector3 playerViewRot = new Vector3(25.5f, -180f, 0f);
 
     [Header("Enemy Setup View")]
     public Vector3 enemyViewPos = new Vector3(-34.4f, 273.51f, 505.3f);
-    public Vector3 enemyViewRot = new Vector3(31.6f, -180f, 0f);
+    public Vector3 enemyViewRot = new Vector3(25.5f, -180f, 0f);
 
     [Header("Battle View (Side Scroller)")]
     public Vector3 battleViewPos = new Vector3(-34.4f, 273.51f, 485.3f);
-    public Vector3 battleViewRot = new Vector3(31.6f, -180f, 0f);
+    public Vector3 battleViewRot = new Vector3(25.5f, -180f, 0f);
 
     [Header("Camera Settings")]
     public bool useOrthographic = true;
@@ -25,9 +25,10 @@ public class CameraController : MonoBehaviour
     public float transitionSpeed = 4f;
 
     [Header("Dynamic View Calculation Settings")]
-    public float baselineCameraHeight = 187.31f;
-    public float baselineXOffsetFromLayout = 0f;
-    public float baselineZOffsetToGrid = 316.79f;
+    public float baselineCameraHeight = 304.4f;
+    public float baselineXOffsetFromLayout = 40f;
+    public float baselineZOffsetToGrid = 280.895f;
+    public float baselineRotationX = 48.9f;
 
     private CameraView currentView = CameraView.PlayerSetup;
     private Camera _cam;
@@ -56,7 +57,7 @@ public class CameraController : MonoBehaviour
         float xOffsetFromGridCenter = baselineXOffsetFromLayout;
         float zOffsetToGrid = baselineZOffsetToGrid;
 
-        playerViewRot = new Vector3(31.6f, -180f, 0f);
+        playerViewRot = new Vector3(baselineRotationX, -180f, 0f);
         enemyViewRot = playerViewRot;
         battleViewRot = playerViewRot; // Keep exact same angle as setup view, just sliding on X axis
 
@@ -111,25 +112,28 @@ public class CameraController : MonoBehaviour
 #if UNITY_EDITOR
         _cam = GetComponent<Camera>();
         if (_cam == null) _cam = Camera.main;
+        if (_cam == null) return;
 
         UnityEditor.Undo.RecordObject(this, "Capture Camera Baseline");
+        UnityEditor.Undo.RecordObject(_cam.transform, "Capture Camera Baseline Transform");
 
-        baselineCameraHeight = transform.position.y;
+        baselineCameraHeight = _cam.transform.position.y;
+        baselineRotationX = _cam.transform.eulerAngles.x;
         
         GameObject layout = GameObject.Find("BattlefieldLayout");
         if (layout != null)
         {
-            baselineXOffsetFromLayout = transform.position.x - layout.transform.position.x;
-            baselineZOffsetToGrid = transform.position.z - layout.transform.position.z;
+            baselineXOffsetFromLayout = _cam.transform.position.x - layout.transform.position.x;
+            baselineZOffsetToGrid = _cam.transform.position.z - layout.transform.position.z;
         }
         else
         {
-            baselineXOffsetFromLayout = transform.position.x;
-            baselineZOffsetToGrid = transform.position.z;
+            baselineXOffsetFromLayout = _cam.transform.position.x;
+            baselineZOffsetToGrid = _cam.transform.position.z;
         }
 
         UnityEditor.EditorUtility.SetDirty(this);
-        Debug.Log($"Captured camera baseline: height={baselineCameraHeight}, xOffset={baselineXOffsetFromLayout}, zOffset={baselineZOffsetToGrid}");
+        Debug.Log($"Captured camera baseline: height={baselineCameraHeight}, xOffset={baselineXOffsetFromLayout}, zOffset={baselineZOffsetToGrid}, rotationX={baselineRotationX}");
 #endif
     }
 
@@ -145,11 +149,13 @@ public class CameraController : MonoBehaviour
     /// </summary>
     public void ForceApply()
     {
-        transform.position = playerViewPos;
-        transform.rotation = Quaternion.Euler(playerViewRot);
+        if (_cam == null) _cam = GetComponent<Camera>();
+        if (_cam == null) _cam = Camera.main;
 
         if (_cam != null)
         {
+            _cam.transform.position = playerViewPos;
+            _cam.transform.rotation = Quaternion.Euler(playerViewRot);
             _cam.orthographic = useOrthographic;
             if (useOrthographic)
             {
@@ -160,12 +166,20 @@ public class CameraController : MonoBehaviour
                 _cam.fieldOfView = fieldOfView;
             }
         }
+        else
+        {
+            transform.position = playerViewPos;
+            transform.rotation = Quaternion.Euler(playerViewRot);
+        }
 
         Debug.Log($"CameraController: Forced camera to pos={playerViewPos}, rot={playerViewRot}, fov={fieldOfView}, orthographic={useOrthographic}, orthoSize={orthographicSize}");
     }
 
     void LateUpdate()
     {
+        if (_cam == null) _cam = GetComponent<Camera>();
+        if (_cam == null) _cam = Camera.main;
+
         Vector3 targetPos = playerViewPos;
         Vector3 targetRot = playerViewRot;
 
@@ -185,8 +199,16 @@ public class CameraController : MonoBehaviour
                 break;
         }
 
-        transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * transitionSpeed);
-        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(targetRot), Time.deltaTime * transitionSpeed);
+        if (_cam != null)
+        {
+            _cam.transform.position = Vector3.Lerp(_cam.transform.position, targetPos, Time.deltaTime * transitionSpeed);
+            _cam.transform.rotation = Quaternion.Slerp(_cam.transform.rotation, Quaternion.Euler(targetRot), Time.deltaTime * transitionSpeed);
+        }
+        else
+        {
+            transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * transitionSpeed);
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(targetRot), Time.deltaTime * transitionSpeed);
+        }
     }
 
     public void SetView(CameraView view)
@@ -203,6 +225,8 @@ public class CameraController : MonoBehaviour
     {
 #if UNITY_EDITOR
         CalculateViews();
+        if (_cam == null) return;
+
         Vector3 targetPos = playerViewPos;
         Vector3 targetRot = playerViewRot;
         switch (view)
@@ -220,10 +244,10 @@ public class CameraController : MonoBehaviour
                 targetRot = battleViewRot;
                 break;
         }
-        UnityEditor.Undo.RecordObject(this.transform, "Preview Camera View");
-        this.transform.position = targetPos;
-        this.transform.rotation = Quaternion.Euler(targetRot);
-        UnityEditor.EditorUtility.SetDirty(this.gameObject);
+        UnityEditor.Undo.RecordObject(_cam.transform, "Preview Camera View");
+        _cam.transform.position = targetPos;
+        _cam.transform.rotation = Quaternion.Euler(targetRot);
+        UnityEditor.EditorUtility.SetDirty(_cam.gameObject);
 #endif
     }
 }

@@ -255,6 +255,7 @@ public class UIManager : MonoBehaviour
         _placementHint.fontSize = 20;
         _placementHint.color = Color.yellow;
         _placementHint.alignment = TextAnchor.LowerCenter;
+        hintObj.SetActive(false);
         
         // Bottom Panel
         _bottomPanel = new GameObject("BottomPanel");

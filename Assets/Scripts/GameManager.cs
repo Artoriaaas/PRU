@@ -127,11 +127,17 @@ public class GameManager : MonoBehaviour
     public GameObject unitModelPrefab;
     public Vector3 modelRotationOffset = new Vector3(0f, 0f, 0f); // default to 0 for ModelQuanLinh, user can adjust
     public Vector3 modelPositionOffset = new Vector3(0f, 0f, 0f);
-    public float modelScale = 1.0f;
+    public float modelScale = 15.0f;
     public float capsuleScale = 15f; // Scale up the capsules to be clearly visible
     public bool autoAlignBottom = true;
     [Tooltip("Drag the texture JPEG/PNG for ModelQuanLinh here. If left empty, it will auto-detect from .fbm folders in Editor.")]
     public Texture2D unitBaseColorTexture;
+
+    [Header("Unit Templates")]
+    [Tooltip("Drag the Unit GameObject from the scene or a prefab here to use as a template for player stats.")]
+    public Unit playerUnitTemplate;
+    [Tooltip("Drag the Unit GameObject from the scene or a prefab here to use as a template for enemy stats.")]
+    public Unit enemyUnitTemplate;
 
     [Header("Animation Settings")]
     [Tooltip("Assign your Animator Controller for the ModelQuanLinh here.")]
@@ -203,9 +209,12 @@ public class GameManager : MonoBehaviour
             loadedModel = unitModelPrefab;
         }
 
+        GameObject graphicsObj = null;
+
         if (!isCapsule && loadedModel != null)
         {
             GameObject graphics = Instantiate(loadedModel, rootObj.transform);
+            graphicsObj = graphics;
             graphics.transform.localPosition = Vector3.zero;
             // Override prefab's local rotation with our offset to fix face-planting
             graphics.transform.localRotation = Quaternion.Euler(modelRotationOffset);
@@ -284,6 +293,7 @@ public class GameManager : MonoBehaviour
         if (isCapsule)
         {
             GameObject graphics = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            graphicsObj = graphics;
             graphics.transform.SetParent(rootObj.transform);
             graphics.transform.localPosition = Vector3.up * capsuleScale;
             graphics.transform.localScale = new Vector3(capsuleScale * 0.8f, capsuleScale * 0.8f, capsuleScale * 0.8f);
@@ -317,9 +327,16 @@ public class GameManager : MonoBehaviour
                 Vector3 localCenter = rootObj.transform.InverseTransformPoint(bounds.center);
                 Vector3 localSize = rootObj.transform.InverseTransformVector(bounds.size);
 
+                // Shift the model's graphics transform to align its visual center with the parent's pivot (on the XZ plane)
+                if (graphicsObj != null)
+                {
+                    graphicsObj.transform.localPosition -= new Vector3(localCenter.x, 0f, localCenter.z);
+                }
+
                 colHeight = localSize.y;
-                colCenter = localCenter;
-                // Avoid zero radius or extremely wide/thin capsules.
+                // Center the collider on the XZ plane (0, 0) relative to the parent's pivot
+                colCenter = new Vector3(0f, localCenter.y, 0f);
+                
                 // Avoid zero radius or extremely thin capsules, letting it scale naturally with bounds.
                 float calculatedRadius = Mathf.Max(localSize.x, localSize.z) * 0.25f;
                 colRadius = Mathf.Max(calculatedRadius, 0.35f);
@@ -340,20 +357,69 @@ public class GameManager : MonoBehaviour
         Unit unit = rootObj.AddComponent<Unit>();
         unit.isPlayer = isPlayer;
 
-        // Scale speed and attack range dynamically to match the grid generator's spacing
+        // Find fallback templates in the scene if not explicitly assigned
+        Unit activeTemplate = isPlayer ? playerUnitTemplate : enemyUnitTemplate;
+        if (activeTemplate == null)
+        {
+            if (isPlayer)
+            {
+                GameObject go = GameObject.Find("Unit");
+                if (go != null)
+                {
+                    playerUnitTemplate = go.GetComponent<Unit>();
+                    activeTemplate = playerUnitTemplate;
+                }
+            }
+            else
+            {
+                GameObject go = GameObject.Find("EnemyUnitTemplate");
+                if (go == null) go = GameObject.Find("EnemyUnit");
+                if (go != null)
+                {
+                    enemyUnitTemplate = go.GetComponent<Unit>();
+                    activeTemplate = enemyUnitTemplate;
+                }
+            }
+        }
+
+        // Copy stats from the active template or prefab if available
+        Unit prefabUnit = activeTemplate;
+        if (prefabUnit == null)
+        {
+            prefabUnit = loadedModel != null ? loadedModel.GetComponent<Unit>() : null;
+            if (prefabUnit == null && loadedModel != null)
+            {
+                prefabUnit = loadedModel.GetComponentInChildren<Unit>();
+            }
+        }
+
+        if (prefabUnit != null)
+        {
+            unit.hp = prefabUnit.hp;
+            unit.maxHp = prefabUnit.maxHp;
+            unit.atk = prefabUnit.atk;
+            unit.def = prefabUnit.def;
+            unit.speed = prefabUnit.speed;
+            unit.attackRange = prefabUnit.attackRange;
+            unit.attackCooldown = prefabUnit.attackCooldown;
+            unit.animSpeedMultiplier = prefabUnit.animSpeedMultiplier;
+        }
+
+        // Scale speed and attack range dynamically to match the grid generator's spacing (70f is base spacing for scale 1.0)
         BattlefieldGridGenerator gridGen = Object.FindAnyObjectByType<BattlefieldGridGenerator>();
         if (gridGen != null)
         {
-            unit.speed = gridGen.rowSpacing * 0.5f;
-            // Ensure attackRange is larger than physical contact distance (colRadius * 2)
-            unit.attackRange = Mathf.Max(gridGen.rowSpacing * 0.35f, colRadius * 2.2f);
+            float scale = gridGen.rowSpacing / 70f;
+            unit.speed *= scale;
+            // Scale range but ensure it exceeds physical contact distance
+            unit.attackRange = Mathf.Max(unit.attackRange * scale, colRadius * 2.2f);
         }
         else
         {
             // Fallback for runtime: scale speed and range relative to collider radius
             float scaleFactor = colRadius / 0.4f;
-            unit.speed = 3f * scaleFactor;
-            unit.attackRange = 1.5f * scaleFactor;
+            unit.speed *= scaleFactor;
+            unit.attackRange = Mathf.Max(unit.attackRange * scaleFactor, colRadius * 2.2f);
         }
 
         if (isPlayer)
@@ -389,6 +455,12 @@ public class GameManager : MonoBehaviour
 
         currentState = GameState.Battle;
 
+        // Initialize RVO simulation
+        if (RVOSimulatorManager.Instance != null)
+        {
+            RVOSimulatorManager.Instance.InitializeSimulation(playerUnits, enemyUnits);
+        }
+
         // Make rigidbodies dynamic when battle starts
         foreach (var unit in playerUnits)
         {
@@ -422,6 +494,11 @@ public class GameManager : MonoBehaviour
         else
         {
             enemyUnits.Remove(unit);
+        }
+
+        if (RVOSimulatorManager.Instance != null)
+        {
+            RVOSimulatorManager.Instance.RemoveAgent(unit);
         }
 
         CheckWinCondition();

@@ -160,6 +160,12 @@ public class LevelEditorWindow : EditorWindow
                 graphics.transform.localPosition = Vector3.up * _capsuleScale;
                 graphics.transform.localScale = new Vector3(_capsuleScale * 0.8f, _capsuleScale * 0.8f, _capsuleScale * 0.8f);
 
+                // Add CapsuleCollider to the parent wrapper so it can be selected and moved in scene view
+                CapsuleCollider parentCol = rootObj.AddComponent<CapsuleCollider>();
+                parentCol.center = Vector3.up * _capsuleScale;
+                parentCol.height = 2f * _capsuleScale * 0.8f;
+                parentCol.radius = 0.5f * _capsuleScale * 0.8f;
+
                 // Disable collider on the graphics child to prevent interference in editor
                 var childCol = graphics.GetComponent<Collider>();
                 if (childCol != null) DestroyImmediate(childCol);
@@ -225,6 +231,22 @@ public class LevelEditorWindow : EditorWindow
         {
             if (child.name.StartsWith("EnemyUnit_Preview") || child.name.StartsWith("EnemyUnit"))
             {
+                // Sync child Graphics offset back to parent transform if needed
+                Transform graphics = child.Find("Graphics");
+                if (graphics != null)
+                {
+                    Vector3 localPos = graphics.localPosition;
+                    if (Mathf.Abs(localPos.x) > 0.01f || Mathf.Abs(localPos.z) > 0.01f)
+                    {
+                        Undo.RecordObject(child, "Sync Preview Parent Position");
+                        Undo.RecordObject(graphics, "Sync Preview Child Position");
+                        Vector3 worldPos = graphics.position;
+                        Vector3 newParentPos = new Vector3(worldPos.x, child.position.y, worldPos.z);
+                        child.position = newParentPos;
+                        graphics.localPosition = new Vector3(0, _capsuleScale, 0);
+                    }
+                }
+
                 // Find closest pad
                 Transform closestPad = null;
                 float minDist = float.MaxValue;
@@ -295,6 +317,22 @@ public class LevelEditorWindow : EditorWindow
         {
             if (child.name.StartsWith("EnemyUnit_Preview") || child.name.StartsWith("EnemyUnit"))
             {
+                // Sync child Graphics offset back to parent transform if needed
+                Transform graphics = child.Find("Graphics");
+                if (graphics != null)
+                {
+                    Vector3 localPos = graphics.localPosition;
+                    if (Mathf.Abs(localPos.x) > 0.01f || Mathf.Abs(localPos.z) > 0.01f)
+                    {
+                        Undo.RecordObject(child, "Sync Preview Parent Position");
+                        Undo.RecordObject(graphics, "Sync Preview Child Position");
+                        Vector3 worldPos = graphics.position;
+                        Vector3 newParentPos = new Vector3(worldPos.x, child.position.y, worldPos.z);
+                        child.position = newParentPos;
+                        graphics.localPosition = new Vector3(0, _capsuleScale, 0);
+                    }
+                }
+
                 Transform closestPad = null;
                 float minDist = float.MaxValue;
                 foreach (var pad in pads)
@@ -386,6 +424,12 @@ public class LevelEditorWindow : EditorWindow
         graphics.transform.SetParent(rootObj.transform);
         graphics.transform.localPosition = Vector3.up * _capsuleScale;
         graphics.transform.localScale = new Vector3(_capsuleScale * 0.8f, _capsuleScale * 0.8f, _capsuleScale * 0.8f);
+
+        // Add CapsuleCollider to the parent wrapper so it can be selected and moved in scene view
+        CapsuleCollider parentCol = rootObj.AddComponent<CapsuleCollider>();
+        parentCol.center = Vector3.up * _capsuleScale;
+        parentCol.height = 2f * _capsuleScale * 0.8f;
+        parentCol.radius = 0.5f * _capsuleScale * 0.8f;
 
         var childCol = graphics.GetComponent<Collider>();
         if (childCol != null) DestroyImmediate(childCol);
