@@ -29,7 +29,11 @@ public class GameManager : MonoBehaviour
         else
         {
             Destroy(this);
+            return;
         }
+
+        // Force forceCapsuleForTesting to false to override Unity Inspector's serialized value
+        forceCapsuleForTesting = false;
     }
 
     void Start()
@@ -119,14 +123,22 @@ public class GameManager : MonoBehaviour
     }
 
     [Header("Model Settings")]
-    public Vector3 modelRotationOffset = new Vector3(-90f, 0f, 0f);
+    [Tooltip("Drag your ModelQuanLinh FBX/Prefab here. If left empty, it will auto-load from Assets/Models/ModelQuanLinh.fbx in Editor.")]
+    public GameObject unitModelPrefab;
+    public Vector3 modelRotationOffset = new Vector3(0f, 0f, 0f); // default to 0 for ModelQuanLinh, user can adjust
     public Vector3 modelPositionOffset = new Vector3(0f, 0f, 0f);
     public float modelScale = 1.0f;
     public float capsuleScale = 15f; // Scale up the capsules to be clearly visible
     public bool autoAlignBottom = true;
+    [Tooltip("Drag the texture JPEG/PNG for ModelQuanLinh here. If left empty, it will auto-detect from .fbm folders in Editor.")]
+    public Texture2D unitBaseColorTexture;
+
+    [Header("Animation Settings")]
+    [Tooltip("Assign your Animator Controller for the ModelQuanLinh here.")]
+    public RuntimeAnimatorController unitAnimatorController;
 
     [Header("Testing")]
-    public bool forceCapsuleForTesting = true;
+    public bool forceCapsuleForTesting = false;
 
     public void LoadLevelEnemies()
     {
@@ -172,43 +184,102 @@ public class GameManager : MonoBehaviour
 
         bool isCapsule = forceCapsuleForTesting;
 
+        GameObject loadedModel = null;
 #if UNITY_EDITOR
         if (!isCapsule)
         {
-            GameObject loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/medieval+knight+3d+model (1)/tripo_convert_723d231f-acab-4514-9370-c6d57d482cd7.fbx");
-            if (loadedModel != null)
+            if (isPlayer)
             {
-                GameObject graphics = Instantiate(loadedModel, rootObj.transform);
-                graphics.transform.localPosition = Vector3.zero;
-                // Override prefab's local rotation with our offset to fix face-planting
-                graphics.transform.localRotation = Quaternion.Euler(modelRotationOffset);
-                graphics.transform.localScale = new Vector3(modelScale, modelScale, modelScale);
-
-                if (autoAlignBottom)
-                {
-                    var renderers = graphics.GetComponentsInChildren<Renderer>();
-                    if (renderers.Length > 0)
-                    {
-                        Bounds b = renderers[0].bounds;
-                        for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
-
-                        float lowestY = b.min.y;
-                        float offsetY = rootObj.transform.position.y - lowestY;
-                        graphics.transform.position += new Vector3(0, offsetY, 0);
-                    }
-                }
-                
-                // Apply manual offset for fine-tuning
-                graphics.transform.localPosition += modelPositionOffset;
+                loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta-20260616T082614Z-3-001/Model quân ta/Model_quan_ta.fbx");
             }
             else
             {
-                isCapsule = true;
+                loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch-20260616T082614Z-3-001/Model quân địch/Trang_thai_cho_quan_dich.fbx");
             }
         }
-#else
-        isCapsule = true;
 #endif
+        if (loadedModel == null)
+        {
+            loadedModel = unitModelPrefab;
+        }
+
+        if (!isCapsule && loadedModel != null)
+        {
+            GameObject graphics = Instantiate(loadedModel, rootObj.transform);
+            graphics.transform.localPosition = Vector3.zero;
+            // Override prefab's local rotation with our offset to fix face-planting
+            graphics.transform.localRotation = Quaternion.Euler(modelRotationOffset);
+            graphics.transform.localScale = new Vector3(modelScale, modelScale, modelScale);
+
+            // Destroy all built-in child colliders on the imported model to prevent collision conflicts
+            Collider[] modelColliders = graphics.GetComponentsInChildren<Collider>(true);
+            foreach (var c in modelColliders)
+            {
+                Destroy(c);
+            }
+
+            // Setup animator controller
+            Animator animator = graphics.GetComponent<Animator>();
+            if (animator == null)
+            {
+                animator = graphics.AddComponent<Animator>();
+            }
+            animator.applyRootMotion = false; // Disable root motion to prevent tilting forward
+            if (unitAnimatorController != null)
+            {
+                animator.runtimeAnimatorController = unitAnimatorController;
+            }
+
+            // Setup textures dynamically to fix white character model issue
+            Texture2D textureToApply = null;
+#if UNITY_EDITOR
+            if (isPlayer)
+            {
+                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta-20260616T082614Z-3-001/Model quân ta/model_quan_ta/tripo_convert_74080320-2742-4915-ab54-fe52dd1aaaa6.fbm/model_quan_ta_basecolor.JPEG");
+            }
+            else
+            {
+                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân địch-20260616T082614Z-3-001/Model quân địch/medieval+knight+3d+model/tripo_convert_0e217662-40c2-483b-9f6e-5f6498668c72.fbm/medieval_knight_3d_model_basecolor.JPEG");
+            }
+#endif
+            if (textureToApply == null)
+            {
+                textureToApply = unitBaseColorTexture;
+            }
+            if (textureToApply != null)
+            {
+                var rends = graphics.GetComponentsInChildren<Renderer>();
+                foreach (var r in rends)
+                {
+                    if (r.material != null)
+                    {
+                        r.material.SetTexture("_BaseMap", textureToApply);
+                        r.material.SetTexture("_MainTex", textureToApply);
+                    }
+                }
+            }
+
+            if (autoAlignBottom)
+            {
+                var renderers = graphics.GetComponentsInChildren<Renderer>();
+                if (renderers.Length > 0)
+                {
+                    Bounds b = renderers[0].bounds;
+                    for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+
+                    float lowestY = b.min.y;
+                    float offsetY = rootObj.transform.position.y - lowestY;
+                    graphics.transform.position += new Vector3(0, offsetY, 0);
+                }
+            }
+            
+            // Apply manual offset for fine-tuning
+            graphics.transform.localPosition += modelPositionOffset;
+        }
+        else
+        {
+            isCapsule = true;
+        }
 
         if (isCapsule)
         {
@@ -224,14 +295,47 @@ public class GameManager : MonoBehaviour
         }
 
         Rigidbody rb = rootObj.AddComponent<Rigidbody>();
-        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        // Freeze all rotations and Y position to prevent capsule climbing/floating
+        rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
         rb.mass = 1f;
         rb.linearDamping = 1f;
         rb.isKinematic = true; // Kinematic during placement phase to prevent sliding/offsetting
         
         CapsuleCollider col = rootObj.AddComponent<CapsuleCollider>();
-        col.height = 2f * capsuleScale;
-        col.center = new Vector3(0, capsuleScale, 0);
+        float colHeight = 2f * capsuleScale;
+        float colRadius = capsuleScale * 0.4f;
+        Vector3 colCenter = new Vector3(0, capsuleScale, 0);
+
+        if (!isCapsule)
+        {
+            var renderers = rootObj.GetComponentsInChildren<Renderer>();
+            if (renderers.Length > 0)
+            {
+                Bounds bounds = renderers[0].bounds;
+                for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+
+                Vector3 localCenter = rootObj.transform.InverseTransformPoint(bounds.center);
+                Vector3 localSize = rootObj.transform.InverseTransformVector(bounds.size);
+
+                colHeight = localSize.y;
+                colCenter = localCenter;
+                // Avoid zero radius or extremely wide/thin capsules.
+                // Avoid zero radius or extremely thin capsules, letting it scale naturally with bounds.
+                float calculatedRadius = Mathf.Max(localSize.x, localSize.z) * 0.25f;
+                colRadius = Mathf.Max(calculatedRadius, 0.35f);
+            }
+            else
+            {
+                colHeight = 2f;
+                colCenter = new Vector3(0, 1f, 0);
+                colRadius = 0.4f;
+            }
+        }
+
+        col.height = colHeight;
+        col.center = colCenter;
+        col.radius = colRadius;
+        col.isTrigger = true; // Use triggers to prevent physics stutters and allow smooth bypassing
 
         Unit unit = rootObj.AddComponent<Unit>();
         unit.isPlayer = isPlayer;
@@ -241,19 +345,28 @@ public class GameManager : MonoBehaviour
         if (gridGen != null)
         {
             unit.speed = gridGen.rowSpacing * 0.5f;
-            unit.attackRange = gridGen.rowSpacing * 0.25f;
+            // Ensure attackRange is larger than physical contact distance (colRadius * 2)
+            unit.attackRange = Mathf.Max(gridGen.rowSpacing * 0.35f, colRadius * 2.2f);
+        }
+        else
+        {
+            // Fallback for runtime: scale speed and range relative to collider radius
+            float scaleFactor = colRadius / 0.4f;
+            unit.speed = 3f * scaleFactor;
+            unit.attackRange = 1.5f * scaleFactor;
         }
 
         if (isPlayer)
         {
             playerUnits.Add(unit);
-            rootObj.transform.rotation = Quaternion.Euler(0, 0, 0);
+            // Rotate towards the enemy on the left (-X direction)
+            rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
         }
         else
         {
             enemyUnits.Add(unit);
-            // Rotate the wrapper (root) so the unit faces the player
-            rootObj.transform.rotation = Quaternion.Euler(0, 180, 0);
+            // Rotate towards the player on the right (+X direction)
+            rootObj.transform.rotation = Quaternion.Euler(0, 90, 0);
         }
     }
 
