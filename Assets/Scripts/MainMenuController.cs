@@ -43,6 +43,11 @@ public class MainMenuController : MonoBehaviour
 
     private void Awake()
     {
+        if (string.IsNullOrEmpty(gameplaySceneName))
+        {
+            gameplaySceneName = "MapScene";
+        }
+
         ValidateReferences();
         BindButtons();
         InitializePanels();

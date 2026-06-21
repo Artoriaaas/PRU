@@ -12,6 +12,15 @@ public class PlacementController : MonoBehaviour
     private Unit _draggedUnit;
     private Vector3 _draggedUnitOriginalPos;
 
+    private Color GetColorForType(int typeIndex, float alpha = 0.5f)
+    {
+        if (typeIndex == 0) return new Color(0.1f, 0.4f, 0.8f, alpha);
+        if (typeIndex == 1) return new Color(0.1f, 0.6f, 0.2f, alpha);
+        if (typeIndex == 2) return new Color(0.5f, 0.1f, 0.7f, alpha);
+        if (typeIndex == 3) return new Color(0.85f, 0.5f, 0.1f, alpha);
+        return new Color(0.2f, 0.6f, 1f, alpha);
+    }
+
     void Awake()
     {
         if (Instance == null)
@@ -166,21 +175,44 @@ public class PlacementController : MonoBehaviour
                 var rend = _clickPreviewCapsule.GetComponent<Renderer>();
                 if (rend != null)
                 {
-                    Material previewMat = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-                    if (previewMat != null)
+                    Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+                    if (shader == null || shader.name == "Hidden/InternalErrorShader")
                     {
-                        previewMat.color = new Color(0.2f, 0.6f, 1f, 0.5f);
-                        previewMat.SetFloat("_Surface", 1); // Transparent
+                        shader = Shader.Find("Standard");
+                    }
+                    if (shader == null || shader.name == "Hidden/InternalErrorShader")
+                    {
+                        shader = Shader.Find("Sprites/Default");
+                    }
+
+                    Material previewMat = new Material(shader);
+                    previewMat.color = GetColorForType(selectedCard.unitTypeIndex, 0.5f);
+
+                    // Configure transparent rendering settings based on shader type
+                    if (previewMat.shader.name.Contains("Universal Render Pipeline"))
+                    {
+                        previewMat.SetFloat("_Surface", 1f); // 1 = Transparent
+                        previewMat.SetFloat("_Blend", 0f); // 0 = Alpha blend
                         previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
                         previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
                         previewMat.SetInt("_ZWrite", 0);
+                        previewMat.DisableKeyword("_ALPHATEST_ON");
                         previewMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                        rend.sharedMaterial = previewMat;
+                        previewMat.EnableKeyword("_BLENDMODE_ALPHA");
                     }
-                    else
+                    else if (previewMat.shader.name.Contains("Standard"))
                     {
-                        rend.material.color = new Color(0.2f, 0.6f, 1f, 0.5f);
+                        previewMat.SetFloat("_Mode", 3f); // 3 = Transparent
+                        previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                        previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                        previewMat.SetInt("_ZWrite", 0);
+                        previewMat.DisableKeyword("_ALPHATEST_ON");
+                        previewMat.EnableKeyword("_ALPHABLEND_ON");
+                        previewMat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
                     }
+
+                    previewMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent; // 3000
+                    rend.sharedMaterial = previewMat;
                 }
                 float capScale = 15f;
                 if (GameManager.Instance != null)
@@ -220,7 +252,7 @@ public class PlacementController : MonoBehaviour
                 GameObject padHit = RaycastForPad(mousePos);
                 if (padHit != null)
                 {
-                    AttemptPlacement(padHit);
+                    AttemptPlacement(padHit, selectedCard.unitTypeIndex);
                 }
             }
         }
@@ -322,7 +354,7 @@ public class PlacementController : MonoBehaviour
         }
     }
 
-    public void AttemptPlacement(GameObject tileObj)
+    public void AttemptPlacement(GameObject tileObj, int unitTypeIndex = 0)
     {
         if (GameManager.Instance == null || GameManager.Instance.currentState != GameState.Placement)
             return;
@@ -355,7 +387,7 @@ public class PlacementController : MonoBehaviour
             // Check if tile is empty
             if (!IsTileOccupied(tileObj.transform.position, isPlayer))
             {
-                GameManager.Instance.SpawnUnit(isPlayer, tileObj.transform.position);
+                GameManager.Instance.SpawnUnit(isPlayer, tileObj.transform.position, unitTypeIndex);
                 if (isPlayer)
                 {
                     GameManager.Instance.placedPlayerUnits++;

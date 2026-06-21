@@ -3651,7 +3651,7 @@ MonoBehaviour:
   clickSound: {fileID: 0}
   continueEnabled: 1
   hasSaveData: 0
-  gameplaySceneName: 
+  gameplaySceneName: MapScene
   menuIntro: {fileID: 1916332128}
   panelFadeDuration: 0.2
 --- !u!4 &1916332127

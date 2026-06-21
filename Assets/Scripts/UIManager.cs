@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -32,16 +33,42 @@ public class UIManager : MonoBehaviour
     public GameObject bottomPanel => _bottomPanel;
     private Button _switchViewBtn;
     private Text _switchViewText;
+    private Text _scoutingReportText;
 
     private void Reset()
     {
 #if UNITY_EDITOR
-        panelSprite = Resources.Load<Sprite>("CardPanel");
+        var path = "Assets/Materials/output.png";
+        var importer = UnityEditor.AssetImporter.GetAtPath(path) as UnityEditor.TextureImporter;
+        if (importer != null && importer.textureType != UnityEditor.TextureImporterType.Sprite)
+        {
+            importer.textureType = UnityEditor.TextureImporterType.Sprite;
+            importer.SaveAndReimport();
+        }
+        panelSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        if (panelSprite == null)
+        {
+            panelSprite = Resources.Load<Sprite>("CardPanel");
+        }
 #endif
     }
 
     void Awake()
     {
+#if UNITY_EDITOR
+        if (panelSprite == null)
+        {
+            var path = "Assets/Materials/output.png";
+            var importer = UnityEditor.AssetImporter.GetAtPath(path) as UnityEditor.TextureImporter;
+            if (importer != null && importer.textureType != UnityEditor.TextureImporterType.Sprite)
+            {
+                importer.textureType = UnityEditor.TextureImporterType.Sprite;
+                importer.SaveAndReimport();
+            }
+            panelSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        }
+#endif
+
         if (Instance == null)
         {
             Instance = this;
@@ -78,6 +105,7 @@ public class UIManager : MonoBehaviour
                 
                 _unitsText = _canvasObj.transform.Find("UnitsText")?.GetComponent<Text>();
                 _placementHint = _canvasObj.transform.Find("PlacementHint")?.GetComponent<Text>();
+                _scoutingReportText = _canvasObj.transform.Find("ScoutingReportText")?.GetComponent<Text>();
                 
                 Transform startBtnTrans = _canvasObj.transform.Find("StartButton");
                 if (startBtnTrans != null)
@@ -98,6 +126,30 @@ public class UIManager : MonoBehaviour
                     _switchViewBtn.onClick.AddListener(() => {
                         ToggleView();
                     });
+                }
+
+                if (_canvasObj != null)
+                {
+                    Transform existingBtn = _canvasObj.transform.Find("HitboxToggleButton");
+                    if (existingBtn == null)
+                    {
+                        CreateHitboxButton(_canvasObj.transform);
+                    }
+                    else
+                    {
+                        Button hbBtn = existingBtn.GetComponent<Button>();
+                        Text hbText = existingBtn.Find("Text")?.GetComponent<Text>();
+                        Image hbImg = existingBtn.GetComponent<Image>();
+                        if (hbBtn != null && hbText != null && hbImg != null)
+                        {
+                            hbBtn.onClick.RemoveAllListeners();
+                            hbBtn.onClick.AddListener(() => {
+                                ColliderVisualizer.ShowColliders = !ColliderVisualizer.ShowColliders;
+                                hbText.text = ColliderVisualizer.ShowColliders ? "Hitbox: ON" : "Hitbox: OFF";
+                                hbImg.color = ColliderVisualizer.ShowColliders ? new Color(0.1f, 0.5f, 0.1f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.9f);
+                            });
+                        }
+                    }
                 }
                 
                 Transform gameOverTrans = _canvasObj.transform.Find("GameOverPanel");
@@ -247,6 +299,9 @@ public class UIManager : MonoBehaviour
         rtText.anchoredPosition = new Vector2(20, -20);
         rtText.sizeDelta = new Vector2(300, 50);
 
+        // Hitbox Toggle Button
+        CreateHitboxButton(_canvasObj.transform);
+
         // Placement Hint
         GameObject hintObj = new GameObject("PlacementHint");
         hintObj.transform.SetParent(_canvasObj.transform, false);
@@ -256,6 +311,21 @@ public class UIManager : MonoBehaviour
         _placementHint.color = Color.yellow;
         _placementHint.alignment = TextAnchor.LowerCenter;
         hintObj.SetActive(false);
+
+        // Scouting Report Text
+        GameObject reportObj = new GameObject("ScoutingReportText");
+        reportObj.transform.SetParent(_canvasObj.transform, false);
+        _scoutingReportText = reportObj.AddComponent<Text>();
+        _scoutingReportText.font = arial;
+        _scoutingReportText.fontSize = 18;
+        _scoutingReportText.color = new Color(0.9f, 0.85f, 0.7f);
+        _scoutingReportText.alignment = TextAnchor.UpperRight;
+        RectTransform rtReport = _scoutingReportText.rectTransform;
+        rtReport.anchorMin = new Vector2(1, 1);
+        rtReport.anchorMax = new Vector2(1, 1);
+        rtReport.pivot = new Vector2(1, 1);
+        rtReport.anchoredPosition = new Vector2(-20, -280); // Placed below the skill panel
+        rtReport.sizeDelta = new Vector2(360, 100);
         
         // Bottom Panel
         _bottomPanel = new GameObject("BottomPanel");
@@ -393,6 +463,46 @@ public class UIManager : MonoBehaviour
         _gameOverPanel.SetActive(false);
     }
 
+    private void CreateHitboxButton(Transform parent)
+    {
+        Font arial = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        if (arial == null) arial = Resources.GetBuiltinResource<Font>("Arial.ttf");
+
+        GameObject hitboxBtnObj = new GameObject("HitboxToggleButton");
+        hitboxBtnObj.transform.SetParent(parent, false);
+        Image hbImg = hitboxBtnObj.AddComponent<Image>();
+        hbImg.color = new Color(0.2f, 0.2f, 0.2f, 0.9f); // Dark background
+        
+        Outline hbOutline = hitboxBtnObj.AddComponent<Outline>();
+        hbOutline.effectColor = new Color(0.95f, 0.85f, 0.55f);
+        hbOutline.effectDistance = new Vector2(1f, 1f);
+
+        Button hbBtn = hitboxBtnObj.AddComponent<Button>();
+        
+        GameObject hbTextObj = new GameObject("Text");
+        hbTextObj.transform.SetParent(hitboxBtnObj.transform, false);
+        Text hbText = hbTextObj.AddComponent<Text>();
+        hbText.font = arial;
+        hbText.text = "Hitbox: OFF";
+        hbText.fontSize = 15;
+        hbText.color = Color.white;
+        hbText.alignment = TextAnchor.MiddleCenter;
+        hbText.rectTransform.sizeDelta = new Vector2(140, 35);
+
+        RectTransform rtHbBtn = hitboxBtnObj.GetComponent<RectTransform>();
+        rtHbBtn.anchorMin = new Vector2(0, 1);
+        rtHbBtn.anchorMax = new Vector2(0, 1);
+        rtHbBtn.pivot = new Vector2(0, 1);
+        rtHbBtn.anchoredPosition = new Vector2(20, -80);
+        rtHbBtn.sizeDelta = new Vector2(140, 35);
+
+        hbBtn.onClick.AddListener(() => {
+            ColliderVisualizer.ShowColliders = !ColliderVisualizer.ShowColliders;
+            hbText.text = ColliderVisualizer.ShowColliders ? "Hitbox: ON" : "Hitbox: OFF";
+            hbImg.color = ColliderVisualizer.ShowColliders ? new Color(0.1f, 0.5f, 0.1f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.9f);
+        });
+    }
+
     private void ToggleView()
     {
         if (CameraController.Instance == null) return;
@@ -415,10 +525,23 @@ public class UIManager : MonoBehaviour
     {
         if (GameManager.Instance == null) return;
 
+        // Update Scouting Report Text
+        var skillManager = Object.FindAnyObjectByType<SkillManager>();
+        if (skillManager != null && _scoutingReportText != null)
+        {
+            _scoutingReportText.text = skillManager.GetScoutingReport();
+        }
+
         bool isPlayer = true;
         if (CameraController.Instance != null && CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
         {
             isPlayer = false;
+        }
+
+        // Dynamically calculate max units based on barracks level
+        if (GameManager.Instance != null && skillManager != null)
+        {
+            GameManager.Instance.maxPlayerUnits = 6 + skillManager.barracksLevel;
         }
 
         int remaining = isPlayer ? 
@@ -433,30 +556,112 @@ public class UIManager : MonoBehaviour
         if (_bottomPanel != null)
         {
             _bottomPanel.SetActive(isPlayer);
+
+            // Clear old cards to prevent duplicates
+            List<GameObject> toDestroy = new List<GameObject>();
+            foreach (Transform child in _bottomPanel.transform)
+            {
+                if (child.name.StartsWith("UnitCard"))
+                {
+                    toDestroy.Add(child.gameObject);
+                }
+            }
+            for (int i = 0; i < toDestroy.Count; i++)
+            {
+                DestroyImmediate(toDestroy[i]);
+            }
+
+            if (isPlayer)
+            {
+                int troopLvl = skillManager != null ? skillManager.troopLevel : 0;
+                int numCards = 1 + troopLvl;
+                float cardSpacing = 90f;
+                float startX = -((numCards - 1) * cardSpacing) / 2f;
+                
+                Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                if (font == null) font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+
+                for (int i = 0; i < numCards; i++)
+                {
+                    int typeIndex = i;
+                    GameObject cardObj = new GameObject("UnitCard_" + typeIndex);
+                    cardObj.transform.SetParent(_bottomPanel.transform, false);
+                    Image cardImg = cardObj.AddComponent<Image>();
+                    
+                    // Set color and label text based on typeIndex
+                    string label = "";
+                    if (typeIndex == 0)
+                    {
+                        cardImg.color = new Color(0.1f, 0.4f, 0.8f, 1f); // Blue
+                        label = "Cận Chiến";
+                    }
+                    else if (typeIndex == 1)
+                    {
+                        cardImg.color = new Color(0.1f, 0.6f, 0.2f, 1f); // Green
+                        label = "Cung Thủ";
+                    }
+                    else if (typeIndex == 2)
+                    {
+                        cardImg.color = new Color(0.5f, 0.1f, 0.7f, 1f); // Purple
+                        label = "Kỵ Binh";
+                    }
+                    else if (typeIndex == 3)
+                    {
+                        cardImg.color = new Color(0.85f, 0.5f, 0.1f, 1f); // Gold/Orange
+                        label = "Hổ Bôn";
+                    }
+
+                    RectTransform rtCard = cardObj.GetComponent<RectTransform>();
+                    rtCard.anchorMin = new Vector2(0.5f, 0.5f);
+                    rtCard.anchorMax = new Vector2(0.5f, 0.5f);
+                    rtCard.pivot = new Vector2(0.5f, 0.5f);
+                    rtCard.anchoredPosition = new Vector2(startX + i * cardSpacing, cardPosition.y);
+                    rtCard.sizeDelta = cardSize;
+
+                    var ddc = cardObj.AddComponent<DragDropCard>();
+                    ddc.unitTypeIndex = typeIndex;
+
+                    // Text inside card
+                    GameObject cardTextObj = new GameObject("CardText");
+                    cardTextObj.transform.SetParent(cardObj.transform, false);
+                    Text cardText = cardTextObj.AddComponent<Text>();
+                    cardText.font = font;
+                    cardText.text = label;
+                    cardText.fontSize = 14;
+                    cardText.color = Color.white;
+                    cardText.alignment = TextAnchor.MiddleCenter;
+                    cardText.rectTransform.sizeDelta = cardSize;
+                    cardText.raycastTarget = false;
+                }
+            }
         }
 
         if (_placementHint != null)
         {
             _placementHint.text = isPlayer ? 
-                "Drag the blue card onto the grid to place units." : 
+                "Drag the card onto the grid to place units." : 
                 "Viewing enemy setup (Pre-configured from Level Editor)";
         }
 
-        // Update card color and text dynamically if active
-        if (isPlayer && _bottomPanel != null)
+        // Lock or Unlock Switch View Button based on Scouting Level
+        if (_switchViewBtn != null)
         {
-            Transform cardTrans = _bottomPanel.transform.Find("UnitCard");
-            if (cardTrans != null)
+            if (skillManager != null && skillManager.scoutingLevel < 3)
             {
-                Image cardImg = cardTrans.GetComponent<Image>();
-                if (cardImg != null)
+                _switchViewBtn.interactable = false;
+                if (_switchViewText != null)
                 {
-                    cardImg.color = new Color(0.1f, 0.4f, 0.8f, 1f);
+                    _switchViewText.text = "🔒 View Enemy (Lv3)";
                 }
-                Text cardText = cardTrans.Find("CardText")?.GetComponent<Text>();
-                if (cardText != null)
+            }
+            else
+            {
+                _switchViewBtn.interactable = true;
+                if (_switchViewText != null)
                 {
-                    cardText.text = "Player\nUnit";
+                    _switchViewText.text = (CameraController.Instance != null && CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
+                        ? "< View Player" 
+                        : "View Enemy >";
                 }
             }
         }
@@ -469,6 +674,13 @@ public class UIManager : MonoBehaviour
         if (_placementHint != null) _placementHint.gameObject.SetActive(false);
         if (_bottomPanel != null) _bottomPanel.SetActive(false);
         if (_switchViewBtn != null) _switchViewBtn.gameObject.SetActive(false);
+        if (_scoutingReportText != null) _scoutingReportText.gameObject.SetActive(false);
+        
+        GameObject skillPanel = GameObject.Find("UICanvas/SkillPanel");
+        if (skillPanel != null) skillPanel.SetActive(false);
+
+        GameObject hitboxBtn = GameObject.Find("UICanvas/HitboxToggleButton");
+        if (hitboxBtn != null) hitboxBtn.SetActive(false);
     }
 
     public void ShowGameOver(bool playerWon)

@@ -136,6 +136,13 @@ public class RVOSimulatorManager : MonoBehaviour
             // Sync current position (XZ plane)
             _simulator.SetAgentPosition(agentId, new float2(unit.transform.position.x, unit.transform.position.z));
 
+            // Sync dynamic agent radius (updates RVO avoidance radius in real time)
+            CapsuleCollider col = unit.GetComponent<CapsuleCollider>();
+            if (col != null)
+            {
+                _simulator.SetAgentRadius(agentId, col.radius * safetyMargin);
+            }
+
             // Compute preferred velocity
             float2 prefVelocity = float2.zero;
             if (unit.state == UnitState.Moving)
@@ -149,13 +156,9 @@ public class RVOSimulatorManager : MonoBehaviour
                     Vector3 desiredDir = dir.normalized;
                     
                     // Check if blocked by teammates and apply bypass steering
-                    CapsuleCollider col = unit.GetComponent<CapsuleCollider>();
-                    float radius = col != null ? col.radius : 0.4f;
-                    float checkDist = radius * 2.8f;
-                    
                     Vector3 steerDir = desiredDir;
                     Vector3 avoidanceSteer;
-                    if (IsBlockedByTeammates(unit, desiredDir, checkDist, out avoidanceSteer))
+                    if (IsBlockedByTeammates(unit, desiredDir, out avoidanceSteer))
                     {
                         steerDir = (desiredDir + avoidanceSteer).normalized;
                     }
@@ -194,14 +197,20 @@ public class RVOSimulatorManager : MonoBehaviour
         }
     }
 
-    private bool IsBlockedByTeammates(Unit unit, Vector3 desiredDir, float checkDist, out Vector3 avoidanceSteer)
+    private bool IsBlockedByTeammates(Unit unit, Vector3 desiredDir, out Vector3 avoidanceSteer)
     {
         avoidanceSteer = Vector3.zero;
         if (GameManager.Instance == null) return false;
 
+        CapsuleCollider col = unit.GetComponent<CapsuleCollider>();
+        float radius = col != null ? col.radius : 0.4f;
+
         List<Unit> teammates = unit.isPlayer ? GameManager.Instance.playerUnits : GameManager.Instance.enemyUnits;
         float closestDist = float.MaxValue;
         Unit closestBlocker = null;
+
+        // Use wider cone (smaller dot threshold) if already steering to prevent chattering
+        float dotThreshold = unit.isSteeringAroundTeammate ? 0.15f : 0.45f;
 
         foreach (var teammate in teammates)
         {
@@ -211,10 +220,18 @@ public class RVOSimulatorManager : MonoBehaviour
             toTeammate.y = 0;
             float dist = toTeammate.magnitude;
 
+            CapsuleCollider teamCol = teammate.GetComponent<CapsuleCollider>();
+            float teamRadius = teamCol != null ? teamCol.radius : 0.4f;
+            float combinedRadius = radius + teamRadius;
+
+            // Hysteresis for check distance: look ahead further if already steering
+            float checkDistMultiplier = unit.isSteeringAroundTeammate ? 1.6f : 1.35f;
+            float checkDist = combinedRadius * checkDistMultiplier;
+
             if (dist < checkDist)
             {
                 float dot = Vector3.Dot(desiredDir, toTeammate.normalized);
-                if (dot > 0.4f) // within ~66 degrees in front
+                if (dot > dotThreshold)
                 {
                     if (dist < closestDist)
                     {
@@ -227,19 +244,27 @@ public class RVOSimulatorManager : MonoBehaviour
 
         if (closestBlocker != null)
         {
+            unit.isSteeringAroundTeammate = true;
+
             // Perpendicular vector
             Vector3 perpendicular = new Vector3(-desiredDir.z, 0, desiredDir.x);
             
             // Distribute agents left/right using their unique ID
             float sign = (unit.GetHashCode() % 2 == 0) ? 1.0f : -1.0f;
             
+            // Calculate checkDist for the closest blocker to scale steerWeight
+            CapsuleCollider closestTeamCol = closestBlocker.GetComponent<CapsuleCollider>();
+            float closestTeamRadius = closestTeamCol != null ? closestTeamCol.radius : 0.4f;
+            float closestCheckDist = (radius + closestTeamRadius) * (unit.isSteeringAroundTeammate ? 1.6f : 1.35f);
+
             // Steer stronger when closer
-            float steerWeight = Mathf.Lerp(1.8f, 0.6f, closestDist / checkDist);
+            float steerWeight = Mathf.Lerp(1.8f, 0.6f, closestDist / closestCheckDist);
             avoidanceSteer = perpendicular * sign * steerWeight;
             
             return true;
         }
 
+        unit.isSteeringAroundTeammate = false;
         return false;
     }
 

@@ -6,13 +6,14 @@ public enum GameState { Setup, Placement, Battle, GameOver }
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
+    public static string levelToLoadName = "";
 
     public GameState currentState = GameState.Setup;
     
     public List<Unit> playerUnits = new List<Unit>();
     public List<Unit> enemyUnits = new List<Unit>();
 
-    public int maxPlayerUnits = 10;
+    public int maxPlayerUnits = 6;
     public int placedPlayerUnits = 0;
     public int maxEnemyUnits = 10;
     public int placedEnemyUnits = 0;
@@ -38,6 +39,24 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+        if (SkillManager.Instance != null)
+        {
+            maxPlayerUnits = 6 + SkillManager.Instance.barracksLevel;
+        }
+        else
+        {
+            maxPlayerUnits = 6;
+        }
+
+        if (!string.IsNullOrEmpty(levelToLoadName))
+        {
+            activeLevel = Resources.Load<LevelData>("Levels/" + levelToLoadName);
+            if (activeLevel == null)
+            {
+                Debug.LogError($"GameManager: Could not load LevelData '{levelToLoadName}' from Resources/Levels/!");
+            }
+        }
+
         // Clean up any editor preview objects at runtime to avoid clutter
         CleanUpEditorPreviews();
 
@@ -183,12 +202,12 @@ public class GameManager : MonoBehaviour
         Debug.Log($"Loaded {placedEnemyUnits} enemy units from LevelData '{activeLevel.name}'");
     }
 
-    public void SpawnUnit(bool isPlayer, Vector3 position)
+    public void SpawnUnit(bool isPlayer, Vector3 position, int unitTypeIndex = 0)
     {
-        GameObject rootObj = new GameObject(isPlayer ? "PlayerUnit" : "EnemyUnit");
+        GameObject rootObj = new GameObject(isPlayer ? ($"PlayerUnit_Type{unitTypeIndex}") : "EnemyUnit");
         rootObj.transform.position = position;
 
-        bool isCapsule = forceCapsuleForTesting;
+        bool isCapsule = forceCapsuleForTesting || (isPlayer && unitTypeIndex > 0);
 
         GameObject loadedModel = null;
 #if UNITY_EDITOR
@@ -299,7 +318,24 @@ public class GameManager : MonoBehaviour
             graphics.transform.localScale = new Vector3(capsuleScale * 0.8f, capsuleScale * 0.8f, capsuleScale * 0.8f);
             
             Renderer rend = graphics.GetComponent<Renderer>();
-            if (rend != null) rend.material.color = isPlayer ? Color.blue : Color.red;
+            if (rend != null)
+            {
+                rend.material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                if (rend.material.shader.name == "Hidden/InternalErrorShader")
+                    rend.material = new Material(Shader.Find("Standard"));
+
+                if (isPlayer)
+                {
+                    if (unitTypeIndex == 0) rend.material.color = Color.blue;
+                    else if (unitTypeIndex == 1) rend.material.color = Color.green; // Archer
+                    else if (unitTypeIndex == 2) rend.material.color = new Color(0.5f, 0f, 0.5f); // Cavalry
+                    else if (unitTypeIndex == 3) rend.material.color = new Color(1f, 0.5f, 0f); // Elite
+                }
+                else
+                {
+                    rend.material.color = Color.red;
+                }
+            }
 
             Debug.Log($"[Diagnostic] Spawned Capsule Unit: rootPos={rootObj.transform.position}, graphicsLocalPos={graphics.transform.localPosition}, graphicsWorldPos={graphics.transform.position}");
         }
@@ -356,6 +392,8 @@ public class GameManager : MonoBehaviour
 
         Unit unit = rootObj.AddComponent<Unit>();
         unit.isPlayer = isPlayer;
+        unit.unitTypeIndex = unitTypeIndex;
+        rootObj.AddComponent<ColliderVisualizer>();
 
         // Find fallback templates in the scene if not explicitly assigned
         Unit activeTemplate = isPlayer ? playerUnitTemplate : enemyUnitTemplate;
@@ -403,6 +441,20 @@ public class GameManager : MonoBehaviour
             unit.attackRange = prefabUnit.attackRange;
             unit.attackCooldown = prefabUnit.attackCooldown;
             unit.animSpeedMultiplier = prefabUnit.animSpeedMultiplier;
+        }
+
+        if (isPlayer && SkillManager.Instance != null)
+        {
+            float buffMultiplier = 1f;
+            int logLvl = SkillManager.Instance.logisticsLevel;
+            if (logLvl == 1) buffMultiplier = 1.10f;
+            else if (logLvl == 2) buffMultiplier = 1.20f;
+            else if (logLvl == 3) buffMultiplier = 1.30f;
+
+            unit.hp *= buffMultiplier;
+            unit.maxHp *= buffMultiplier;
+            unit.atk *= buffMultiplier;
+            unit.def *= buffMultiplier;
         }
 
         // Scale speed and attack range dynamically to match the grid generator's spacing (70f is base spacing for scale 1.0)

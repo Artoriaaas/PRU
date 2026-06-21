@@ -63,6 +63,7 @@ public class SceneBootstrapper : MonoBehaviour
         if (GetComponent<GameManager>() == null) gameObject.AddComponent<GameManager>();
         if (GetComponent<UIManager>() == null) gameObject.AddComponent<UIManager>();
         if (GetComponent<PlacementController>() == null) gameObject.AddComponent<PlacementController>();
+        if (GetComponent<SkillManager>() == null) gameObject.AddComponent<SkillManager>();
     }
 }
 

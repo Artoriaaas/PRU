@@ -7,6 +7,8 @@ public enum UnitState { Idle, Moving, Attacking, Dead }
 public class Unit : MonoBehaviour
 {
     public bool isPlayer = true;
+    public int unitTypeIndex = 0;
+    [HideInInspector] public bool isSteeringAroundTeammate = false;
     public float hp = 100f;
     public float maxHp = 100f;
     public float atk = 10f;
@@ -24,6 +26,8 @@ public class Unit : MonoBehaviour
     private Unit _target;
     private Rigidbody _rb;
     private Animator _animator;
+    private CapsuleCollider _myCollider;
+    private float _baseColliderRadius = -1f;
 
     private Vector3 _rvoVelocity;
     private bool _useRVO = false;
@@ -174,12 +178,27 @@ public class Unit : MonoBehaviour
     {
         _rb = GetComponent<Rigidbody>();
         _animator = GetComponentInChildren<Animator>();
+        _myCollider = GetComponent<CapsuleCollider>();
+        if (_myCollider != null)
+        {
+            _baseColliderRadius = _myCollider.radius;
+        }
         InitializeSlots();
     }
 
     void Update()
     {
         if (state == UnitState.Dead) return;
+
+        // Dynamically adjust collider radius depending on combat/attack state
+        if (_myCollider != null && _baseColliderRadius > 0)
+        {
+            float targetRadius = (state == UnitState.Attacking) ? (_baseColliderRadius * 1.6f) : _baseColliderRadius;
+            if (!Mathf.Approximately(_myCollider.radius, targetRadius))
+            {
+                _myCollider.radius = targetRadius;
+            }
+        }
 
         // Sync animator state variables
         if (_animator != null)
@@ -258,7 +277,10 @@ public class Unit : MonoBehaviour
                 // Hysteresis threshold to prevent chattering/oscillation pushing behavior
                 float currentRangeThreshold = (state == UnitState.Attacking) ? (attackRange * 1.25f) : attackRange;
                 
-                if (distance <= currentRangeThreshold)
+                // Do not check teammate blocking once we are already attacking to prevent chattering from nearby teammates expanding their colliders.
+                bool isBlocked = (state == UnitState.Attacking) ? false : IsPathBlockedByTeammate(_target.transform.position);
+                
+                if (distance <= currentRangeThreshold && !isBlocked)
                 {
                     state = UnitState.Attacking;
                     if (_rb != null)
@@ -349,20 +371,15 @@ public class Unit : MonoBehaviour
                 Vector3 targetVelocity = new Vector3(_rvoVelocity.x, _rb.linearVelocity.y, _rvoVelocity.z);
                 _rb.linearVelocity = Vector3.Lerp(_rb.linearVelocity, targetVelocity, Time.deltaTime * 15f);
 
-                Vector3 direction = new Vector3(_rvoVelocity.x, 0, _rvoVelocity.z);
-                if (direction.sqrMagnitude > 0.36f) // moving significantly
-                {
-                    Quaternion toRotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
-                    transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 8f);
-                }
-                else if (_target != null) // almost stationary, face target to prevent spinning jitter
+                // Keep the model facing its target to prevent spinning jitter and side-facing behavior during avoidance
+                if (_target != null)
                 {
                     Vector3 faceDir = (_target.transform.position - transform.position).normalized;
                     faceDir.y = 0;
                     if (faceDir != Vector3.zero)
                     {
                         Quaternion toRotation = Quaternion.LookRotation(faceDir, Vector3.up);
-                        transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 5f);
+                        transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 8f);
                     }
                 }
             }
@@ -498,11 +515,16 @@ public class Unit : MonoBehaviour
             // Smoothly interpolate velocity to eliminate high-frequency jitter/stutters
             _rb.linearVelocity = Vector3.Lerp(_rb.linearVelocity, targetVelocity, Time.deltaTime * 15f);
             
-            // Optionally, rotate towards target
-            if (finalDirection != Vector3.zero)
+            // Keep the model facing its target to prevent spinning jitter and side-facing behavior during avoidance
+            if (_target != null)
             {
-                Quaternion toRotation = Quaternion.LookRotation(finalDirection, Vector3.up);
-                transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
+                Vector3 faceDir = (_target.transform.position - transform.position).normalized;
+                faceDir.y = 0;
+                if (faceDir != Vector3.zero)
+                {
+                    Quaternion toRotation = Quaternion.LookRotation(faceDir, Vector3.up);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
+                }
             }
         }
         else
@@ -514,9 +536,12 @@ public class Unit : MonoBehaviour
     void OnTriggerStay(Collider other)
     {
         if (state == UnitState.Dead) return;
-        if (state == UnitState.Attacking) return; // Attacking units are firmly planted and cannot be pushed
         if (GameManager.Instance == null || GameManager.Instance.currentState != GameState.Battle) return;
-        if (_useRVO) return; // Skip manual push if using RVO collision avoidance
+        
+        // If we are using RVO, only allow manual trigger push if we are Attacking.
+        // Moving units should rely on RVO to avoid active conflicts, but Attacking units (which have RVO prefVelocity = 0)
+        // need manual trigger push to resolve overlaps with other attacking units.
+        if (_useRVO && state != UnitState.Attacking) return;
         
         Unit otherUnit = other.GetComponentInParent<Unit>();
         // Only push teammates to prevent visual overlapping, do not push enemies during combat
@@ -524,9 +549,30 @@ public class Unit : MonoBehaviour
         {
             Vector3 pushDir = transform.position - otherUnit.transform.position;
             pushDir.y = 0;
+            float dist = pushDir.magnitude;
+
+            // Calculate the push threshold.
+            // If both are attacking, we use their base radii (not expanded attack radii) 
+            // to allow them to stand close to each other in adjacent slots without pushing.
+            float myRadius = _myCollider != null ? _myCollider.radius : 0.4f;
+            CapsuleCollider otherCol = otherUnit.GetComponent<CapsuleCollider>();
+            float otherRadius = otherCol != null ? otherCol.radius : 0.4f;
+
+            float minSafeDistance = myRadius + otherRadius;
+
+            if (state == UnitState.Attacking && otherUnit.state == UnitState.Attacking)
+            {
+                float baseR1 = _baseColliderRadius > 0 ? _baseColliderRadius : 0.4f;
+                float baseR2 = otherUnit._baseColliderRadius > 0 ? otherUnit._baseColliderRadius : 0.4f;
+                minSafeDistance = (baseR1 + baseR2) * 1.05f;
+            }
+
+            if (dist >= minSafeDistance) return;
+
             if (pushDir == Vector3.zero)
             {
                 pushDir = new Vector3(Random.Range(-0.1f, 0.1f), 0, Random.Range(-0.1f, 0.1f));
+                dist = pushDir.magnitude;
             }
             
             // Project push direction laterally (perpendicular to targetDir) to prevent pushing units backwards
@@ -546,7 +592,10 @@ public class Unit : MonoBehaviour
             // Since they are triggers, this is extremely smooth and won't conflict with physics solver!
             CapsuleCollider col = GetComponent<CapsuleCollider>();
             float scaleFactor = col != null ? col.radius / 0.4f : 1.0f;
-            float pushAmount = 0.04f * scaleFactor * Time.deltaTime * 60f; // framerate independent
+            
+            // Scale push amount based on how much they overlap to make it even smoother (proportional pushing)
+            float overlap = minSafeDistance - dist;
+            float pushAmount = 0.04f * scaleFactor * (overlap / minSafeDistance) * Time.deltaTime * 60f; // framerate independent
             
             transform.position += lateralPushDir * pushAmount;
 
@@ -682,5 +731,72 @@ public class Unit : MonoBehaviour
         
         Debug.Log($"[PRU Debug] {name} destroying in 2.0s");
         Destroy(gameObject, 2f);
+    }
+
+    private bool IsPathBlockedByTeammate(Vector3 targetPos)
+    {
+        // Ranged units (Archers) can attack over teammates, so they are never blocked
+        if (isPlayer && unitTypeIndex == 1) return false;
+        
+        if (GameManager.Instance == null) return false;
+
+        CapsuleCollider col = GetComponent<CapsuleCollider>();
+        float myRadius = col != null ? col.radius : 0.4f;
+
+        Vector3 A = transform.position;
+        Vector3 B = targetPos;
+        A.y = 0;
+        B.y = 0;
+
+        Vector3 AB = B - A;
+        float abDistance = AB.magnitude;
+        if (abDistance < 0.01f) return false;
+        Vector3 dir = AB / abDistance;
+
+        // The check segment starts from the front face of the unit, not its center
+        Vector3 A_prime = A + dir * myRadius;
+        Vector3 A_prime_B = B - A_prime;
+        float aPrimeBDistance = A_prime_B.magnitude;
+        if (aPrimeBDistance < 0.01f) return false;
+        Vector3 dirPrime = A_prime_B / aPrimeBDistance;
+
+        List<Unit> teammates = isPlayer ? GameManager.Instance.playerUnits : GameManager.Instance.enemyUnits;
+        foreach (var teammate in teammates)
+        {
+            if (teammate == this || teammate.state == UnitState.Dead) continue;
+
+            Vector3 C = teammate.transform.position;
+            C.y = 0;
+
+            Vector3 A_prime_C = C - A_prime;
+            float proj = Vector3.Dot(A_prime_C, dirPrime);
+
+            // Only consider teammates that are in front of our front face and not behind the target
+            if (proj > 0.05f && proj < aPrimeBDistance - 0.05f)
+            {
+                Vector3 P = A_prime + proj * dirPrime;
+                float distToSegment = Vector3.Distance(C, P);
+
+                CapsuleCollider teamCol = teammate.GetComponent<CapsuleCollider>();
+                float teamRadius = teamCol != null ? teamCol.radius : 0.4f;
+
+                // We need to account for both our radius and the teammate's radius.
+                // If the distance from the teammate's center to the path segment is less than the sum of their radii,
+                // the unit's body would overlap/collide with the teammate when moving along this path.
+                float combinedRadius = myRadius + teamRadius;
+
+                // Apply hysteresis: use a tighter blocking radius if we are already attacking to prevent oscillation.
+                // Using 0.9f for Moving and 0.6f for Attacking guarantees a stable positive hysteresis buffer in all states,
+                // preventing chattering/oscillation at the boundaries.
+                float blockFactor = (state == UnitState.Attacking) ? 0.6f : 0.9f;
+
+                if (distToSegment < combinedRadius * blockFactor)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
