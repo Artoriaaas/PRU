@@ -152,6 +152,17 @@ public class GameManager : MonoBehaviour
     [Tooltip("Drag the texture JPEG/PNG for ModelQuanLinh here. If left empty, it will auto-detect from .fbm folders in Editor.")]
     public Texture2D unitBaseColorTexture;
 
+    [Header("Archer Model Settings")]
+    [Tooltip("Drag your Archer FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/animation_cung_quan_ta.fbx in Editor.")]
+    public GameObject archerModelPrefab;
+    public Vector3 archerRotationOffset = new Vector3(0f, 90f, 0f); // default to 90 for animation_cung_quan_ta to face forward
+    public Vector3 archerPositionOffset = new Vector3(0f, 0f, 0f);
+    public float archerScale = 60.0f;
+    [Tooltip("Drag the texture JPEG/PNG for Archer here. If left empty, it will auto-detect from .fbm folders in Editor.")]
+    public Texture2D archerBaseColorTexture;
+    [Tooltip("Assign your Animator Controller for the Archer here.")]
+    public RuntimeAnimatorController archerAnimatorController;
+
     [Header("Unit Templates")]
     [Tooltip("Drag the Unit GameObject from the scene or a prefab here to use as a template for player stats.")]
     public Unit playerUnitTemplate;
@@ -207,7 +218,7 @@ public class GameManager : MonoBehaviour
         GameObject rootObj = new GameObject(isPlayer ? ($"PlayerUnit_Type{unitTypeIndex}") : "EnemyUnit");
         rootObj.transform.position = position;
 
-        bool isCapsule = forceCapsuleForTesting || (isPlayer && unitTypeIndex > 0);
+        bool isCapsule = forceCapsuleForTesting || (isPlayer && unitTypeIndex > 1);
 
         GameObject loadedModel = null;
 #if UNITY_EDITOR
@@ -215,17 +226,31 @@ public class GameManager : MonoBehaviour
         {
             if (isPlayer)
             {
-                loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta-20260616T082614Z-3-001/Model quân ta/Model_quan_ta.fbx");
+                if (unitTypeIndex == 0)
+                {
+                    loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta-20260616T082614Z-3-001/Model quân ta/Model_quan_ta.fbx");
+                }
+                else if (unitTypeIndex == 1)
+                {
+                    loadedModel = archerModelPrefab != null ? archerModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/animation_cung_quan_ta.fbx");
+                }
             }
             else
             {
-                loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch-20260616T082614Z-3-001/Model quân địch/Trang_thai_cho_quan_dich.fbx");
+                if (unitTypeIndex == 0)
+                {
+                    loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch-20260616T082614Z-3-001/Model quân địch/Trang_thai_cho_quan_dich.fbx");
+                }
+                else if (unitTypeIndex == 1)
+                {
+                    loadedModel = archerModelPrefab != null ? archerModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/animation_cung_quan_ta.fbx");
+                }
             }
         }
 #endif
         if (loadedModel == null)
         {
-            loadedModel = unitModelPrefab;
+            loadedModel = (unitTypeIndex == 1) ? archerModelPrefab : unitModelPrefab;
         }
 
         GameObject graphicsObj = null;
@@ -235,9 +260,16 @@ public class GameManager : MonoBehaviour
             GameObject graphics = Instantiate(loadedModel, rootObj.transform);
             graphicsObj = graphics;
             graphics.transform.localPosition = Vector3.zero;
-            // Override prefab's local rotation with our offset to fix face-planting
-            graphics.transform.localRotation = Quaternion.Euler(modelRotationOffset);
-            graphics.transform.localScale = new Vector3(modelScale, modelScale, modelScale);
+            
+            // Choose offsets and scale based on unit type
+            Vector3 rotationOffset = (unitTypeIndex == 1) ? archerRotationOffset : modelRotationOffset;
+            Vector3 positionOffset = (unitTypeIndex == 1) ? archerPositionOffset : modelPositionOffset;
+            float scaleVal = (unitTypeIndex == 1) ? archerScale : modelScale;
+            RuntimeAnimatorController animController = (unitTypeIndex == 1) ? archerAnimatorController : unitAnimatorController;
+
+            // Override prefab's local rotation with our offset to fix orientation
+            graphics.transform.localRotation = Quaternion.Euler(rotationOffset);
+            graphics.transform.localScale = new Vector3(scaleVal, scaleVal, scaleVal);
 
             // Destroy all built-in child colliders on the imported model to prevent collision conflicts
             Collider[] modelColliders = graphics.GetComponentsInChildren<Collider>(true);
@@ -253,15 +285,32 @@ public class GameManager : MonoBehaviour
                 animator = graphics.AddComponent<Animator>();
             }
             animator.applyRootMotion = false; // Disable root motion to prevent tilting forward
-            if (unitAnimatorController != null)
+            if (animController != null)
             {
-                animator.runtimeAnimatorController = unitAnimatorController;
+                animator.runtimeAnimatorController = animController;
+            }
+
+            if (unitTypeIndex == 1 && animator.runtimeAnimatorController != null)
+            {
+                animator.ResetTrigger("Attack");
+                animator.ResetTrigger("Die");
+                animator.SetBool("IsMoving", false);
+                animator.SetBool("IsAttacking", false);
+                animator.SetBool("IsDead", false);
+                animator.Play("Idle", 0, 0f);
+                animator.Update(0f);
             }
 
             // Setup textures dynamically to fix white character model issue
             Texture2D textureToApply = null;
 #if UNITY_EDITOR
-            if (isPlayer)
+            if (unitTypeIndex == 1)
+            {
+                // For archer, do not fallback to unrelated folders like Model quân ta (animation_chay_dibo_doi).
+                // Let it use its embedded/standard materials if no override texture is specified.
+                textureToApply = archerBaseColorTexture;
+            }
+            else if (isPlayer)
             {
                 textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta-20260616T082614Z-3-001/Model quân ta/model_quan_ta/tripo_convert_74080320-2742-4915-ab54-fe52dd1aaaa6.fbm/model_quan_ta_basecolor.JPEG");
             }
@@ -270,10 +319,11 @@ public class GameManager : MonoBehaviour
                 textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân địch-20260616T082614Z-3-001/Model quân địch/medieval+knight+3d+model/tripo_convert_0e217662-40c2-483b-9f6e-5f6498668c72.fbm/medieval_knight_3d_model_basecolor.JPEG");
             }
 #endif
-            if (textureToApply == null)
+            if (textureToApply == null && unitTypeIndex != 1)
             {
                 textureToApply = unitBaseColorTexture;
             }
+            
             if (textureToApply != null)
             {
                 var rends = graphics.GetComponentsInChildren<Renderer>();
@@ -283,6 +333,24 @@ public class GameManager : MonoBehaviour
                     {
                         r.material.SetTexture("_BaseMap", textureToApply);
                         r.material.SetTexture("_MainTex", textureToApply);
+                    }
+                }
+            }
+
+            // Tint the enemy archer red-ish to differentiate from player archers
+            if (!isPlayer && unitTypeIndex == 1)
+            {
+                var rends = graphics.GetComponentsInChildren<Renderer>();
+                foreach (var r in rends)
+                {
+                    if (r.material != null)
+                    {
+                        Color tintColor = new Color(1f, 0.4f, 0.4f);
+                        r.material.color = tintColor;
+                        if (r.material.HasProperty("_BaseColor"))
+                        {
+                            r.material.SetColor("_BaseColor", tintColor);
+                        }
                     }
                 }
             }
@@ -302,7 +370,7 @@ public class GameManager : MonoBehaviour
             }
             
             // Apply manual offset for fine-tuning
-            graphics.transform.localPosition += modelPositionOffset;
+            graphics.transform.localPosition += positionOffset;
         }
         else
         {

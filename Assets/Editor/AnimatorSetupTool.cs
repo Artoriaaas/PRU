@@ -11,7 +11,10 @@ public class AnimatorSetupTool
     {
         // Auto-run on project compilation to keep the animator controller synced
         EditorApplication.delayCall += () => {
-            SetupAnimator();
+            if (!EditorApplication.isPlaying && !EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                SetupAnimator();
+            }
         };
     }
 
@@ -28,9 +31,37 @@ public class AnimatorSetupTool
             AssetDatabase.Refresh();
         }
 
-        string controllerPath = folderPath + "/QuanLinhAnimatorController.controller";
-        
-        // 1. Create or load the Animator Controller
+        // Setup Infantry Controller
+        string infantryControllerPath = folderPath + "/QuanLinhAnimatorController.controller";
+        AnimatorController infantryController = SetupController(infantryControllerPath, false);
+
+        // Setup Archer Controller
+        string archerControllerPath = folderPath + "/QuanCungAnimatorController.controller";
+        AnimatorController archerController = SetupController(archerControllerPath, true);
+
+        // Assign to GameManager in the current active scene
+        GameManager manager = Object.FindAnyObjectByType<GameManager>();
+        if (manager != null)
+        {
+            Undo.RecordObject(manager, "Assign Animator Controllers");
+            manager.unitAnimatorController = infantryController;
+            manager.archerAnimatorController = archerController;
+            manager.unitModelPrefab = null;
+            manager.unitBaseColorTexture = null;
+            EditorUtility.SetDirty(manager);
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(manager.gameObject.scene);
+            Debug.Log("Assigned Animator Controllers to GameManager in scene and cleared legacy model/texture references!");
+        }
+        else
+        {
+            Debug.LogWarning("GameManager not found in current scene. Please open the correct scene and run this tool again to auto-assign it.");
+        }
+
+        Debug.Log("Animator Controller Setup completed successfully!");
+    }
+
+    private static AnimatorController SetupController(string controllerPath, bool isArcher)
+    {
         AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
         if (controller == null)
         {
@@ -38,30 +69,30 @@ public class AnimatorSetupTool
             Debug.Log("Created Animator Controller at: " + controllerPath);
         }
 
-        // 2. Add Parameters if they don't exist
         AddParameterIfNotExists(controller, "IsMoving", AnimatorControllerParameterType.Bool);
         AddParameterIfNotExists(controller, "IsAttacking", AnimatorControllerParameterType.Bool);
         AddParameterIfNotExists(controller, "IsDead", AnimatorControllerParameterType.Bool);
         AddParameterIfNotExists(controller, "Attack", AnimatorControllerParameterType.Trigger);
         AddParameterIfNotExists(controller, "Die", AnimatorControllerParameterType.Trigger);
 
-        // 3. Set up State Machine states
         AnimatorStateMachine rootStateMachine = controller.layers[0].stateMachine;
 
-        // Find or create states
         AnimatorState idleState = GetOrCreateState(rootStateMachine, "Idle");
         AnimatorState runState = GetOrCreateState(rootStateMachine, "Run");
         AnimatorState attackState = GetOrCreateState(rootStateMachine, "Attack");
         AnimatorState dieState = GetOrCreateState(rootStateMachine, "Die");
 
-        // Set default state explicitly
         rootStateMachine.defaultState = idleState;
 
-        // 4. Try to find animation clips in the project to automatically bind them!
-        AssignClipsToStates(idleState, runState, attackState, dieState);
+        if (isArcher)
+        {
+            AssignArcherClipsToStates(idleState, runState, attackState, dieState);
+        }
+        else
+        {
+            AssignClipsToStates(idleState, runState, attackState, dieState);
+        }
 
-        // 5. Setup Transitions
-        // Idle <-> Run
         AddTransitionIfNotExists(idleState, runState, new AnimatorCondition[] {
             new AnimatorCondition { mode = AnimatorConditionMode.If, parameter = "IsMoving", threshold = 0 }
         }, false);
@@ -70,15 +101,12 @@ public class AnimatorSetupTool
             new AnimatorCondition { mode = AnimatorConditionMode.IfNot, parameter = "IsMoving", threshold = 0 }
         }, false);
 
-        // Any State -> Attack
         AddAnyStateTransitionIfNotExists(rootStateMachine, attackState, new AnimatorCondition[] {
             new AnimatorCondition { mode = AnimatorConditionMode.If, parameter = "Attack", threshold = 0 }
         });
 
-        // Attack -> Idle (Exit Time)
         AddTransitionWithExitTimeIfNotExists(attackState, idleState);
 
-        // Any State -> Die
         AddAnyStateTransitionIfNotExists(rootStateMachine, dieState, new AnimatorCondition[] {
             new AnimatorCondition { mode = AnimatorConditionMode.If, parameter = "IsDead", threshold = 0 }
         });
@@ -89,103 +117,13 @@ public class AnimatorSetupTool
         EditorUtility.SetDirty(controller);
         AssetDatabase.SaveAssets();
 
-        // 6. Assign to GameManager in the current active scene
-        GameManager manager = Object.FindAnyObjectByType<GameManager>();
-        if (manager != null)
-        {
-            Undo.RecordObject(manager, "Assign Animator Controller");
-            manager.unitAnimatorController = controller;
-            manager.unitModelPrefab = null;
-            manager.unitBaseColorTexture = null;
-            EditorUtility.SetDirty(manager);
-            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(manager.gameObject.scene);
-            Debug.Log("Assigned Animator Controller to GameManager in scene and cleared legacy model/texture references!");
-        }
-        else
-        {
-            Debug.LogWarning("GameManager not found in current scene. Please open the correct scene and run this tool again to auto-assign it.");
-        }
-
-        Debug.Log("Animator Controller Setup completed successfully!");
-    }
-
-    private static void AddParameterIfNotExists(AnimatorController controller, string name, AnimatorControllerParameterType type)
-    {
-        if (!controller.parameters.Any(p => p.name == name))
-        {
-            controller.AddParameter(name, type);
-        }
-    }
-
-    private static AnimatorState GetOrCreateState(AnimatorStateMachine stateMachine, string name)
-    {
-        foreach (var state in stateMachine.states)
-        {
-            if (state.state.name == name)
-            {
-                return state.state;
-            }
-        }
-        AnimatorState newState = stateMachine.AddState(name);
-        return newState;
-    }
-
-    private static void AddTransitionIfNotExists(AnimatorState from, AnimatorState to, AnimatorCondition[] conditions, bool hasExitTime)
-    {
-        if (from.transitions.Any(t => t.destinationState == to)) return;
-
-        AnimatorStateTransition transition = from.AddTransition(to);
-        transition.hasExitTime = hasExitTime;
-        transition.exitTime = hasExitTime ? 1.0f : 0.0f;
-        transition.duration = 0.1f;
-        foreach (var cond in conditions)
-        {
-            transition.AddCondition(cond.mode, cond.threshold, cond.parameter);
-        }
-    }
-
-    private static void AddTransitionWithExitTimeIfNotExists(AnimatorState from, AnimatorState to)
-    {
-        if (from.transitions.Any(t => t.destinationState == to)) return;
-
-        AnimatorStateTransition transition = from.AddTransition(to);
-        transition.hasExitTime = true;
-        transition.exitTime = 0.85f; // transition near the end of attack
-        transition.duration = 0.15f;
-    }
-
-    private static void AddAnyStateTransitionIfNotExists(AnimatorStateMachine stateMachine, AnimatorState to, AnimatorCondition[] conditions)
-    {
-        string targetParam = conditions.Length > 0 ? conditions[0].parameter : "";
-        AnimatorStateTransition transition = stateMachine.anyStateTransitions.FirstOrDefault(
-            t => t.destinationState == to && t.conditions.Any(c => c.parameter == targetParam)
-        );
-        if (transition == null)
-        {
-            transition = stateMachine.AddAnyStateTransition(to);
-        }
-
-        transition.hasExitTime = false;
-        transition.duration = 0.1f;
-        transition.canTransitionToSelf = false;
-
-        // Clear and rebuild conditions to keep them synced
-        var existingConditions = transition.conditions.ToList();
-        foreach (var c in existingConditions)
-        {
-            transition.RemoveCondition(c);
-        }
-        foreach (var cond in conditions)
-        {
-            transition.AddCondition(cond.mode, cond.threshold, cond.parameter);
-        }
+        return controller;
     }
 
     private static void AssignClipsToStates(AnimatorState idleState, AnimatorState runState, AnimatorState attackState, AnimatorState dieState)
     {
         Debug.Log("--- START ASSIGNING CLIPS FROM NEWMODEL FOLDER ---");
         
-        // Clear existing motions first to ensure we overwrite them
         idleState.motion = null;
         runState.motion = null;
         attackState.motion = null;
@@ -198,6 +136,8 @@ public class AnimatorSetupTool
             
             // Only look inside the Assets/Models/NewModel folder
             if (!path.Replace('\\', '/').Contains("Assets/Models/NewModel")) continue;
+            // Exclude archer file from infantry setup!
+            if (path.Replace('\\', '/').Contains("animation_cung_quan_ta")) continue;
 
             Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
             foreach (Object asset in allAssets)
@@ -211,7 +151,6 @@ public class AnimatorSetupTool
 
                 Debug.Log($"Found Clip: '{clip.name}' in path: '{path}'");
 
-                // Check paths and names
                 bool isIdle = pathName.Contains("trang_thai_cho") || clipName.Contains("idle") || pathName.Contains("doi") || pathName.Contains("cho");
                 bool isRun = pathName.Contains("run") || clipName.Contains("run") || clipName.Contains("walk") || pathName.Contains("chay") || pathName.Contains("dibo");
                 bool isAttack = pathName.Contains("slash") || clipName.Contains("attack") || clipName.Contains("hit") || clipName.Contains("slash");
@@ -244,6 +183,97 @@ public class AnimatorSetupTool
         Debug.Log("--- END ASSIGNING CLIPS FROM NEWMODEL FOLDER ---");
     }
 
+    private static void AssignArcherClipsToStates(AnimatorState idleState, AnimatorState runState, AnimatorState attackState, AnimatorState dieState)
+    {
+        Debug.Log("--- START ASSIGNING ARCHER CLIPS ---");
+        string archerPath = "Assets/Models/NewModel/animation_cung_quan_ta.fbx";
+        ModelImporter importer = AssetImporter.GetAtPath(archerPath) as ModelImporter;
+        if (importer != null)
+        {
+            if (importer.animationType != ModelImporterAnimationType.Generic)
+            {
+                importer.animationType = ModelImporterAnimationType.Generic;
+                importer.SaveAndReimport();
+                Debug.Log("Changed Archer FBX to Generic Rig type to expose animations.");
+            }
+            
+            Object[] assets = AssetDatabase.LoadAllAssetsAtPath(archerPath);
+            
+            idleState.motion = null;
+            runState.motion = null;
+            attackState.motion = null;
+            dieState.motion = null;
+
+            // 1. Exact match by name
+            foreach (Object asset in assets)
+            {
+                AnimationClip clip = asset as AnimationClip;
+                if (clip == null) continue;
+                if (clip.name.StartsWith("__preview__")) continue;
+
+                string clipName = clip.name;
+                
+                if (clipName == "Armature.001|mixamo.com" && idleState.motion == null)
+                {
+                    idleState.motion = clip;
+                    EnableLoopTime(clip);
+                    Debug.Log(">> Assigned Archer Idle: " + clipName);
+                }
+                else if (clipName == "Armature.001|Armature|mixamo.com.002" && runState.motion == null)
+                {
+                    runState.motion = clip;
+                    EnableLoopTime(clip);
+                    Debug.Log(">> Assigned Archer Run: " + clipName);
+                }
+                else if (clipName == "Armature.001|Armature|mixamo.com" && attackState.motion == null)
+                {
+                    attackState.motion = clip;
+                    Debug.Log(">> Assigned Archer Attack: " + clipName);
+                }
+                else if (clipName == "Armature.001|mixamo.com.001" && dieState.motion == null)
+                {
+                    dieState.motion = clip;
+                    Debug.Log(">> Assigned Archer Die: " + clipName);
+                }
+            }
+
+            // 2. Fallback match by length (tolerable range)
+            foreach (Object asset in assets)
+            {
+                AnimationClip clip = asset as AnimationClip;
+                if (clip == null) continue;
+                if (clip.name.StartsWith("__preview__")) continue;
+
+                string clipName = clip.name;
+                float len = clip.length;
+
+                if (idleState.motion == null && Mathf.Abs(len - 5.0f) < 0.1f)
+                {
+                    idleState.motion = clip;
+                    EnableLoopTime(clip);
+                    Debug.Log(">> Fallback Archer Idle: " + clipName + " (len: " + len + ")");
+                }
+                else if (runState.motion == null && Mathf.Abs(len - 0.9f) < 0.05f)
+                {
+                    runState.motion = clip;
+                    EnableLoopTime(clip);
+                    Debug.Log(">> Fallback Archer Run: " + clipName + " (len: " + len + ")");
+                }
+                else if (attackState.motion == null && Mathf.Abs(len - 1.9f) < 0.05f)
+                {
+                    attackState.motion = clip;
+                    Debug.Log(">> Fallback Archer Attack: " + clipName + " (len: " + len + ")");
+                }
+                else if (dieState.motion == null && Mathf.Abs(len - 2.35f) < 0.05f)
+                {
+                    dieState.motion = clip;
+                    Debug.Log(">> Fallback Archer Die: " + clipName + " (len: " + len + ")");
+                }
+            }
+        }
+        Debug.Log("--- END ASSIGNING ARCHER CLIPS ---");
+    }
+
     private static void EnableLoopTime(AnimationClip clip)
     {
         if (clip == null) return;
@@ -271,6 +301,9 @@ public class AnimatorSetupTool
             string path = AssetDatabase.GUIDToAssetPath(guid);
             if (!path.Contains("Assets/Models") && !path.Contains("Assets/Art")) continue;
             if (!path.ToLower().EndsWith(".fbx")) continue;
+            if (path.Contains("animation_cung_quan_ta")) continue;
+            
+            Debug.Log($"[Rig Check] Found FBX: {path}");
 
             ModelImporter importer = AssetImporter.GetAtPath(path) as ModelImporter;
             if (importer != null)
@@ -329,5 +362,103 @@ public class AnimatorSetupTool
         }
         Debug.Log("--- END CONVERTING RIGS TO HUMANOID & SETTING LOOPS ---");
         AssetDatabase.Refresh();
+    }
+
+    private static void AddParameterIfNotExists(AnimatorController controller, string name, AnimatorControllerParameterType type)
+    {
+        if (!controller.parameters.Any(p => p.name == name))
+        {
+            controller.AddParameter(name, type);
+            Debug.Log($"Added parameter: {name} ({type})");
+        }
+    }
+
+    private static AnimatorState GetOrCreateState(AnimatorStateMachine stateMachine, string name)
+    {
+        foreach (var stateInMachine in stateMachine.states)
+        {
+            if (stateInMachine.state.name == name)
+            {
+                return stateInMachine.state;
+            }
+        }
+        AnimatorState newState = stateMachine.AddState(name);
+        Debug.Log($"Created state: {name}");
+        return newState;
+    }
+
+    private static void AddTransitionIfNotExists(AnimatorState fromState, AnimatorState toState, AnimatorCondition[] conditions, bool hasExitTime)
+    {
+        foreach (var t in fromState.transitions)
+        {
+            if (t.destinationState == toState)
+            {
+                return;
+            }
+        }
+
+        AnimatorStateTransition transition = fromState.AddTransition(toState);
+        transition.hasExitTime = hasExitTime;
+        transition.exitTime = hasExitTime ? 0.75f : 0f;
+        transition.duration = 0.25f;
+
+        if (conditions != null)
+        {
+            foreach (var cond in conditions)
+            {
+                transition.AddCondition(cond.mode, cond.threshold, cond.parameter);
+            }
+        }
+        Debug.Log($"Added transition from {fromState.name} to {toState.name}");
+    }
+
+    private static void AddTransitionWithExitTimeIfNotExists(AnimatorState fromState, AnimatorState toState)
+    {
+        AddTransitionIfNotExists(fromState, toState, null, true);
+    }
+
+    private static void AddAnyStateTransitionIfNotExists(AnimatorStateMachine stateMachine, AnimatorState toState, AnimatorCondition[] conditions)
+    {
+        foreach (var t in stateMachine.anyStateTransitions)
+        {
+            if (t.destinationState == toState)
+            {
+                bool match = true;
+                if (conditions != null)
+                {
+                    if (t.conditions.Length != conditions.Length)
+                    {
+                        match = false;
+                    }
+                    else
+                    {
+                        for (int i = 0; i < conditions.Length; i++)
+                        {
+                            if (t.conditions[i].parameter != conditions[i].parameter ||
+                                t.conditions[i].mode != conditions[i].mode ||
+                                !Mathf.Approximately(t.conditions[i].threshold, conditions[i].threshold))
+                            {
+                                match = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (match) return;
+            }
+        }
+
+        AnimatorStateTransition transition = stateMachine.AddAnyStateTransition(toState);
+        transition.hasExitTime = false;
+        transition.duration = 0.2f;
+
+        if (conditions != null)
+        {
+            foreach (var cond in conditions)
+            {
+                transition.AddCondition(cond.mode, cond.threshold, cond.parameter);
+            }
+        }
+        Debug.Log($"Added AnyState transition to {toState.name}");
     }
 }
