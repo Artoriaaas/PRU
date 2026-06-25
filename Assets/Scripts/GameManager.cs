@@ -36,12 +36,42 @@ public class GameManager : MonoBehaviour
         // Force forceCapsuleForTesting to false to override Unity Inspector's serialized value
         forceCapsuleForTesting = false;
 
+        // Enforce minimum values for arrow flight in case they were serialized as 0 or extremely small in the scene
+        if (arrowSpeed < 300f) arrowSpeed = 400f;
+        if (arrowArcHeight < 1f) arrowArcHeight = 15f;
+
 #if UNITY_EDITOR
         if (arrowPrefab == null)
         {
             arrowPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Cartoon_Weapon_Pack/Prefab/Arrow.prefab");
         }
 #endif
+
+        if (arrowPrefab != null)
+        {
+            // Convert prefab materials to URP once on startup to prevent runtime delay/magenta/green flashing
+            Renderer[] prefabRends = arrowPrefab.GetComponentsInChildren<Renderer>(true);
+            foreach (var r in prefabRends)
+            {
+                if (r.sharedMaterial != null)
+                {
+                    Shader urpShader = Shader.Find("Universal Render Pipeline/Simple Lit");
+                    if (urpShader == null) urpShader = Shader.Find("Universal Render Pipeline/Lit");
+                    if (urpShader == null) urpShader = Shader.Find("Standard");
+                    
+                    if (urpShader != null)
+                    {
+                        Texture mainTex = r.sharedMaterial.mainTexture;
+                        r.sharedMaterial.shader = urpShader;
+                        if (mainTex != null)
+                        {
+                            r.sharedMaterial.SetTexture("_BaseMap", mainTex);
+                            r.sharedMaterial.SetTexture("_MainTex", mainTex);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     void Start()
@@ -171,8 +201,9 @@ public class GameManager : MonoBehaviour
     public RuntimeAnimatorController archerAnimatorController;
     [Tooltip("Drag your Arrow prefab here. If left empty, it will auto-load from Assets/Cartoon_Weapon_Pack/Prefab/Arrow.prefab in Editor.")]
     public GameObject arrowPrefab;
-    public float arrowSpeed = 25f;
-    public float arrowArcHeight = 2.5f;
+    public float arrowSpeed = 400f;
+    public float arrowArcHeight = 15f;
+    public float archerAttackCooldown = 2.5f;
 
     [Header("Unit Templates")]
     [Tooltip("Drag the Unit GameObject from the scene or a prefab here to use as a template for player stats.")]
@@ -566,6 +597,11 @@ public class GameManager : MonoBehaviour
             unit.attackRange = prefabUnit.attackRange;
             unit.attackCooldown = prefabUnit.attackCooldown;
             unit.animSpeedMultiplier = prefabUnit.animSpeedMultiplier;
+        }
+
+        if (unitTypeIndex == 1) // Archer
+        {
+            unit.attackCooldown = archerAttackCooldown;
         }
 
         if (isPlayer && SkillManager.Instance != null)

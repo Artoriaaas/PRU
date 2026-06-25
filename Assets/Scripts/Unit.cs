@@ -786,12 +786,15 @@ public class Unit : MonoBehaviour
 
     private IEnumerator SpawnArrowAfterDelay(float delay, Unit target, float damage)
     {
+        Debug.Log($"[ArrowDebug] SpawnArrowAfterDelay started on {name}. delay={delay}, target={(target != null ? target.name : "null")}");
         yield return new WaitForSeconds(delay);
 
         if (target == null && _target != null)
         {
             target = _target;
         }
+
+        Debug.Log($"[ArrowDebug] SpawnArrowAfterDelay yield finished on {name}. target={(target != null ? target.name : "null")}");
 
         Vector3 spawnPos = transform.position + Vector3.up * 1.5f;
         if (_leftHand != null)
@@ -802,29 +805,66 @@ public class Unit : MonoBehaviour
         GameObject arrowPrefab = null;
         float speed = 25f;
         float arcHeight = 2.5f;
+        float scale = 60f;
 
         if (GameManager.Instance != null)
         {
             arrowPrefab = GameManager.Instance.arrowPrefab;
             speed = GameManager.Instance.arrowSpeed;
             arcHeight = GameManager.Instance.arrowArcHeight;
+            scale = GameManager.Instance.archerScale;
         }
 
-        GameObject arrowObj;
+        // Adjust spawnPos offset height based on scale
+        spawnPos.y += 0.5f * (scale / 60f);
+
+        Debug.Log($"[ArrowDebug] Spawning arrow. prefab={(arrowPrefab != null ? arrowPrefab.name : "null")}, speed={speed}, arcHeight={arcHeight}, scale={scale}, pos={spawnPos}");
+
+        GameObject arrowObj = new GameObject("ArrowContainer");
+        arrowObj.transform.position = spawnPos;
+
         if (arrowPrefab != null)
         {
-            arrowObj = Instantiate(arrowPrefab, spawnPos, Quaternion.identity);
+            GameObject visual = Instantiate(arrowPrefab, arrowObj.transform);
+            visual.transform.localPosition = Vector3.zero;
+            visual.transform.localRotation = Quaternion.Euler(0f, 90f, 0f); // Point X-axis arrow mesh (tip at -X) forward along container Z-axis
+            visual.transform.localScale = arrowPrefab.transform.localScale * (scale * 1.5f); // Scale arrow visuals to match 60x enlarged world
+            
+            // Destroy Animator on the visual to prevent it from overriding localRotation back to prefab default (-90 on X)
+            Animator anim = visual.GetComponent<Animator>();
+            if (anim != null) DestroyImmediate(anim);
+            
+            // Fix URP shader compatibility to prevent bright magenta rendering
+            Renderer[] rends = visual.GetComponentsInChildren<Renderer>(true);
+            foreach (var r in rends)
+            {
+                if (r.material != null)
+                {
+                    Shader urpShader = Shader.Find("Universal Render Pipeline/Simple Lit");
+                    if (urpShader == null) urpShader = Shader.Find("Universal Render Pipeline/Lit");
+                    if (urpShader == null) urpShader = Shader.Find("Standard");
+                    
+                    if (urpShader != null)
+                    {
+                        Texture mainTex = r.material.mainTexture;
+                        r.material.shader = urpShader;
+                        if (mainTex != null)
+                        {
+                            r.material.SetTexture("_BaseMap", mainTex);
+                            r.material.SetTexture("_MainTex", mainTex);
+                        }
+                    }
+                }
+            }
         }
         else
         {
-            // Container object for correct rotation alignment
-            arrowObj = new GameObject("FallbackArrow");
-            arrowObj.transform.position = spawnPos;
+            arrowObj.transform.localScale = new Vector3(scale, scale, scale);
 
             // Long, thin cylinder as the arrow body
             GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             visual.transform.SetParent(arrowObj.transform, false);
-            visual.transform.localScale = new Vector3(0.03f, 0.3f, 0.03f);
+            visual.transform.localScale = new Vector3(0.04f, 0.4f, 0.04f); // relative to container
             visual.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // Point Y-up cylinder forward along Z-axis
 
             Collider c = visual.GetComponent<Collider>();
@@ -844,7 +884,7 @@ public class Unit : MonoBehaviour
             arrow = arrowObj.AddComponent<ArrowProjectile>();
         }
 
-        arrow.Initialize(target, damage, speed, arcHeight);
+        arrow.Initialize(target, damage, speed, arcHeight, scale);
     }
 
 
