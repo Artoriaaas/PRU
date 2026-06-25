@@ -51,14 +51,17 @@ public class Unit : MonoBehaviour
         }
         else
         {
-            // Waiting stance outside the attack crowd: stand slightly outside the attack range
+            // Waiting stance outside the attack crowd: stand further outside the attack range to prevent clumping
             Vector3 dirFromTarget = (transform.position - _target.transform.position).normalized;
             dirFromTarget.y = 0;
             if (dirFromTarget == Vector3.zero)
             {
                 dirFromTarget = transform.forward;
             }
-            float waitDistance = attackRange * 1.4f;
+            
+            // Add slight randomness to wait distance so they don't stack
+            float randomOffset = Random.Range(0.2f, 1.0f);
+            float waitDistance = attackRange * 2.5f + randomOffset;
             targetPos = _target.transform.position + dirFromTarget * waitDistance;
         }
         return targetPos;
@@ -86,12 +89,12 @@ public class Unit : MonoBehaviour
     public Vector3 GetSlotWorldPosition(AttackSlot slot, Unit attacker = null)
     {
         CapsuleCollider col = GetComponent<CapsuleCollider>();
-        float radius = col != null ? col.radius * 2.2f : 12f;
+        float radius = col != null ? col.radius * 3.5f : 15f;
         
         Unit activeAttacker = attacker != null ? attacker : slot.reservedBy;
         if (activeAttacker != null)
         {
-            float maxAllowedRadius = activeAttacker.attackRange * 0.9f;
+            float maxAllowedRadius = activeAttacker.attackRange * 1.0f;
             if (radius > maxAllowedRadius)
             {
                 radius = maxAllowedRadius;
