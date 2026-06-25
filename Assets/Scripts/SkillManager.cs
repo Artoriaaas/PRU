@@ -86,6 +86,14 @@ public class SkillManager : MonoBehaviour
         }
     }
 
+    public void ToggleSkillPanel()
+    {
+        if (_skillPanelObj != null)
+        {
+            _skillPanelObj.SetActive(!_skillPanelObj.activeSelf);
+        }
+    }
+
     public bool TryUpgrade(string skillType, int targetLevel)
     {
         if (skillPoints <= 0) return false;
@@ -243,22 +251,52 @@ public class SkillManager : MonoBehaviour
 
         Font font = GetSafeFont();
 
+        // 0. Toggle Button
+        GameObject toggleBtnObj = new GameObject("ToggleSkillBtn");
+        toggleBtnObj.transform.SetParent(canvasObj.transform, false);
+        Image tBtnImg = toggleBtnObj.AddComponent<Image>();
+        tBtnImg.color = new Color(0.2f, 0.2f, 0.2f, 0.9f);
+        Button toggleBtn = toggleBtnObj.AddComponent<Button>();
+        toggleBtn.onClick.AddListener(ToggleSkillPanel);
+
+        GameObject tBtnTextObj = new GameObject("Text");
+        tBtnTextObj.transform.SetParent(toggleBtnObj.transform, false);
+        Text tBtnText = tBtnTextObj.AddComponent<Text>();
+        tBtnText.font = font;
+        tBtnText.text = "Kỹ Năng";
+        tBtnText.fontSize = 16;
+        tBtnText.color = Color.white;
+        tBtnText.alignment = TextAnchor.MiddleCenter;
+        tBtnText.rectTransform.sizeDelta = new Vector2(100, 40);
+
+        RectTransform rtToggleBtn = toggleBtnObj.GetComponent<RectTransform>();
+        rtToggleBtn.anchorMin = new Vector2(1, 1);
+        rtToggleBtn.anchorMax = new Vector2(1, 1);
+        rtToggleBtn.pivot = new Vector2(1, 1);
+        rtToggleBtn.anchoredPosition = new Vector2(-20, -20);
+        rtToggleBtn.sizeDelta = new Vector2(100, 40);
+
         // 1. Skill Panel Container (Height increased to fit 4 rows and points)
         _skillPanelObj = new GameObject("SkillPanel");
         _skillPanelObj.transform.SetParent(canvasObj.transform, false);
         Image bgImg = _skillPanelObj.AddComponent<Image>();
-        bgImg.color = new Color(0.12f, 0.08f, 0.08f, 0.95f); // Translucent dark theme
-
-        Outline outline = _skillPanelObj.AddComponent<Outline>();
-        outline.effectColor = new Color(0.85f, 0.65f, 0.15f); // Gold outline
-        outline.effectDistance = new Vector2(2f, 2f);
+        bgImg.color = Color.white; 
+        Sprite questPanelSprite = Resources.Load<Sprite>("QuestPanel");
+        if (questPanelSprite != null)
+        {
+            bgImg.sprite = questPanelSprite;
+        }
+        else
+        {
+            bgImg.color = new Color(0.12f, 0.08f, 0.08f, 0.95f); // Fallback
+        }
 
         RectTransform rtPanel = _skillPanelObj.GetComponent<RectTransform>();
         rtPanel.anchorMin = new Vector2(1, 1);
         rtPanel.anchorMax = new Vector2(1, 1);
         rtPanel.pivot = new Vector2(1, 1);
-        rtPanel.anchoredPosition = new Vector2(-20, -20);
-        rtPanel.sizeDelta = new Vector2(360, 270);
+        rtPanel.anchoredPosition = new Vector2(-20, -70);
+        rtPanel.sizeDelta = new Vector2(400, 300);
 
         // Title text
         GameObject titleObj = new GameObject("Title");

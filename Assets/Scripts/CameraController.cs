@@ -14,23 +14,37 @@ public class CameraController : MonoBehaviour
     public Vector3 enemyViewPos = new Vector3(-34.4f, 273.51f, 505.3f);
     public Vector3 enemyViewRot = new Vector3(25.5f, -180f, 0f);
 
-    [Header("Battle View (Side Scroller)")]
-    public Vector3 battleViewPos = new Vector3(-34.4f, 273.51f, 485.3f);
-    public Vector3 battleViewRot = new Vector3(25.5f, -180f, 0f);
+    [Header("Battle View (Cinematic RTS)")]
+    public Vector3 battleViewPos = new Vector3(-34.4f, 450f, 900f);
+    public Vector3 battleViewRot = new Vector3(38f, -180f, 0f);
 
-    [Header("Camera Settings")]
-    public bool useOrthographic = true;
+    [Header("Camera Settings (Setup Phase)")]
+    public bool useOrthographic = false;
     public float orthographicSize = 135f;
     public float fieldOfView = 50f;
     public float transitionSpeed = 4f;
 
-    [Header("Dynamic View Calculation Settings")]
+    [Header("Camera Settings (Battle Phase)")]
+    public float battleFieldOfView = 60f;
+
+    [Header("Dynamic View Calculation Settings (Setup Phase)")]
     public float baselineCameraHeight = 304.4f;
     public float baselineXOffsetFromLayout = 40f;
     public float baselineZOffsetToGrid = 280.895f;
     public float baselineRotationX = 48.9f;
 
+    [Header("Dynamic View Calculation Settings (Battle Phase)")]
+    [Tooltip("Height of battle camera above ground.")]
+    public float battleCameraHeight = 200f;
+    [Tooltip("X offset of battle camera from battlefield center.")]
+    public float battleXOffset = 0f;
+    [Tooltip("Z offset behind the midfield center — pulls camera back to reveal sky.")]
+    public float battleZOffset = 240f;
+    [Tooltip("Pitch angle: 35=more sky, 45=more ground. RTS sweet spot is 38-42.")]
+    public float battlePitchAngle = 40f;
+
     private CameraView currentView = CameraView.PlayerSetup;
+    private float _currentFOV;
     private Camera _cam;
 
     void Awake()
@@ -59,7 +73,9 @@ public class CameraController : MonoBehaviour
 
         playerViewRot = new Vector3(baselineRotationX, -180f, 0f);
         enemyViewRot = playerViewRot;
-        battleViewRot = playerViewRot; // Keep exact same angle as setup view, just sliding on X axis
+
+        // Battle view: dedicated cinematic angle — NOT the same as setup
+        battleViewRot = new Vector3(battlePitchAngle, -180f, 0f);
 
         GameObject layout = GameObject.Find("BattlefieldLayout");
         float layoutX = layout != null ? layout.transform.position.x : 0f;
@@ -83,27 +99,22 @@ public class CameraController : MonoBehaviour
             enemyViewPos = new Vector3(layoutX - 360f + xOffsetFromGridCenter, camHeight, layoutZ + zOffsetToGrid);
         }
 
-        if (layout != null)
-        {
-            // Center the battle view camera relative to BattlefieldLayout parent pivot (X = 0 local) with the same height and Z offset as setup views
-            battleViewPos = new Vector3(layout.transform.position.x + xOffsetFromGridCenter, camHeight, layout.transform.position.z + zOffsetToGrid);
-        }
-        else
-        {
-            battleViewPos = new Vector3(layoutX + xOffsetFromGridCenter, camHeight, layoutZ + zOffsetToGrid);
-        }
+        // Battle view: centered on the midpoint between both grids, pulled back further and higher
+        float midX = (playerGrid != null && enemyGrid != null)
+            ? (playerGrid.transform.position.x + enemyGrid.transform.position.x) * 0.5f
+            : layoutX;
+        float midZ = (playerGrid != null && enemyGrid != null)
+            ? (playerGrid.transform.position.z + enemyGrid.transform.position.z) * 0.5f
+            : layoutZ;
+
+        battleViewPos = new Vector3(midX + battleXOffset, battleCameraHeight, midZ + battleZOffset);
 
         if (_cam != null)
         {
-            _cam.orthographic = useOrthographic;
-            if (useOrthographic)
-            {
-                _cam.orthographicSize = orthographicSize;
-            }
-            else
-            {
-                _cam.fieldOfView = fieldOfView;
-            }
+            // Setup phase always uses the setup FOV (perspective)
+            _cam.orthographic = false;
+            _cam.fieldOfView = fieldOfView;
+            _currentFOV = fieldOfView;
         }
     }
 
@@ -156,15 +167,9 @@ public class CameraController : MonoBehaviour
         {
             _cam.transform.position = playerViewPos;
             _cam.transform.rotation = Quaternion.Euler(playerViewRot);
-            _cam.orthographic = useOrthographic;
-            if (useOrthographic)
-            {
-                _cam.orthographicSize = orthographicSize;
-            }
-            else
-            {
-                _cam.fieldOfView = fieldOfView;
-            }
+            _cam.orthographic = false;
+            _cam.fieldOfView = fieldOfView;
+            _currentFOV = fieldOfView;
         }
         else
         {
@@ -172,7 +177,7 @@ public class CameraController : MonoBehaviour
             transform.rotation = Quaternion.Euler(playerViewRot);
         }
 
-        Debug.Log($"CameraController: Forced camera to pos={playerViewPos}, rot={playerViewRot}, fov={fieldOfView}, orthographic={useOrthographic}, orthoSize={orthographicSize}");
+        Debug.Log($"CameraController: Forced camera to pos={playerViewPos}, rot={playerViewRot}, fov={fieldOfView}");
     }
 
     void LateUpdate()
@@ -182,32 +187,41 @@ public class CameraController : MonoBehaviour
 
         Vector3 targetPos = playerViewPos;
         Vector3 targetRot = playerViewRot;
+        float targetFOV = fieldOfView;
 
         switch (currentView)
         {
             case CameraView.PlayerSetup:
                 targetPos = playerViewPos;
                 targetRot = playerViewRot;
+                targetFOV = fieldOfView;
                 break;
             case CameraView.EnemySetup:
                 targetPos = enemyViewPos;
                 targetRot = enemyViewRot;
+                targetFOV = fieldOfView;
                 break;
             case CameraView.Battle:
                 targetPos = battleViewPos;
                 targetRot = battleViewRot;
+                targetFOV = battleFieldOfView;
                 break;
         }
 
+        float lerpT = Time.deltaTime * transitionSpeed;
+
         if (_cam != null)
         {
-            _cam.transform.position = Vector3.Lerp(_cam.transform.position, targetPos, Time.deltaTime * transitionSpeed);
-            _cam.transform.rotation = Quaternion.Slerp(_cam.transform.rotation, Quaternion.Euler(targetRot), Time.deltaTime * transitionSpeed);
+            _cam.transform.position = Vector3.Lerp(_cam.transform.position, targetPos, lerpT);
+            _cam.transform.rotation = Quaternion.Slerp(_cam.transform.rotation, Quaternion.Euler(targetRot), lerpT);
+            // Smoothly interpolate FOV for cinematic transition
+            _currentFOV = Mathf.Lerp(_currentFOV, targetFOV, lerpT);
+            _cam.fieldOfView = _currentFOV;
         }
         else
         {
-            transform.position = Vector3.Lerp(transform.position, targetPos, Time.deltaTime * transitionSpeed);
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(targetRot), Time.deltaTime * transitionSpeed);
+            transform.position = Vector3.Lerp(transform.position, targetPos, lerpT);
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(targetRot), lerpT);
         }
     }
 

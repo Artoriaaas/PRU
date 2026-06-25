@@ -273,20 +273,34 @@ public class PlacementController : MonoBehaviour
                 !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
             {
                 Ray ray = _cam.ScreenPointToRay(GetMouseScreenPos());
-                if (Physics.Raycast(ray, out RaycastHit hit, 1000f, Physics.AllLayers, QueryTriggerInteraction.Collide))
-                {
-                    Unit clickedUnit = hit.collider.GetComponentInParent<Unit>();
-                    if (clickedUnit != null && clickedUnit.isPlayer)
-                    {
-                        if (selectedCard != null)
-                        {
-                            selectedCard.SetSelected(false);
-                        }
+                RaycastHit[] hits = Physics.RaycastAll(ray, 1000f, Physics.AllLayers, QueryTriggerInteraction.Collide);
 
-                        _draggedUnit = clickedUnit;
-                        _draggedUnitOriginalPos = _draggedUnit.transform.position;
-                        Debug.Log("Started dragging unit: " + _draggedUnit.name);
+                Unit clickedUnit = null;
+                float closestDist = float.MaxValue;
+                foreach (var hit in hits)
+                {
+                    Unit u = hit.collider.GetComponentInParent<Unit>();
+                    if (u != null && u.isPlayer)
+                    {
+                        // Pick the closest unit hit
+                        if (hit.distance < closestDist)
+                        {
+                            closestDist = hit.distance;
+                            clickedUnit = u;
+                        }
                     }
+                }
+
+                if (clickedUnit != null)
+                {
+                    if (selectedCard != null)
+                    {
+                        selectedCard.SetSelected(false);
+                    }
+
+                    _draggedUnit = clickedUnit;
+                    _draggedUnitOriginalPos = _draggedUnit.transform.position;
+                    Debug.Log("Started dragging unit: " + _draggedUnit.name);
                 }
             }
         }

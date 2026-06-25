@@ -12,8 +12,8 @@ public class UIManager : MonoBehaviour
 
     [Header("Panel Settings")]
     public Sprite panelSprite;
-    public Vector2 panelSize = new Vector2(680f, 72f); // Default height is 1/3 of 218
-    public Vector2 panelPosition = new Vector2(0f, 10f);
+    public Vector2 panelSize = new Vector2(1920f, 300f); // Default height is 1/3 of 218
+    public Vector2 panelPosition = new Vector2(0f, 0f);
 
     [Header("Card Settings")]
     public Vector2 cardSize = new Vector2(80f, 100f);
@@ -34,6 +34,7 @@ public class UIManager : MonoBehaviour
     private Button _switchViewBtn;
     private Text _switchViewText;
     private Text _scoutingReportText;
+    private Button _togglePanelBtn;
 
     private void Reset()
     {
@@ -115,6 +116,20 @@ public class UIManager : MonoBehaviour
                     _startBtn.onClick.AddListener(() => {
                         GameManager.Instance.StartBattle();
                     });
+                    
+                    // Setup new visual for StartButton
+                    Image startImg = startBtnTrans.GetComponent<Image>();
+                    if (startImg != null) {
+                        Sprite startSprite = Resources.Load<Sprite>("StartBattle");
+                        if (startSprite != null) {
+                            startImg.sprite = startSprite;
+                            startImg.color = Color.white;
+                            startImg.preserveAspect = true;
+                            startBtnTrans.GetComponent<RectTransform>().sizeDelta = new Vector2(200f, 133f);
+                        }
+                    }
+                    Transform txtTrans = startBtnTrans.Find("Text");
+                    if (txtTrans != null) txtTrans.gameObject.SetActive(false);
                 }
                 
                 Transform switchBtnTrans = _canvasObj.transform.Find("SwitchViewButton");
@@ -126,6 +141,32 @@ public class UIManager : MonoBehaviour
                     _switchViewBtn.onClick.AddListener(() => {
                         ToggleView();
                     });
+                }
+                
+                Transform toggleBtnTrans = _canvasObj.transform.Find("TogglePanelButton");
+                if (toggleBtnTrans == null)
+                {
+                    Font arial = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    if (arial == null) arial = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                    if (arial == null) arial = Font.CreateDynamicFontFromOSFont("Arial", 24);
+                    CreateTogglePanelButton(_canvasObj.transform, arial);
+                }
+                else
+                {
+                    _togglePanelBtn = toggleBtnTrans.GetComponent<Button>();
+                    Text toggleText = toggleBtnTrans.Find("Text")?.GetComponent<Text>();
+                    if (_togglePanelBtn != null)
+                    {
+                        _togglePanelBtn.onClick.RemoveAllListeners();
+                        _togglePanelBtn.onClick.AddListener(() => {
+                            if (_bottomPanel != null)
+                            {
+                                bool isActive = !_bottomPanel.activeSelf;
+                                _bottomPanel.SetActive(isActive);
+                                if (toggleText != null) toggleText.text = isActive ? "Hide Panel" : "Show Panel";
+                            }
+                        });
+                    }
                 }
 
                 if (_canvasObj != null)
@@ -194,16 +235,17 @@ public class UIManager : MonoBehaviour
             if (rtPanel != null)
             {
                 rtPanel.anchoredPosition = panelPosition;
-                rtPanel.sizeDelta = panelSize;
+                rtPanel.sizeDelta = new Vector2(1920f, 300f); // Use full 1920x300 size
                 
                 Image pImg = _bottomPanel.GetComponent<Image>();
                 if (pImg != null)
                 {
-                    Sprite activeSprite = panelSprite != null ? panelSprite : Resources.Load<Sprite>("CardPanel");
+                    Sprite activeSprite = panelSprite != null ? panelSprite : Resources.Load<Sprite>("output");
                     if (activeSprite != null)
                     {
                         pImg.sprite = activeSprite;
                         pImg.color = Color.white;
+                        pImg.type = Image.Type.Sliced;
                     }
                     else
                     {
@@ -277,7 +319,11 @@ public class UIManager : MonoBehaviour
         _canvasObj = new GameObject("UICanvas");
         Canvas canvas = _canvasObj.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        _canvasObj.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        CanvasScaler scaler = _canvasObj.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight = 1f;
         _canvasObj.AddComponent<GraphicRaycaster>();
 
         Font arial = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -331,11 +377,12 @@ public class UIManager : MonoBehaviour
         _bottomPanel = new GameObject("BottomPanel");
         _bottomPanel.transform.SetParent(_canvasObj.transform, false);
         Image pImg = _bottomPanel.AddComponent<Image>();
-        Sprite activeSprite = panelSprite != null ? panelSprite : Resources.Load<Sprite>("CardPanel");
+        Sprite activeSprite = panelSprite != null ? panelSprite : Resources.Load<Sprite>("output");
         if (activeSprite != null)
         {
             pImg.sprite = activeSprite;
             pImg.color = Color.white;
+            pImg.type = Image.Type.Sliced;
         }
         else
         {
@@ -347,7 +394,7 @@ public class UIManager : MonoBehaviour
         rtPanel.anchorMax = new Vector2(0.5f, 0f);
         rtPanel.pivot = new Vector2(0.5f, 0f);
         rtPanel.anchoredPosition = panelPosition;
-        rtPanel.sizeDelta = panelSize;
+        rtPanel.sizeDelta = new Vector2(1920f, 300f); // Use full 1920x300 size
 
         // Unit Card
         GameObject cardObj = new GameObject("UnitCard");
@@ -386,7 +433,14 @@ public class UIManager : MonoBehaviour
         GameObject btnObj = new GameObject("StartButton");
         btnObj.transform.SetParent(_canvasObj.transform, false);
         Image btnImg = btnObj.AddComponent<Image>();
-        btnImg.color = new Color(0.2f, 0.8f, 0.2f);
+        Sprite startSprite = Resources.Load<Sprite>("StartBattle");
+        if (startSprite != null) {
+            btnImg.sprite = startSprite;
+            btnImg.color = Color.white;
+            btnImg.preserveAspect = true;
+        } else {
+            btnImg.color = new Color(0.2f, 0.8f, 0.2f);
+        }
         _startBtn = btnObj.AddComponent<Button>();
         
         GameObject btnTextObj = new GameObject("Text");
@@ -398,13 +452,15 @@ public class UIManager : MonoBehaviour
         btnText.color = Color.white;
         btnText.alignment = TextAnchor.MiddleCenter;
         btnText.rectTransform.sizeDelta = new Vector2(160, 50);
+        if (startSprite != null) btnTextObj.SetActive(false); // Hide text if we have the image
 
         RectTransform rtBtn = btnObj.GetComponent<RectTransform>();
         rtBtn.anchorMin = new Vector2(1, 0);
         rtBtn.anchorMax = new Vector2(1, 0);
         rtBtn.pivot = new Vector2(1, 0);
         rtBtn.anchoredPosition = new Vector2(-20, 20);
-        rtBtn.sizeDelta = new Vector2(160, 50);
+        if (startSprite != null) rtBtn.sizeDelta = new Vector2(200f, 133f);
+        else rtBtn.sizeDelta = new Vector2(160, 50);
 
         _startBtn.onClick.AddListener(() => {
             GameManager.Instance.StartBattle();
@@ -437,6 +493,9 @@ public class UIManager : MonoBehaviour
         _switchViewBtn.onClick.AddListener(() => {
             ToggleView();
         });
+
+        // Toggle Panel Button
+        CreateTogglePanelButton(_canvasObj.transform, arial);
 
         // Game Over Panel
         _gameOverPanel = new GameObject("GameOverPanel");
@@ -500,6 +559,41 @@ public class UIManager : MonoBehaviour
             ColliderVisualizer.ShowColliders = !ColliderVisualizer.ShowColliders;
             hbText.text = ColliderVisualizer.ShowColliders ? "Hitbox: ON" : "Hitbox: OFF";
             hbImg.color = ColliderVisualizer.ShowColliders ? new Color(0.1f, 0.5f, 0.1f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.9f);
+        });
+    }
+
+    private void CreateTogglePanelButton(Transform parent, Font font)
+    {
+        GameObject toggleBtnObj = new GameObject("TogglePanelButton");
+        toggleBtnObj.transform.SetParent(parent, false);
+        Image toggleImg = toggleBtnObj.AddComponent<Image>();
+        toggleImg.color = new Color(0.1f, 0.2f, 0.3f, 0.9f);
+        _togglePanelBtn = toggleBtnObj.AddComponent<Button>();
+        
+        GameObject toggleTextObj = new GameObject("Text");
+        toggleTextObj.transform.SetParent(toggleBtnObj.transform, false);
+        Text toggleText = toggleTextObj.AddComponent<Text>();
+        toggleText.font = font;
+        toggleText.text = "Hide Panel";
+        toggleText.fontSize = 20;
+        toggleText.color = Color.white;
+        toggleText.alignment = TextAnchor.MiddleCenter;
+        toggleText.rectTransform.sizeDelta = new Vector2(160, 40);
+
+        RectTransform rtToggle = toggleBtnObj.GetComponent<RectTransform>();
+        rtToggle.anchorMin = new Vector2(0.5f, 0); // Bottom center
+        rtToggle.anchorMax = new Vector2(0.5f, 0);
+        rtToggle.pivot = new Vector2(0.5f, 0);
+        rtToggle.anchoredPosition = new Vector2(0, 320); // Just above the 300px panel
+        rtToggle.sizeDelta = new Vector2(160, 40);
+
+        _togglePanelBtn.onClick.AddListener(() => {
+            if (_bottomPanel != null)
+            {
+                bool isActive = !_bottomPanel.activeSelf;
+                _bottomPanel.SetActive(isActive);
+                toggleText.text = isActive ? "Hide Panel" : "Show Panel";
+            }
         });
     }
 
@@ -665,6 +759,11 @@ public class UIManager : MonoBehaviour
                 }
             }
         }
+        
+        if (_togglePanelBtn != null)
+        {
+            _togglePanelBtn.gameObject.SetActive(isPlayer);
+        }
     }
 
     public void HidePlacementUI()
@@ -674,6 +773,7 @@ public class UIManager : MonoBehaviour
         if (_placementHint != null) _placementHint.gameObject.SetActive(false);
         if (_bottomPanel != null) _bottomPanel.SetActive(false);
         if (_switchViewBtn != null) _switchViewBtn.gameObject.SetActive(false);
+        if (_togglePanelBtn != null) _togglePanelBtn.gameObject.SetActive(false);
         if (_scoutingReportText != null) _scoutingReportText.gameObject.SetActive(false);
         
         GameObject skillPanel = GameObject.Find("UICanvas/SkillPanel");
