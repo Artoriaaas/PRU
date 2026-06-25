@@ -35,6 +35,13 @@ public class GameManager : MonoBehaviour
 
         // Force forceCapsuleForTesting to false to override Unity Inspector's serialized value
         forceCapsuleForTesting = false;
+
+#if UNITY_EDITOR
+        if (arrowPrefab == null)
+        {
+            arrowPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Cartoon_Weapon_Pack/Prefab/Arrow.prefab");
+        }
+#endif
     }
 
     void Start()
@@ -162,6 +169,10 @@ public class GameManager : MonoBehaviour
     public Texture2D archerBaseColorTexture;
     [Tooltip("Assign your Animator Controller for the Archer here.")]
     public RuntimeAnimatorController archerAnimatorController;
+    [Tooltip("Drag your Arrow prefab here. If left empty, it will auto-load from Assets/Cartoon_Weapon_Pack/Prefab/Arrow.prefab in Editor.")]
+    public GameObject arrowPrefab;
+    public float arrowSpeed = 25f;
+    public float arrowArcHeight = 2.5f;
 
     [Header("Unit Templates")]
     [Tooltip("Drag the Unit GameObject from the scene or a prefab here to use as a template for player stats.")]

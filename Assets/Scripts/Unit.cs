@@ -762,14 +762,91 @@ public class Unit : MonoBehaviour
     {
         if (Time.time - _lastAttackTime >= attackCooldown)
         {
-            _target.TakeDamage(atk);
             _lastAttackTime = Time.time;
             if (_animator != null)
             {
                 _animator.SetTrigger("Attack");
             }
+
+            if (unitTypeIndex == 1) // Archer
+            {
+                float animSpeed = _animator != null ? _animator.speed : 1f;
+                float delay = 0.4f / Mathf.Max(0.1f, animSpeed);
+                StartCoroutine(SpawnArrowAfterDelay(delay, _target, atk));
+            }
+            else // Melee
+            {
+                if (_target != null && _target.state != UnitState.Dead)
+                {
+                    _target.TakeDamage(atk);
+                }
+            }
         }
     }
+
+    private IEnumerator SpawnArrowAfterDelay(float delay, Unit target, float damage)
+    {
+        yield return new WaitForSeconds(delay);
+
+        if (target == null && _target != null)
+        {
+            target = _target;
+        }
+
+        Vector3 spawnPos = transform.position + Vector3.up * 1.5f;
+        if (_leftHand != null)
+        {
+            spawnPos = _leftHand.position;
+        }
+
+        GameObject arrowPrefab = null;
+        float speed = 25f;
+        float arcHeight = 2.5f;
+
+        if (GameManager.Instance != null)
+        {
+            arrowPrefab = GameManager.Instance.arrowPrefab;
+            speed = GameManager.Instance.arrowSpeed;
+            arcHeight = GameManager.Instance.arrowArcHeight;
+        }
+
+        GameObject arrowObj;
+        if (arrowPrefab != null)
+        {
+            arrowObj = Instantiate(arrowPrefab, spawnPos, Quaternion.identity);
+        }
+        else
+        {
+            // Container object for correct rotation alignment
+            arrowObj = new GameObject("FallbackArrow");
+            arrowObj.transform.position = spawnPos;
+
+            // Long, thin cylinder as the arrow body
+            GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            visual.transform.SetParent(arrowObj.transform, false);
+            visual.transform.localScale = new Vector3(0.03f, 0.3f, 0.03f);
+            visual.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // Point Y-up cylinder forward along Z-axis
+
+            Collider c = visual.GetComponent<Collider>();
+            if (c != null) Destroy(c);
+
+            Renderer rend = visual.GetComponent<Renderer>();
+            if (rend != null)
+            {
+                rend.material = new Material(Shader.Find("Sprites/Default"));
+                rend.material.color = Color.white;
+            }
+        }
+
+        ArrowProjectile arrow = arrowObj.GetComponent<ArrowProjectile>();
+        if (arrow == null)
+        {
+            arrow = arrowObj.AddComponent<ArrowProjectile>();
+        }
+
+        arrow.Initialize(target, damage, speed, arcHeight);
+    }
+
 
     public void TakeDamage(float damage)
     {
