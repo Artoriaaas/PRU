@@ -34,6 +34,7 @@ public class UIManager : MonoBehaviour
     private Button _switchViewBtn;
     private Text _switchViewText;
     private Text _scoutingReportText;
+    private Button _togglePanelBtn;
 
     private void Reset()
     {
@@ -140,6 +141,32 @@ public class UIManager : MonoBehaviour
                     _switchViewBtn.onClick.AddListener(() => {
                         ToggleView();
                     });
+                }
+                
+                Transform toggleBtnTrans = _canvasObj.transform.Find("TogglePanelButton");
+                if (toggleBtnTrans == null)
+                {
+                    Font arial = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    if (arial == null) arial = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                    if (arial == null) arial = Font.CreateDynamicFontFromOSFont("Arial", 24);
+                    CreateTogglePanelButton(_canvasObj.transform, arial);
+                }
+                else
+                {
+                    _togglePanelBtn = toggleBtnTrans.GetComponent<Button>();
+                    Text toggleText = toggleBtnTrans.Find("Text")?.GetComponent<Text>();
+                    if (_togglePanelBtn != null)
+                    {
+                        _togglePanelBtn.onClick.RemoveAllListeners();
+                        _togglePanelBtn.onClick.AddListener(() => {
+                            if (_bottomPanel != null)
+                            {
+                                bool isActive = !_bottomPanel.activeSelf;
+                                _bottomPanel.SetActive(isActive);
+                                if (toggleText != null) toggleText.text = isActive ? "Hide Panel" : "Show Panel";
+                            }
+                        });
+                    }
                 }
 
                 if (_canvasObj != null)
@@ -467,6 +494,9 @@ public class UIManager : MonoBehaviour
             ToggleView();
         });
 
+        // Toggle Panel Button
+        CreateTogglePanelButton(_canvasObj.transform, arial);
+
         // Game Over Panel
         _gameOverPanel = new GameObject("GameOverPanel");
         _gameOverPanel.transform.SetParent(_canvasObj.transform, false);
@@ -529,6 +559,41 @@ public class UIManager : MonoBehaviour
             ColliderVisualizer.ShowColliders = !ColliderVisualizer.ShowColliders;
             hbText.text = ColliderVisualizer.ShowColliders ? "Hitbox: ON" : "Hitbox: OFF";
             hbImg.color = ColliderVisualizer.ShowColliders ? new Color(0.1f, 0.5f, 0.1f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.9f);
+        });
+    }
+
+    private void CreateTogglePanelButton(Transform parent, Font font)
+    {
+        GameObject toggleBtnObj = new GameObject("TogglePanelButton");
+        toggleBtnObj.transform.SetParent(parent, false);
+        Image toggleImg = toggleBtnObj.AddComponent<Image>();
+        toggleImg.color = new Color(0.1f, 0.2f, 0.3f, 0.9f);
+        _togglePanelBtn = toggleBtnObj.AddComponent<Button>();
+        
+        GameObject toggleTextObj = new GameObject("Text");
+        toggleTextObj.transform.SetParent(toggleBtnObj.transform, false);
+        Text toggleText = toggleTextObj.AddComponent<Text>();
+        toggleText.font = font;
+        toggleText.text = "Hide Panel";
+        toggleText.fontSize = 20;
+        toggleText.color = Color.white;
+        toggleText.alignment = TextAnchor.MiddleCenter;
+        toggleText.rectTransform.sizeDelta = new Vector2(160, 40);
+
+        RectTransform rtToggle = toggleBtnObj.GetComponent<RectTransform>();
+        rtToggle.anchorMin = new Vector2(0.5f, 0); // Bottom center
+        rtToggle.anchorMax = new Vector2(0.5f, 0);
+        rtToggle.pivot = new Vector2(0.5f, 0);
+        rtToggle.anchoredPosition = new Vector2(0, 320); // Just above the 300px panel
+        rtToggle.sizeDelta = new Vector2(160, 40);
+
+        _togglePanelBtn.onClick.AddListener(() => {
+            if (_bottomPanel != null)
+            {
+                bool isActive = !_bottomPanel.activeSelf;
+                _bottomPanel.SetActive(isActive);
+                toggleText.text = isActive ? "Hide Panel" : "Show Panel";
+            }
         });
     }
 
@@ -694,6 +759,11 @@ public class UIManager : MonoBehaviour
                 }
             }
         }
+        
+        if (_togglePanelBtn != null)
+        {
+            _togglePanelBtn.gameObject.SetActive(isPlayer);
+        }
     }
 
     public void HidePlacementUI()
@@ -703,6 +773,7 @@ public class UIManager : MonoBehaviour
         if (_placementHint != null) _placementHint.gameObject.SetActive(false);
         if (_bottomPanel != null) _bottomPanel.SetActive(false);
         if (_switchViewBtn != null) _switchViewBtn.gameObject.SetActive(false);
+        if (_togglePanelBtn != null) _togglePanelBtn.gameObject.SetActive(false);
         if (_scoutingReportText != null) _scoutingReportText.gameObject.SetActive(false);
         
         GameObject skillPanel = GameObject.Find("UICanvas/SkillPanel");

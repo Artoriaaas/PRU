@@ -56,6 +56,41 @@ public class RVOSimulatorManager : MonoBehaviour
         _simulator.SetTimeStep(Time.fixedDeltaTime);
         _simulator.SetNumWorkers(0); // auto-detect threads
 
+        // Add Environment Obstacles
+        GameObject envRoot = GameObject.Find("Environment_Models");
+        if (envRoot != null)
+        {
+            BoxCollider[] rockColliders = envRoot.GetComponentsInChildren<BoxCollider>();
+            foreach (var col in rockColliders)
+            {
+                Vector3 extents = col.size * 0.5f;
+
+                // Create the 4 corners of the bounding box on the XZ plane in local space
+                Vector3 p1Local = col.center + new Vector3(-extents.x, 0, -extents.z);
+                Vector3 p2Local = col.center + new Vector3(extents.x, 0, -extents.z);
+                Vector3 p3Local = col.center + new Vector3(extents.x, 0, extents.z);
+                Vector3 p4Local = col.center + new Vector3(-extents.x, 0, extents.z);
+
+                // Transform to world space
+                Vector3 p1 = col.transform.TransformPoint(p1Local);
+                Vector3 p2 = col.transform.TransformPoint(p2Local);
+                Vector3 p3 = col.transform.TransformPoint(p3Local);
+                Vector3 p4 = col.transform.TransformPoint(p4Local);
+
+                // RVO obstacles must be counter-clockwise
+                IList<float2> obstacleVertices = new List<float2>
+                {
+                    new float2(p1.x, p1.z),
+                    new float2(p2.x, p2.z),
+                    new float2(p3.x, p3.z),
+                    new float2(p4.x, p4.z)
+                };
+
+                _simulator.AddObstacle(obstacleVertices);
+            }
+            Debug.Log($"[RVO Manager] Added {rockColliders.Length} environment obstacles.");
+        }
+
         foreach (var unit in players)
         {
             AddUnitAgent(unit);
