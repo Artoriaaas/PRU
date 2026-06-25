@@ -1117,7 +1117,7 @@ MonoBehaviour:
   autoAlignBottom: 1
   unitBaseColorTexture: {fileID: 0}
   archerModelPrefab: {fileID: 0}
-  archerRotationOffset: {x: 0, y: 90, z: 0}
+  archerRotationOffset: {x: 0, y: 0, z: 0}
   archerPositionOffset: {x: 0, y: 0, z: 0}
   archerScale: 60
   archerBaseColorTexture: {fileID: 0}
@@ -8035,7 +8035,7 @@ MonoBehaviour:
   autoAlignBottom: 1
   unitBaseColorTexture: {fileID: 0}
   archerModelPrefab: {fileID: 0}
-  archerRotationOffset: {x: 0, y: 90, z: 0}
+  archerRotationOffset: {x: 0, y: 0, z: 0}
   archerPositionOffset: {x: 0, y: 0, z: 0}
   archerScale: 60
   archerBaseColorTexture: {fileID: 0}
