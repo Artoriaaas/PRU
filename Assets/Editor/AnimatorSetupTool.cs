@@ -40,17 +40,25 @@ public class AnimatorSetupTool
         AnimatorController archerController = SetupController(archerControllerPath, true);
 
         // Assign to GameManager in the current active scene
-        GameManager manager = Object.FindAnyObjectByType<GameManager>();
-        if (manager != null)
+        GameManager[] managers = Object.FindObjectsByType<GameManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        if (managers.Length > 0)
         {
-            Undo.RecordObject(manager, "Assign Animator Controllers");
-            manager.unitAnimatorController = infantryController;
-            manager.archerAnimatorController = archerController;
-            manager.unitModelPrefab = null;
-            manager.unitBaseColorTexture = null;
-            EditorUtility.SetDirty(manager);
-            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(manager.gameObject.scene);
-            Debug.Log("Assigned Animator Controllers to GameManager in scene and cleared legacy model/texture references!");
+            foreach (GameManager manager in managers)
+            {
+                Undo.RecordObject(manager, "Assign Animator Controllers");
+                manager.unitAnimatorController = infantryController;
+                manager.archerAnimatorController = archerController;
+                manager.archerModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
+                manager.archerScale = 60f;
+                manager.archerRotationOffset = Vector3.zero;
+                manager.forceCapsuleForTesting = false;
+                manager.unitModelPrefab = null;
+                manager.unitBaseColorTexture = null;
+                EditorUtility.SetDirty(manager);
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(manager.gameObject.scene);
+            }
+
+            Debug.Log("Assigned Animator Controllers and archer model settings to all GameManagers in scene!");
         }
         else
         {
@@ -87,10 +95,12 @@ public class AnimatorSetupTool
         if (isArcher)
         {
             AssignArcherClipsToStates(idleState, runState, attackState, dieState);
+            attackState.speed = 1.5f; // Played at 1.5x speed matches natural bow draw and release (~2.88s duration)
         }
         else
         {
             AssignClipsToStates(idleState, runState, attackState, dieState);
+            attackState.speed = 1.0f;
         }
 
         AddTransitionIfNotExists(idleState, runState, new AnimatorCondition[] {
@@ -136,7 +146,8 @@ public class AnimatorSetupTool
             
             // Only look inside the Assets/Models/NewModel folder
             if (!path.Replace('\\', '/').Contains("Assets/Models/NewModel")) continue;
-            // Exclude archer file from infantry setup!
+            // Exclude archer files from infantry setup.
+            if (path.Replace('\\', '/').Contains("Model_cung_quan_ta")) continue;
             if (path.Replace('\\', '/').Contains("animation_cung_quan_ta")) continue;
 
             Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
@@ -186,92 +197,94 @@ public class AnimatorSetupTool
     private static void AssignArcherClipsToStates(AnimatorState idleState, AnimatorState runState, AnimatorState attackState, AnimatorState dieState)
     {
         Debug.Log("--- START ASSIGNING ARCHER CLIPS ---");
-        string archerPath = "Assets/Models/NewModel/animation_cung_quan_ta.fbx";
-        ModelImporter importer = AssetImporter.GetAtPath(archerPath) as ModelImporter;
+        idleState.motion = null;
+        runState.motion = null;
+        attackState.motion = null;
+        dieState.motion = null;
+
+        const string archerFolder = "Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta";
+
+        idleState.motion = LoadArcherClip(archerFolder + "/model_quan_cung@Standing Idle.fbx", "Standing Idle", true);
+        runState.motion = LoadArcherClip(archerFolder + "/model_quan_cung@Standing Run Forward.fbx", "Standing Run Forward", true);
+        attackState.motion = LoadArcherClip(archerFolder + "/animation_ban_cung_quan_ta.fbx", "Armature.001|animation_ban_cung", false, 130, 260, true);
+        dieState.motion = LoadArcherClip(archerFolder + "/Standing Death Forward.fbx", "mixamo.com", false);
+
+        Debug.Log("--- END ASSIGNING ARCHER CLIPS ---");
+    }
+
+    private static AnimationClip LoadArcherClip(string path, string clipName, bool loop, float firstFrame = 0, float lastFrame = 0, bool crop = false)
+    {
+        ModelImporter importer = AssetImporter.GetAtPath(path) as ModelImporter;
         if (importer != null)
         {
-            if (importer.animationType != ModelImporterAnimationType.Generic)
+            bool needReimport = false;
+            if (importer.animationType != ModelImporterAnimationType.Human)
             {
-                importer.animationType = ModelImporterAnimationType.Generic;
+                importer.animationType = ModelImporterAnimationType.Human;
+                importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
+                needReimport = true;
+            }
+
+            ModelImporterClipAnimation[] clips = importer.clipAnimations;
+            if (clips == null || clips.Length == 0)
+            {
+                clips = importer.defaultClipAnimations;
+            }
+
+            if (clips != null && clips.Length > 0)
+            {
+                bool clipModified = false;
+                foreach (var clip in clips)
+                {
+                    if (clip.name == clipName)
+                    {
+                        if (clip.loopTime != loop)
+                        {
+                            clip.loopTime = loop;
+                            clipModified = true;
+                        }
+                        if (crop)
+                        {
+                            if (clip.firstFrame != firstFrame || clip.lastFrame != lastFrame)
+                            {
+                                clip.firstFrame = firstFrame;
+                                clip.lastFrame = lastFrame;
+                                clipModified = true;
+                            }
+                        }
+                    }
+                }
+
+                if (clipModified)
+                {
+                    importer.clipAnimations = clips;
+                    needReimport = true;
+                }
+            }
+
+            if (needReimport)
+            {
                 importer.SaveAndReimport();
-                Debug.Log("Changed Archer FBX to Generic Rig type to expose animations.");
-            }
-            
-            Object[] assets = AssetDatabase.LoadAllAssetsAtPath(archerPath);
-            
-            idleState.motion = null;
-            runState.motion = null;
-            attackState.motion = null;
-            dieState.motion = null;
-
-            // 1. Exact match by name
-            foreach (Object asset in assets)
-            {
-                AnimationClip clip = asset as AnimationClip;
-                if (clip == null) continue;
-                if (clip.name.StartsWith("__preview__")) continue;
-
-                string clipName = clip.name;
-                
-                if (clipName == "Armature.001|mixamo.com" && idleState.motion == null)
-                {
-                    idleState.motion = clip;
-                    EnableLoopTime(clip);
-                    Debug.Log(">> Assigned Archer Idle: " + clipName);
-                }
-                else if (clipName == "Armature.001|Armature|mixamo.com.002" && runState.motion == null)
-                {
-                    runState.motion = clip;
-                    EnableLoopTime(clip);
-                    Debug.Log(">> Assigned Archer Run: " + clipName);
-                }
-                else if (clipName == "Armature.001|Armature|mixamo.com" && attackState.motion == null)
-                {
-                    attackState.motion = clip;
-                    Debug.Log(">> Assigned Archer Attack: " + clipName);
-                }
-                else if (clipName == "Armature.001|mixamo.com.001" && dieState.motion == null)
-                {
-                    dieState.motion = clip;
-                    Debug.Log(">> Assigned Archer Die: " + clipName);
-                }
-            }
-
-            // 2. Fallback match by length (tolerable range)
-            foreach (Object asset in assets)
-            {
-                AnimationClip clip = asset as AnimationClip;
-                if (clip == null) continue;
-                if (clip.name.StartsWith("__preview__")) continue;
-
-                string clipName = clip.name;
-                float len = clip.length;
-
-                if (idleState.motion == null && Mathf.Abs(len - 5.0f) < 0.1f)
-                {
-                    idleState.motion = clip;
-                    EnableLoopTime(clip);
-                    Debug.Log(">> Fallback Archer Idle: " + clipName + " (len: " + len + ")");
-                }
-                else if (runState.motion == null && Mathf.Abs(len - 0.9f) < 0.05f)
-                {
-                    runState.motion = clip;
-                    EnableLoopTime(clip);
-                    Debug.Log(">> Fallback Archer Run: " + clipName + " (len: " + len + ")");
-                }
-                else if (attackState.motion == null && Mathf.Abs(len - 1.9f) < 0.05f)
-                {
-                    attackState.motion = clip;
-                    Debug.Log(">> Fallback Archer Attack: " + clipName + " (len: " + len + ")");
-                }
-                else if (dieState.motion == null && Mathf.Abs(len - 2.35f) < 0.05f)
-                {
-                    dieState.motion = clip;
-                    Debug.Log(">> Fallback Archer Die: " + clipName + " (len: " + len + ")");
-                }
             }
         }
-        Debug.Log("--- END ASSIGNING ARCHER CLIPS ---");
+
+        foreach (Object asset in AssetDatabase.LoadAllAssetsAtPath(path))
+        {
+            AnimationClip clip = asset as AnimationClip;
+            if (clip == null || clip.name.StartsWith("__preview__")) continue;
+            if (clip.name == clipName)
+            {
+                if (loop)
+                {
+                    EnableLoopTime(clip);
+                }
+                Debug.Log(">> Assigned Archer Clip: " + clip.name + " (" + path + ")");
+                return clip;
+            }
+        }
+
+        Debug.LogWarning("Could not find Archer clip '" + clipName + "' in " + path);
+        return null;
     }
 
     private static void EnableLoopTime(AnimationClip clip)
@@ -301,6 +314,7 @@ public class AnimatorSetupTool
             string path = AssetDatabase.GUIDToAssetPath(guid);
             if (!path.Contains("Assets/Models") && !path.Contains("Assets/Art")) continue;
             if (!path.ToLower().EndsWith(".fbx")) continue;
+            if (path.Replace('\\', '/').Contains("Model_cung_quan_ta")) continue;
             if (path.Contains("animation_cung_quan_ta")) continue;
             
             Debug.Log($"[Rig Check] Found FBX: {path}");
@@ -444,13 +458,18 @@ public class AnimatorSetupTool
                         }
                     }
                 }
-                if (match) return;
+                if (match)
+                {
+                    t.canTransitionToSelf = false;
+                    return;
+                }
             }
         }
 
         AnimatorStateTransition transition = stateMachine.AddAnyStateTransition(toState);
         transition.hasExitTime = false;
         transition.duration = 0.2f;
+        transition.canTransitionToSelf = false;
 
         if (conditions != null)
         {

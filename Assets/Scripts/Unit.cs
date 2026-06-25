@@ -20,6 +20,15 @@ public class Unit : MonoBehaviour
     [Header("Animation Tuning")]
     public float animSpeedMultiplier = 1f;
 
+    [Header("Archer Bow Settings")]
+    public Vector3 bowRotOffsetIdle = new Vector3(344.91f, 87.90f, 338.19f);
+    public Vector3 bowRotOffsetAttack = new Vector3(15.99f, 176.52f, 5.77f);
+    
+    private Transform _bowArmature;
+    private Transform _leftHand;
+    private Transform _graphicsTransform;
+    private Quaternion _initialGraphicsRotation = Quaternion.identity;
+
     public UnitState state = UnitState.Idle;
 
     private float _lastAttackTime;
@@ -184,6 +193,20 @@ public class Unit : MonoBehaviour
             _baseColliderRadius = _myCollider.radius;
         }
         InitializeSlots();
+
+        // Cache the graphics model transform for archer alignment
+        if (unitTypeIndex == 1)
+        {
+            foreach (Transform child in transform)
+            {
+                if (child.name.Contains("cung") || child.name.Contains("Model"))
+                {
+                    _graphicsTransform = child;
+                    _initialGraphicsRotation = child.localRotation;
+                    break;
+                }
+            }
+        }
     }
 
     void Update()
@@ -644,6 +667,91 @@ public class Unit : MonoBehaviour
             float clampedX = Mathf.Clamp(transform.position.x, minX, maxX);
             float clampedZ = Mathf.Clamp(transform.position.z, minZ, maxZ);
             transform.position = new Vector3(clampedX, transform.position.y, clampedZ);
+        }
+
+        // Align archer bow dynamically based on combat state
+        if (unitTypeIndex == 1)
+        {
+            UpdateGraphicsRotation();
+            UpdateBowAlignment();
+        }
+    }
+
+    private void UpdateGraphicsRotation()
+    {
+        if (_graphicsTransform == null)
+        {
+            foreach (Transform child in transform)
+            {
+                if (child.name.Contains("cung") || child.name.Contains("Model"))
+                {
+                    _graphicsTransform = child;
+                    _initialGraphicsRotation = child.localRotation;
+                    break;
+                }
+            }
+        }
+
+        if (_graphicsTransform == null) return;
+        
+        Quaternion targetLocalRot;
+        if (state == UnitState.Attacking)
+        {
+            // Rotate by 90 degrees on Y axis to align the animation's sideways shooting with the target forward direction
+            targetLocalRot = _initialGraphicsRotation * Quaternion.Euler(0f, 90f, 0f);
+        }
+        else
+        {
+            targetLocalRot = _initialGraphicsRotation;
+        }
+        
+        _graphicsTransform.localRotation = Quaternion.Slerp(_graphicsTransform.localRotation, targetLocalRot, Time.deltaTime * 10f);
+    }
+
+    private void UpdateBowAlignment()
+    {
+        Debug.Log($"[BowDebug] UpdateBowAlignment running on {name}. state={state}, target={(_target != null ? _target.name : "null")}, offsetIdle={bowRotOffsetIdle}");
+        if (_leftHand == null)
+        {
+            Transform[] childTransforms = GetComponentsInChildren<Transform>(true);
+            foreach (var t in childTransforms)
+            {
+                if (t.name == "mixamorig:LeftHand")
+                {
+                    _leftHand = t;
+                    break;
+                }
+            }
+        }
+        
+        if (_leftHand != null && _bowArmature == null)
+        {
+            _bowArmature = _leftHand.Find("Armature");
+        }
+        
+        if (_bowArmature != null)
+        {
+            if (state == UnitState.Attacking && _target != null)
+            {
+                Vector3 targetDirection = (_target.transform.position - transform.position).normalized;
+                targetDirection.y = 0;
+                if (targetDirection == Vector3.zero) targetDirection = transform.forward;
+
+                // Align bow's upward axis (local +Z) with Vector3.up
+                // and bow's shooting axis (local -X) with targetDirection (so local +X points to -targetDirection)
+                Vector3 localY = Vector3.Cross(targetDirection, Vector3.up).normalized;
+                _bowArmature.rotation = Quaternion.LookRotation(Vector3.up, localY);
+            }
+            else
+            {
+                Vector3 eulerAngles = bowRotOffsetIdle;
+                _bowArmature.localRotation = Quaternion.Euler(eulerAngles);
+            }
+            
+            Transform bowBone = _bowArmature.Find("Bone");
+            Vector3 boneLocalPos = bowBone != null ? bowBone.localPosition : Vector3.zero;
+            _bowArmature.localPosition = -(_bowArmature.localRotation * boneLocalPos);
+            _bowArmature.localScale = Vector3.one;
         }
     }
 

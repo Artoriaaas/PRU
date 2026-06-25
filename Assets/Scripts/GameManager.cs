@@ -155,7 +155,7 @@ public class GameManager : MonoBehaviour
     [Header("Archer Model Settings")]
     [Tooltip("Drag your Archer FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/animation_cung_quan_ta.fbx in Editor.")]
     public GameObject archerModelPrefab;
-    public Vector3 archerRotationOffset = new Vector3(0f, 90f, 0f); // default to 90 for animation_cung_quan_ta to face forward
+    public Vector3 archerRotationOffset = new Vector3(0f, 0f, 0f); // default to 0 for animation_ban_cung_quan_ta to face forward
     public Vector3 archerPositionOffset = new Vector3(0f, 0f, 0f);
     public float archerScale = 60.0f;
     [Tooltip("Drag the texture JPEG/PNG for Archer here. If left empty, it will auto-detect from .fbm folders in Editor.")]
@@ -228,22 +228,22 @@ public class GameManager : MonoBehaviour
             {
                 if (unitTypeIndex == 0)
                 {
-                    loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta-20260616T082614Z-3-001/Model quân ta/Model_quan_ta.fbx");
+                    loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_quan_ta.fbx");
                 }
                 else if (unitTypeIndex == 1)
                 {
-                    loadedModel = archerModelPrefab != null ? archerModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/animation_cung_quan_ta.fbx");
+                    loadedModel = archerModelPrefab != null ? archerModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
                 }
             }
             else
             {
                 if (unitTypeIndex == 0)
                 {
-                    loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch-20260616T082614Z-3-001/Model quân địch/Trang_thai_cho_quan_dich.fbx");
+                    loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/Trang_thai_cho_quan_dich.fbx");
                 }
                 else if (unitTypeIndex == 1)
                 {
-                    loadedModel = archerModelPrefab != null ? archerModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/animation_cung_quan_ta.fbx");
+                    loadedModel = archerModelPrefab != null ? archerModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
                 }
             }
         }
@@ -301,6 +301,52 @@ public class GameManager : MonoBehaviour
                 animator.Update(0f);
             }
 
+            if (unitTypeIndex == 1)
+            {
+                Transform bowArmature = null;
+                Transform bowBone = null;
+                Transform leftHand = null;
+                Transform[] childTransforms = graphics.GetComponentsInChildren<Transform>(true);
+                foreach (var t in childTransforms)
+                {
+                    if (t.name == "Armature")
+                    {
+                        bowArmature = t;
+                    }
+                    else if (t.name == "mixamorig:LeftHand")
+                    {
+                        leftHand = t;
+                    }
+                }
+                
+                if (bowArmature != null)
+                {
+                    foreach (Transform child in bowArmature)
+                    {
+                        if (child.name == "Bone")
+                        {
+                            bowBone = child;
+                            break;
+                        }
+                    }
+                }
+                
+                if (bowArmature != null && leftHand != null)
+                {
+                    bowArmature.SetParent(leftHand, false);
+                    Quaternion targetRot = Quaternion.Euler(333.1258f, 345.7652f, 5.40046f) * Quaternion.Euler(0f, 180f, 0f);
+                    bowArmature.localRotation = targetRot;
+                    
+                    Vector3 boneLocalPos = Vector3.zero;
+                    if (bowBone != null)
+                    {
+                        boneLocalPos = bowBone.localPosition;
+                    }
+                    bowArmature.localPosition = -(targetRot * boneLocalPos);
+                    bowArmature.localScale = Vector3.one;
+                }
+            }
+
             // Setup textures dynamically to fix white character model issue
             Texture2D textureToApply = null;
 #if UNITY_EDITOR
@@ -312,11 +358,11 @@ public class GameManager : MonoBehaviour
             }
             else if (isPlayer)
             {
-                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta-20260616T082614Z-3-001/Model quân ta/model_quan_ta/tripo_convert_74080320-2742-4915-ab54-fe52dd1aaaa6.fbm/model_quan_ta_basecolor.JPEG");
+                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta/model_quan_ta/tripo_convert_74080320-2742-4915-ab54-fe52dd1aaaa6.fbm/model_quan_ta_basecolor.JPEG");
             }
             else
             {
-                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân địch-20260616T082614Z-3-001/Model quân địch/medieval+knight+3d+model/tripo_convert_0e217662-40c2-483b-9f6e-5f6498668c72.fbm/medieval_knight_3d_model_basecolor.JPEG");
+                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân địch/medieval+knight+3d+model/tripo_convert_0e217662-40c2-483b-9f6e-5f6498668c72.fbm/medieval_knight_3d_model_basecolor.JPEG");
             }
 #endif
             if (textureToApply == null && unitTypeIndex != 1)
@@ -532,14 +578,16 @@ public class GameManager : MonoBehaviour
             float scale = gridGen.rowSpacing / 70f;
             unit.speed *= scale;
             // Scale range but ensure it exceeds physical contact distance
-            unit.attackRange = Mathf.Max(unit.attackRange * scale, colRadius * 2.2f);
+            float baseRange = Mathf.Max(unit.attackRange * scale, colRadius * 2.2f);
+            unit.attackRange = (unitTypeIndex == 1) ? (baseRange * 4f) : baseRange;
         }
         else
         {
             // Fallback for runtime: scale speed and range relative to collider radius
             float scaleFactor = colRadius / 0.4f;
             unit.speed *= scaleFactor;
-            unit.attackRange = Mathf.Max(unit.attackRange * scaleFactor, colRadius * 2.2f);
+            float baseRange = Mathf.Max(unit.attackRange * scaleFactor, colRadius * 2.2f);
+            unit.attackRange = (unitTypeIndex == 1) ? (baseRange * 4f) : baseRange;
         }
 
         if (isPlayer)
