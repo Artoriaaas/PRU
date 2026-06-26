@@ -626,7 +626,7 @@ public class GameManager : MonoBehaviour
             unit.speed *= scale;
             // Scale range but ensure it exceeds physical contact distance
             float baseRange = Mathf.Max(unit.attackRange * scale, colRadius * 2.2f);
-            unit.attackRange = (unitTypeIndex == 1) ? (baseRange * 4f) : baseRange;
+            unit.attackRange = (unitTypeIndex == 1) ? (baseRange * 5f) : baseRange;
         }
         else
         {
@@ -634,7 +634,7 @@ public class GameManager : MonoBehaviour
             float scaleFactor = colRadius / 0.4f;
             unit.speed *= scaleFactor;
             float baseRange = Mathf.Max(unit.attackRange * scaleFactor, colRadius * 2.2f);
-            unit.attackRange = (unitTypeIndex == 1) ? (baseRange * 4f) : baseRange;
+            unit.attackRange = (unitTypeIndex == 1) ? (baseRange * 5f) : baseRange;
         }
 
         if (isPlayer)

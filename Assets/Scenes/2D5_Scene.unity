@@ -1116,12 +1116,16 @@ MonoBehaviour:
   capsuleScale: 35
   autoAlignBottom: 1
   unitBaseColorTexture: {fileID: 0}
-  archerModelPrefab: {fileID: 0}
+  archerModelPrefab: {fileID: 919132149155446097, guid: 9c4ed8189b17b564c98ba8d353432bea, type: 3}
   archerRotationOffset: {x: 0, y: 0, z: 0}
   archerPositionOffset: {x: 0, y: 0, z: 0}
   archerScale: 60
   archerBaseColorTexture: {fileID: 0}
   archerAnimatorController: {fileID: 9100000, guid: 6331f0870bbd1bc4998fe26ee3fce92e, type: 2}
+  arrowPrefab: {fileID: 0}
+  arrowSpeed: 400
+  arrowArcHeight: 15
+  archerAttackCooldown: 2.5
   playerUnitTemplate: {fileID: 438376235}
   enemyUnitTemplate: {fileID: 1654916983}
   unitAnimatorController: {fileID: 9100000, guid: 58e6296d8ec719141a998dc8a13b55dd, type: 2}
@@ -2573,6 +2577,8 @@ MonoBehaviour:
   attackRange: 1.5
   attackCooldown: 1
   animSpeedMultiplier: 1
+  bowRotOffsetIdle: {x: 344.91, y: 87.9, z: 338.19}
+  bowRotOffsetAttack: {x: 15.99, y: 176.52, z: 5.77}
   state: 0
 --- !u!4 &438376236
 Transform:
@@ -7546,6 +7552,8 @@ MonoBehaviour:
   attackRange: 1.5
   attackCooldown: 1
   animSpeedMultiplier: 1
+  bowRotOffsetIdle: {x: 344.91, y: 87.9, z: 338.19}
+  bowRotOffsetAttack: {x: 15.99, y: 176.52, z: 5.77}
   state: 0
 --- !u!4 &1654916984
 Transform:
@@ -8034,16 +8042,20 @@ MonoBehaviour:
   capsuleScale: 10
   autoAlignBottom: 1
   unitBaseColorTexture: {fileID: 0}
-  archerModelPrefab: {fileID: 0}
+  archerModelPrefab: {fileID: 919132149155446097, guid: 9c4ed8189b17b564c98ba8d353432bea, type: 3}
   archerRotationOffset: {x: 0, y: 0, z: 0}
   archerPositionOffset: {x: 0, y: 0, z: 0}
   archerScale: 60
   archerBaseColorTexture: {fileID: 0}
   archerAnimatorController: {fileID: 9100000, guid: 6331f0870bbd1bc4998fe26ee3fce92e, type: 2}
+  arrowPrefab: {fileID: 0}
+  arrowSpeed: 400
+  arrowArcHeight: 15
+  archerAttackCooldown: 2.5
   playerUnitTemplate: {fileID: 0}
   enemyUnitTemplate: {fileID: 0}
   unitAnimatorController: {fileID: 9100000, guid: 58e6296d8ec719141a998dc8a13b55dd, type: 2}
-  forceCapsuleForTesting: 1
+  forceCapsuleForTesting: 0
 --- !u!4 &1753165086
 Transform:
   m_ObjectHideFlags: 0
@@ -8086,11 +8098,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 005e7c2951f23244096df56b12b1c1c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SkillManager
-  skillPoints: 3
-  barracksLevel: 0
-  troopLevel: 0
-  scoutingLevel: 0
-  logisticsLevel: 0
 --- !u!1 &1756653803
 GameObject:
   m_ObjectHideFlags: 0
