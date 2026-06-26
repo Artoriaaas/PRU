@@ -29,13 +29,41 @@ public class SkillManager : MonoBehaviour
     public static SkillManager Instance { get; private set; }
 
     [Header("Skill Point State")]
-    public int skillPoints = 5; // Default to 5 so user has enough points to test multiple upgrades
+    private static int _skillPoints = 5;
+    public int skillPoints
+    {
+        get => _skillPoints;
+        set => _skillPoints = value;
+    }
 
     [Header("Skill Levels")]
-    public int barracksLevel = 0;
-    public int troopLevel = 0;
-    public int scoutingLevel = 0;
-    public int logisticsLevel = 0;
+    private static int _barracksLevel = 0;
+    public int barracksLevel
+    {
+        get => _barracksLevel;
+        set => _barracksLevel = value;
+    }
+
+    private static int _troopLevel = 0;
+    public int troopLevel
+    {
+        get => _troopLevel;
+        set => _troopLevel = value;
+    }
+
+    private static int _scoutingLevel = 0;
+    public int scoutingLevel
+    {
+        get => _scoutingLevel;
+        set => _scoutingLevel = value;
+    }
+
+    private static int _logisticsLevel = 0;
+    public int logisticsLevel
+    {
+        get => _logisticsLevel;
+        set => _logisticsLevel = value;
+    }
 
     [Header("UI References")]
     private GameObject _skillPanelObj;
@@ -63,7 +91,11 @@ public class SkillManager : MonoBehaviour
 
     private void Start()
     {
-        CreateSkillUI();
+        Debug.Log("SkillManager: Start called. MapSceneBootstrapper present: " + (Object.FindAnyObjectByType<MapSceneBootstrapper>() != null));
+        if (Object.FindAnyObjectByType<MapSceneBootstrapper>() != null)
+        {
+            CreateSkillUI();
+        }
     }
 
     private void OnDestroy()
@@ -246,7 +278,18 @@ public class SkillManager : MonoBehaviour
 
     private void CreateSkillUI()
     {
+        Debug.Log("SkillManager: CreateSkillUI called");
         GameObject canvasObj = GameObject.Find("UICanvas");
+        if (canvasObj == null)
+        {
+            canvasObj = GameObject.Find("Canvas");
+        }
+        if (canvasObj == null)
+        {
+            Canvas c = Object.FindAnyObjectByType<Canvas>();
+            if (c != null) canvasObj = c.gameObject;
+        }
+        Debug.Log("SkillManager: Canvas found: " + (canvasObj != null ? canvasObj.name : "null"));
         if (canvasObj == null) return;
 
         Font font = GetSafeFont();
@@ -394,6 +437,7 @@ public class SkillManager : MonoBehaviour
         rtTText.offsetMax = new Vector2(-10, -10);
 
         _tooltipPanelObj.SetActive(false);
+        _skillPanelObj.SetActive(false); // Start inactive by default
 
         UpdateUI();
     }

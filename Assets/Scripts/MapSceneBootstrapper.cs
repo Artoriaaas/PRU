@@ -98,6 +98,14 @@ public class MapSceneBootstrapper : MonoBehaviour
         WireControllers();
     }
 
+    void Start()
+    {
+        if (GetComponent<SkillManager>() == null)
+        {
+            gameObject.AddComponent<SkillManager>();
+        }
+    }
+
     void BuildCanvas()
     {
         GameObject go = new GameObject("Canvas");

@@ -370,7 +370,7 @@ public class UIManager : MonoBehaviour
         rtReport.anchorMin = new Vector2(1, 1);
         rtReport.anchorMax = new Vector2(1, 1);
         rtReport.pivot = new Vector2(1, 1);
-        rtReport.anchoredPosition = new Vector2(-20, -280); // Placed below the skill panel
+        rtReport.anchoredPosition = new Vector2(-20, -80); // Placed higher since the skill panel is in the map scene
         rtReport.sizeDelta = new Vector2(360, 100);
         
         // Bottom Panel
