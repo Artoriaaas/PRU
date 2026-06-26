@@ -398,6 +398,19 @@ public class PlacementController : MonoBehaviour
             
         if (tileObj.name.StartsWith(prefix) || tileObj.name.StartsWith("Tile_"))
         {
+            // "Big pad" = first pad (row0, col0) reserved for Tuong Quan (General)
+            bool isBigPad = tileObj.name == "PlayerPad_0_0" || tileObj.name == "PlayerPad_General";
+            if (unitTypeIndex == 2 && !isBigPad)
+            {
+                if (UIManager.Instance != null) UIManager.Instance.ShowErrorBanner("Tướng Quân chỉ có thể đặt ở vị trí hình tròn to bên trái!");
+                return;
+            }
+            if (unitTypeIndex != 2 && isBigPad)
+            {
+                if (UIManager.Instance != null) UIManager.Instance.ShowErrorBanner("Vị trí này chỉ dành cho Tướng Quân!");
+                return;
+            }
+
             // Check if tile is empty
             if (!IsTileOccupied(tileObj.transform.position, isPlayer))
             {
