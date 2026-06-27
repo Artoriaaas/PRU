@@ -33,11 +33,15 @@ public class AnimatorSetupTool
 
         // Setup Infantry Controller
         string infantryControllerPath = folderPath + "/QuanLinhAnimatorController.controller";
-        AnimatorController infantryController = SetupController(infantryControllerPath, false);
+        AnimatorController infantryController = SetupController(infantryControllerPath, 0);
 
         // Setup Archer Controller
         string archerControllerPath = folderPath + "/QuanCungAnimatorController.controller";
-        AnimatorController archerController = SetupController(archerControllerPath, true);
+        AnimatorController archerController = SetupController(archerControllerPath, 1);
+
+        // Setup King Controller
+        string kingControllerPath = folderPath + "/QuanVuaAnimatorController.controller";
+        AnimatorController kingController = SetupController(kingControllerPath, 2);
 
         // Assign to GameManager in the current active scene
         GameManager[] managers = Object.FindObjectsByType<GameManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -48,6 +52,14 @@ public class AnimatorSetupTool
                 Undo.RecordObject(manager, "Assign Animator Controllers");
                 manager.unitAnimatorController = infantryController;
                 manager.archerAnimatorController = archerController;
+                manager.kingAnimatorController = kingController;
+
+                // Set King defaults in Inspector
+                manager.kingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua@Great Sword Slash (2).fbx");
+                manager.kingScale = 60f;
+                manager.kingRotationOffset = new Vector3(0f, 0f, 0f);
+                manager.kingPositionOffset = new Vector3(0f, 0f, 0f);
+
                 manager.archerModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
                 manager.archerScale = 60f;
                 manager.archerRotationOffset = Vector3.zero;
@@ -58,7 +70,7 @@ public class AnimatorSetupTool
                 UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(manager.gameObject.scene);
             }
 
-            Debug.Log("Assigned Animator Controllers and archer model settings to all GameManagers in scene!");
+            Debug.Log("Assigned Animator Controllers and archer/king model settings to all GameManagers in scene!");
         }
         else
         {
@@ -68,7 +80,7 @@ public class AnimatorSetupTool
         Debug.Log("Animator Controller Setup completed successfully!");
     }
 
-    private static AnimatorController SetupController(string controllerPath, bool isArcher)
+    private static AnimatorController SetupController(string controllerPath, int unitType)
     {
         AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
         if (controller == null)
@@ -92,10 +104,15 @@ public class AnimatorSetupTool
 
         rootStateMachine.defaultState = idleState;
 
-        if (isArcher)
+        if (unitType == 1)
         {
             AssignArcherClipsToStates(idleState, runState, attackState, dieState);
             attackState.speed = 1.5f; // Played at 1.5x speed matches natural bow draw and release (~2.88s duration)
+        }
+        else if (unitType == 2)
+        {
+            AssignKingClipsToStates(idleState, runState, attackState, dieState);
+            attackState.speed = 1.0f;
         }
         else
         {
@@ -146,9 +163,10 @@ public class AnimatorSetupTool
             
             // Only look inside the Assets/Models/NewModel folder
             if (!path.Replace('\\', '/').Contains("Assets/Models/NewModel")) continue;
-            // Exclude archer files from infantry setup.
+            // Exclude archer and king files from infantry setup.
             if (path.Replace('\\', '/').Contains("Model_cung_quan_ta")) continue;
             if (path.Replace('\\', '/').Contains("animation_cung_quan_ta")) continue;
+            if (path.Replace('\\', '/').Contains("Model_vua")) continue;
 
             Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
             foreach (Object asset in allAssets)
@@ -210,6 +228,60 @@ public class AnimatorSetupTool
         dieState.motion = LoadArcherClip(archerFolder + "/Standing Death Forward.fbx", "mixamo.com", false);
 
         Debug.Log("--- END ASSIGNING ARCHER CLIPS ---");
+    }
+
+    private static void AssignKingClipsToStates(AnimatorState idleState, AnimatorState runState, AnimatorState attackState, AnimatorState dieState)
+    {
+        Debug.Log("--- START ASSIGNING KING CLIPS ---");
+        idleState.motion = null;
+        runState.motion = null;
+        attackState.motion = null;
+        dieState.motion = null;
+
+        string[] guids = AssetDatabase.FindAssets("t:AnimationClip");
+        foreach (string guid in guids)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            if (!path.Replace('\\', '/').Contains("Model_vua")) continue;
+
+            Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
+            foreach (Object asset in allAssets)
+            {
+                AnimationClip clip = asset as AnimationClip;
+                if (clip == null || clip.name.StartsWith("__preview__")) continue;
+
+                string clipName = clip.name.ToLower();
+
+                bool isIdle = clipName.Contains("idle");
+                bool isRun = clipName.Contains("run") || clipName.Contains("walk");
+                bool isAttack = clipName.Contains("slash") || clipName.Contains("attack");
+                bool isDie = clipName.Contains("death") || clipName.Contains("die");
+
+                if (isIdle && idleState.motion == null)
+                {
+                    idleState.motion = clip;
+                    EnableLoopTime(clip);
+                    Debug.Log(">> Assigned King Idle clip: " + clip.name);
+                }
+                else if (isRun && runState.motion == null)
+                {
+                    runState.motion = clip;
+                    EnableLoopTime(clip);
+                    Debug.Log(">> Assigned King Run clip: " + clip.name);
+                }
+                else if (isAttack && attackState.motion == null)
+                {
+                    attackState.motion = clip;
+                    Debug.Log(">> Assigned King Attack clip: " + clip.name);
+                }
+                else if (isDie && dieState.motion == null)
+                {
+                    dieState.motion = clip;
+                    Debug.Log(">> Assigned King Die clip: " + clip.name);
+                }
+            }
+        }
+        Debug.Log("--- END ASSIGNING KING CLIPS ---");
     }
 
     private static AnimationClip LoadArcherClip(string path, string clipName, bool loop, float firstFrame = 0, float lastFrame = 0, bool crop = false)

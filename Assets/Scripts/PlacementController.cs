@@ -18,7 +18,22 @@ public class PlacementController : MonoBehaviour
         if (typeIndex == 1) return new Color(0.1f, 0.6f, 0.2f, alpha);
         if (typeIndex == 2) return new Color(0.5f, 0.1f, 0.7f, alpha);
         if (typeIndex == 3) return new Color(0.85f, 0.5f, 0.1f, alpha);
+        if (typeIndex == 4) return new Color(0.7f, 0.1f, 0.1f, alpha); // Royal red for King
         return new Color(0.2f, 0.6f, 1f, alpha);
+    }
+
+    private bool IsPlacementAllowed(GameObject pad, int unitTypeIndex)
+    {
+        if (pad == null) return false;
+        bool isBigPad = pad.name == "PlayerPad_3_2 (1)";
+        if (unitTypeIndex == 4) // King
+        {
+            return isBigPad;
+        }
+        else // Other units
+        {
+            return !isBigPad;
+        }
     }
 
     void Awake()
@@ -55,7 +70,7 @@ public class PlacementController : MonoBehaviour
     /// Fires a ray and returns the first PlayerPad/Tile hit, ignoring the ground plane.
     /// Uses RaycastAll to find trigger colliders that sit on top of solid ground.
     /// </summary>
-    private GameObject RaycastForPad(Vector2 screenPos)
+    private GameObject RaycastForPad(Vector2 screenPos, int unitTypeIndex = -1)
     {
         if (_cam == null) return null;
 
@@ -74,6 +89,11 @@ public class PlacementController : MonoBehaviour
             {
                 if (hit.distance < bestDist)
                 {
+                    if (unitTypeIndex != -1 && !IsPlacementAllowed(hit.collider.gameObject, unitTypeIndex))
+                    {
+                        continue;
+                    }
+
                     bestDist = hit.distance;
                     bestPad = hit.collider.gameObject;
                 }
@@ -92,7 +112,7 @@ public class PlacementController : MonoBehaviour
         if (_cam == null) return false;
 
         // First try to snap to a pad
-        GameObject pad = RaycastForPad(screenPos);
+        GameObject pad = RaycastForPad(screenPos, selectedCard != null ? selectedCard.unitTypeIndex : -1);
         if (pad != null)
         {
             worldPos = pad.transform.position;
@@ -312,7 +332,7 @@ public class PlacementController : MonoBehaviour
                 Vector2 mousePos = GetMouseScreenPos();
                 if (GetPreviewPosition(mousePos, out Vector3 targetWorldPos))
                 {
-                    GameObject padHit = RaycastForPad(mousePos);
+                    GameObject padHit = RaycastForPad(mousePos, _draggedUnit != null ? _draggedUnit.unitTypeIndex : -1);
                     if (padHit != null)
                     {
                         if (!IsTileOccupied(padHit.transform.position, true, _draggedUnit))
@@ -350,7 +370,7 @@ public class PlacementController : MonoBehaviour
                 }
                 else
                 {
-                    GameObject padHit = RaycastForPad(mousePos);
+                    GameObject padHit = RaycastForPad(mousePos, _draggedUnit != null ? _draggedUnit.unitTypeIndex : -1);
                     if (padHit != null && !IsTileOccupied(padHit.transform.position, true, _draggedUnit))
                     {
                         _draggedUnit.transform.position = padHit.transform.position;
@@ -398,8 +418,8 @@ public class PlacementController : MonoBehaviour
             
         if (tileObj.name.StartsWith(prefix) || tileObj.name.StartsWith("Tile_"))
         {
-            // Check if tile is empty
-            if (!IsTileOccupied(tileObj.transform.position, isPlayer))
+            // Check if tile is empty and placement is allowed
+            if (IsPlacementAllowed(tileObj, unitTypeIndex) && !IsTileOccupied(tileObj.transform.position, isPlayer))
             {
                 GameManager.Instance.SpawnUnit(isPlayer, tileObj.transform.position, unitTypeIndex);
                 if (isPlayer)

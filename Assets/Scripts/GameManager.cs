@@ -203,6 +203,17 @@ public class GameManager : MonoBehaviour
     public GameObject arrowPrefab;
     public float arrowSpeed = 400f;
     public float arrowArcHeight = 15f;
+
+    [Header("King Model Settings")]
+    [Tooltip("Drag your King FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân ta/Model_vua/model_vua@Great Sword Slash (2).fbx in Editor.")]
+    public GameObject kingModelPrefab;
+    public Vector3 kingRotationOffset = new Vector3(0f, 0f, 0f);
+    public Vector3 kingPositionOffset = new Vector3(0f, 0f, 0f);
+    public float kingScale = 60.0f;
+    [Tooltip("Assign your Animator Controller for the King here.")]
+    public RuntimeAnimatorController kingAnimatorController;
+
+    [Header("Unit Templates")]
     public float archerAttackCooldown = 2.5f;
 
     [Header("Unit Templates")]
@@ -260,7 +271,7 @@ public class GameManager : MonoBehaviour
         GameObject rootObj = new GameObject(isPlayer ? ($"PlayerUnit_Type{unitTypeIndex}") : "EnemyUnit");
         rootObj.transform.position = position;
 
-        bool isCapsule = forceCapsuleForTesting || (isPlayer && unitTypeIndex > 1);
+        bool isCapsule = forceCapsuleForTesting || (isPlayer && unitTypeIndex > 1 && unitTypeIndex != 4);
 
         GameObject loadedModel = null;
 #if UNITY_EDITOR
@@ -275,6 +286,10 @@ public class GameManager : MonoBehaviour
                 else if (unitTypeIndex == 1)
                 {
                     loadedModel = archerModelPrefab != null ? archerModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
+                }
+                else if (unitTypeIndex == 4)
+                {
+                    loadedModel = kingModelPrefab != null ? kingModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua@Great Sword Slash (2).fbx");
                 }
             }
             else
@@ -292,7 +307,9 @@ public class GameManager : MonoBehaviour
 #endif
         if (loadedModel == null)
         {
-            loadedModel = (unitTypeIndex == 1) ? archerModelPrefab : unitModelPrefab;
+            if (unitTypeIndex == 1) loadedModel = archerModelPrefab;
+            else if (unitTypeIndex == 4) loadedModel = kingModelPrefab;
+            else loadedModel = unitModelPrefab;
         }
 
         GameObject graphicsObj = null;
@@ -301,15 +318,30 @@ public class GameManager : MonoBehaviour
         {
             GameObject graphics = Instantiate(loadedModel, rootObj.transform);
             graphicsObj = graphics;
-            graphics.transform.localPosition = Vector3.zero;
             
             // Choose offsets and scale based on unit type
-            Vector3 rotationOffset = (unitTypeIndex == 1) ? archerRotationOffset : modelRotationOffset;
-            Vector3 positionOffset = (unitTypeIndex == 1) ? archerPositionOffset : modelPositionOffset;
-            float scaleVal = (unitTypeIndex == 1) ? archerScale : modelScale;
-            RuntimeAnimatorController animController = (unitTypeIndex == 1) ? archerAnimatorController : unitAnimatorController;
+            Vector3 rotationOffset = modelRotationOffset;
+            Vector3 positionOffset = modelPositionOffset;
+            float scaleVal = modelScale;
+            RuntimeAnimatorController animController = unitAnimatorController;
+
+            if (unitTypeIndex == 1)
+            {
+                rotationOffset = archerRotationOffset;
+                positionOffset = archerPositionOffset;
+                scaleVal = archerScale;
+                animController = archerAnimatorController;
+            }
+            else if (unitTypeIndex == 4)
+            {
+                rotationOffset = kingRotationOffset;
+                positionOffset = kingPositionOffset;
+                scaleVal = kingScale;
+                animController = kingAnimatorController;
+            }
 
             // Override prefab's local rotation with our offset to fix orientation
+            graphics.transform.localPosition = positionOffset;
             graphics.transform.localRotation = Quaternion.Euler(rotationOffset);
             graphics.transform.localScale = new Vector3(scaleVal, scaleVal, scaleVal);
 
@@ -398,6 +430,11 @@ public class GameManager : MonoBehaviour
                 // Let it use its embedded/standard materials if no override texture is specified.
                 textureToApply = archerBaseColorTexture;
             }
+            else if (unitTypeIndex == 4 && isPlayer)
+            {
+                // King model has its own dedicated texture
+                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta/Model_vua/Textures/model_vua_basecolor.jpg");
+            }
             else if (isPlayer)
             {
                 textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta/model_quan_ta/tripo_convert_74080320-2742-4915-ab54-fe52dd1aaaa6.fbm/model_quan_ta_basecolor.JPEG");
@@ -422,6 +459,49 @@ public class GameManager : MonoBehaviour
                         r.material.SetTexture("_BaseMap", textureToApply);
                         r.material.SetTexture("_MainTex", textureToApply);
                     }
+                }
+            }
+
+            // Attach sword to King's right hand
+            if (unitTypeIndex == 4 && isPlayer)
+            {
+                Transform rightHand = null;
+                foreach (var t in graphics.GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name == "mixamorig:RightHand")
+                    {
+                        rightHand = t;
+                        break;
+                    }
+                }
+                if (rightHand != null)
+                {
+#if UNITY_EDITOR
+                    GameObject swordPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/medieval sword 3d model-20260616T082623Z-3-001/medieval sword 3d model/medieval+sword+3d+model.fbx");
+                    if (swordPrefab != null)
+                    {
+                        GameObject sword = Instantiate(swordPrefab, rightHand);
+                        sword.name = "KingSword";
+                        // localPos Y=0.29: precisely aligns handle center to RightHand bone pivot (calibrated in-game)
+                        // Rotation (0,0,0): sword local Y aligns with hand's up axis (finger-curl grip direction in Mixamo rig)
+                        sword.transform.localPosition = new Vector3(0f, 0.29f, 15.0f);
+                        sword.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
+                        sword.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+                        // Apply sword texture
+                        Texture2D swordTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/medieval sword 3d model-20260616T082623Z-3-001/medieval sword 3d model/medieval+sword+3d+model.fbm/medieval+sword+3d+model_basecolor.jpg");
+                        if (swordTex != null)
+                        {
+                            foreach (var r in sword.GetComponentsInChildren<Renderer>())
+                            {
+                                if (r.material != null)
+                                {
+                                    r.material.SetTexture("_BaseMap", swordTex);
+                                    r.material.SetTexture("_MainTex", swordTex);
+                                }
+                            }
+                        }
+                    }
+#endif
                 }
             }
 
