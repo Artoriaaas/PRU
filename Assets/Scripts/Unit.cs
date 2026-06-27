@@ -103,10 +103,18 @@ public class Unit : MonoBehaviour
         Unit activeAttacker = attacker != null ? attacker : slot.reservedBy;
         if (activeAttacker != null)
         {
-            float maxAllowedRadius = activeAttacker.attackRange * 1.0f;
-            if (radius > maxAllowedRadius)
+            if (activeAttacker.unitTypeIndex == 1) // Archer
             {
-                radius = maxAllowedRadius;
+                // Archer stands far away at 90% of their attack range
+                radius = activeAttacker.attackRange * 0.9f;
+            }
+            else
+            {
+                float maxAllowedRadius = activeAttacker.attackRange * 1.0f;
+                if (radius > maxAllowedRadius)
+                {
+                    radius = maxAllowedRadius;
+                }
             }
         }
 
@@ -216,10 +224,14 @@ public class Unit : MonoBehaviour
     {
         if (state == UnitState.Dead) return;
 
-        // Dynamically adjust collider radius depending on combat/attack state
+        // Dynamically adjust collider radius depending on combat/attack state.
+        // Cap the maximum absolute expansion to 0.5 units to prevent large scaled units
+        // (like King and Infantry) from massive pushback loops that break combat states.
         if (_myCollider != null && _baseColliderRadius > 0)
         {
-            float targetRadius = (state == UnitState.Attacking) ? (_baseColliderRadius * 1.6f) : _baseColliderRadius;
+            float targetRadius = (state == UnitState.Attacking) 
+                ? Mathf.Min(_baseColliderRadius * 1.6f, _baseColliderRadius + 0.5f) 
+                : _baseColliderRadius;
             if (!Mathf.Approximately(_myCollider.radius, targetRadius))
             {
                 _myCollider.radius = targetRadius;
@@ -276,7 +288,7 @@ public class Unit : MonoBehaviour
             {
                 minX = -1100f;
                 maxX = 1100f;
-                minZ = -145f;
+                minZ = -45f;
                 maxZ = 230f;
             }
 
@@ -504,7 +516,7 @@ public class Unit : MonoBehaviour
         {
             minX = -1100f;
             maxX = 1100f;
-            minZ = -145f;
+            minZ = -45f;
             maxZ = 230f;
         }
 
@@ -636,7 +648,7 @@ public class Unit : MonoBehaviour
             {
                 minX = -1100f;
                 maxX = 1100f;
-                minZ = -145f;
+                minZ = -45f;
                 maxZ = 230f;
             }
             float clampedX = Mathf.Clamp(transform.position.x, minX, maxX);
@@ -662,7 +674,7 @@ public class Unit : MonoBehaviour
             {
                 minX = -1100f;
                 maxX = 1100f;
-                minZ = -145f;
+                minZ = -45f;
                 maxZ = 230f;
             }
 

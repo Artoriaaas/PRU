@@ -21,13 +21,21 @@ public class AnimatorSetupTool
     [MenuItem("Tools/PRU/Setup Animator Controller")]
     public static void SetupAnimator()
     {
-        // Force King model to Generic so its animations can be imported properly
-        string kingModelPath = "Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx";
+        // Force King models to Generic so their animations can be imported properly
+        string kingModelPath = "Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx";
         ModelImporter kingImporter = AssetImporter.GetAtPath(kingModelPath) as ModelImporter;
         if (kingImporter != null && kingImporter.animationType != ModelImporterAnimationType.Generic)
         {
             kingImporter.animationType = ModelImporterAnimationType.Generic;
             kingImporter.SaveAndReimport();
+        }
+
+        string kingIdlePath = "Assets/Models/NewModel/Model quân ta/Model_vua/animation_idle_vua.fbx";
+        ModelImporter kingIdleImporter = AssetImporter.GetAtPath(kingIdlePath) as ModelImporter;
+        if (kingIdleImporter != null && kingIdleImporter.animationType != ModelImporterAnimationType.Generic)
+        {
+            kingIdleImporter.animationType = ModelImporterAnimationType.Generic;
+            kingIdleImporter.SaveAndReimport();
         }
 
         // 0. Ensure rigs are Humanoid
@@ -64,9 +72,9 @@ public class AnimatorSetupTool
                 manager.kingAnimatorController = kingController;
 
                 // Set King defaults in Inspector
-                manager.kingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx");
+                manager.kingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx");
                 manager.kingScale = 60f;
-                manager.kingRotationOffset = new Vector3(0f, 0f, 0f);
+                manager.kingRotationOffset = new Vector3(0f, 90f, 0f);
                 manager.kingPositionOffset = new Vector3(0f, 0f, 0f);
 
                 manager.archerModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
@@ -247,112 +255,138 @@ public class AnimatorSetupTool
         attackState.motion = null;
         dieState.motion = null;
 
-        // 1. Extract and fix curves from model_vua.fbx
-        string fbxPath = "Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx";
+        // 1. Extract and fix curves from BOTH fbx files
+        string[] fbxPaths = new string[] {
+            "Assets/Models/NewModel/Model quân ta/Model_vua/animation_idle_vua.fbx",
+            "Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx"
+        };
+        
         string outputDir = "Assets/Art/Animations/KingClips";
-        if (!System.IO.Directory.Exists(outputDir))
+        if (System.IO.Directory.Exists(outputDir))
         {
-            System.IO.Directory.CreateDirectory(outputDir);
+            System.IO.Directory.Delete(outputDir, true);
         }
+        System.IO.Directory.CreateDirectory(outputDir);
+        AssetDatabase.Refresh();
 
-        Object[] subAssets = AssetDatabase.LoadAllAssetRepresentationsAtPath(fbxPath);
-        if (subAssets != null && subAssets.Length > 0)
+        foreach (string fbxPath in fbxPaths)
         {
-            foreach (Object asset in subAssets)
+            Object[] subAssets = AssetDatabase.LoadAllAssetRepresentationsAtPath(fbxPath);
+            if (subAssets != null && subAssets.Length > 0)
             {
-                AnimationClip sourceClip = asset as AnimationClip;
-                if (sourceClip == null || sourceClip.name.StartsWith("__preview__")) continue;
-
-                AnimationClip destClip = new AnimationClip();
-
-                // Copy float curves and rewrite paths targeting correct Armature
-                var floatBindings = AnimationUtility.GetCurveBindings(sourceClip);
-                foreach (var binding in floatBindings)
+                foreach (Object asset in subAssets)
                 {
-                    var newBinding = binding;
-                    newBinding.path = newBinding.path.Replace("Armature.001/", "Armature/")
-                                                     .Replace("Armature.002/", "Armature/")
-                                                     .Replace("Armature.003/", "Armature/")
-                                                     .Replace("Armature.004/", "Armature/");
-                    if (newBinding.path.StartsWith("Armature.001")) newBinding.path = "Armature" + newBinding.path.Substring(12);
-                    if (newBinding.path.StartsWith("Armature.002")) newBinding.path = "Armature" + newBinding.path.Substring(12);
-                    if (newBinding.path.StartsWith("Armature.003")) newBinding.path = "Armature" + newBinding.path.Substring(12);
-                    if (newBinding.path.StartsWith("Armature.004")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                    AnimationClip sourceClip = asset as AnimationClip;
+                    if (sourceClip == null || sourceClip.name.StartsWith("__preview__")) continue;
 
-                    AnimationCurve curve = AnimationUtility.GetEditorCurve(sourceClip, binding);
-                    
-                    // Strip bone scale curves to prevent animation from overriding bone scale
-                    if (newBinding.propertyName.Contains("m_LocalScale"))
+                    AnimationClip destClip = new AnimationClip();
+
+                    // Copy float curves and rewrite paths targeting correct Armature
+                    var floatBindings = AnimationUtility.GetCurveBindings(sourceClip);
+                    foreach (var binding in floatBindings)
                     {
-                        continue;
-                    }
-                    
-                    // Strip rotation on root Armature to prevent it from rotating the character sideways
-                    if (newBinding.path == "Armature" && newBinding.propertyName.Contains("m_LocalRotation"))
-                    {
-                        continue;
-                    }
-                    
-                    // Strip X/Z root translation to prevent root motion sliding
-                    bool isRootPath = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
-                    bool isXZTranslation = newBinding.propertyName.Contains("m_LocalPosition.x") || newBinding.propertyName.Contains("m_LocalPosition.z");
-                    if (isRootPath && isXZTranslation)
-                    {
-                        continue;
+                        var newBinding = binding;
+                        newBinding.path = newBinding.path.Replace("Armature.001/", "Armature/")
+                                                         .Replace("Armature.002/", "Armature/")
+                                                         .Replace("Armature.003/", "Armature/")
+                                                         .Replace("Armature.004/", "Armature/");
+                        if (newBinding.path.StartsWith("Armature.001")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                        if (newBinding.path.StartsWith("Armature.002")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                        if (newBinding.path.StartsWith("Armature.003")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                        if (newBinding.path.StartsWith("Armature.004")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+
+                        // Strip ALL sword bone curves (Armature/Bone and children)
+                        // The sword will be parented to RightHand at runtime, so animation
+                        // curves for Bone would fight with the parenting and cause sliding/detaching.
+                        bool isSwordBone = newBinding.path == "Armature/Bone" || newBinding.path.StartsWith("Armature/Bone/");
+                        if (isSwordBone)
+                        {
+                            continue;
+                        }
+
+                        // Strip ALL bone scale curves to prevent animation from overriding bone scale
+                        if (newBinding.propertyName.Contains("m_LocalScale"))
+                        {
+                            continue;
+                        }
+
+                        // Strip rotation on root Armature or mixamorig:Hips to prevent tilting/sideways rotation
+                        bool isHipsOrRootRotation = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
+                        if (isHipsOrRootRotation && newBinding.propertyName.Contains("m_LocalRotation"))
+                        {
+                            continue;
+                        }
+
+                        // Strip X/Z root translation to prevent root motion sliding
+                        bool isRootPath = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
+                        bool isXZTranslation = newBinding.propertyName.Contains("m_LocalPosition.x") || newBinding.propertyName.Contains("m_LocalPosition.z");
+                        if (isRootPath && isXZTranslation)
+                        {
+                            continue;
+                        }
+
+                        AnimationCurve curve = AnimationUtility.GetEditorCurve(sourceClip, binding);
+                        AnimationUtility.SetEditorCurve(destClip, newBinding, curve);
                     }
 
-                    AnimationUtility.SetEditorCurve(destClip, newBinding, curve);
+                    // Copy object reference curves and rewrite paths
+                    var objectBindings = AnimationUtility.GetObjectReferenceCurveBindings(sourceClip);
+                    foreach (var binding in objectBindings)
+                    {
+                        var newBinding = binding;
+                        newBinding.path = newBinding.path.Replace("Armature.001/", "Armature/")
+                                                         .Replace("Armature.002/", "Armature/")
+                                                         .Replace("Armature.003/", "Armature/")
+                                                         .Replace("Armature.004/", "Armature/");
+                        if (newBinding.path.StartsWith("Armature.001")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                        if (newBinding.path.StartsWith("Armature.002")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                        if (newBinding.path.StartsWith("Armature.003")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                        if (newBinding.path.StartsWith("Armature.004")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+
+                        // Strip ALL sword bone reference curves
+                        bool isSwordBone = newBinding.path == "Armature/Bone" || newBinding.path.StartsWith("Armature/Bone/");
+                        if (isSwordBone)
+                        {
+                            continue;
+                        }
+
+                        // Strip ALL bone scale reference curves
+                        if (newBinding.propertyName.Contains("m_LocalScale"))
+                        {
+                            continue;
+                        }
+
+                        // Strip rotation on root Armature or mixamorig:Hips reference curves
+                        bool isHipsOrRootRotation = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
+                        if (isHipsOrRootRotation && newBinding.propertyName.Contains("m_LocalRotation"))
+                        {
+                            continue;
+                        }
+
+                        // Strip X/Z root translation reference curves
+                        bool isRootPath = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
+                        bool isXZTranslation = newBinding.propertyName.Contains("m_LocalPosition.x") || newBinding.propertyName.Contains("m_LocalPosition.z");
+                        if (isRootPath && isXZTranslation)
+                        {
+                            continue;
+                        }
+
+                        var keyframes = AnimationUtility.GetObjectReferenceCurve(sourceClip, binding);
+                        AnimationUtility.SetObjectReferenceCurve(destClip, newBinding, keyframes);
+                    }
+
+                    var settings = AnimationUtility.GetAnimationClipSettings(sourceClip);
+                    AnimationUtility.SetAnimationClipSettings(destClip, settings);
+
+                    string fbxPrefix = System.IO.Path.GetFileNameWithoutExtension(fbxPath);
+                    string nameClean = fbxPrefix + "_" + sourceClip.name.Replace('|', '_').Replace('.', '_');
+                    string outPath = outputDir + "/" + nameClean + ".anim";
+                    AssetDatabase.CreateAsset(destClip, outPath);
                 }
-
-                // Copy object reference curves and rewrite paths
-                var objectBindings = AnimationUtility.GetObjectReferenceCurveBindings(sourceClip);
-                foreach (var binding in objectBindings)
-                {
-                    var newBinding = binding;
-                    newBinding.path = newBinding.path.Replace("Armature.001/", "Armature/")
-                                                     .Replace("Armature.002/", "Armature/")
-                                                     .Replace("Armature.003/", "Armature/")
-                                                     .Replace("Armature.004/", "Armature/");
-                    if (newBinding.path.StartsWith("Armature.001")) newBinding.path = "Armature" + newBinding.path.Substring(12);
-                    if (newBinding.path.StartsWith("Armature.002")) newBinding.path = "Armature" + newBinding.path.Substring(12);
-                    if (newBinding.path.StartsWith("Armature.003")) newBinding.path = "Armature" + newBinding.path.Substring(12);
-                    if (newBinding.path.StartsWith("Armature.004")) newBinding.path = "Armature" + newBinding.path.Substring(12);
-
-                    var keyframes = AnimationUtility.GetObjectReferenceCurve(sourceClip, binding);
-                    
-                    // Strip bone scale reference curves
-                    if (newBinding.propertyName.Contains("m_LocalScale"))
-                    {
-                        continue;
-                    }
-                    
-                    // Strip rotation on root Armature reference curves
-                    if (newBinding.path == "Armature" && newBinding.propertyName.Contains("m_LocalRotation"))
-                    {
-                        continue;
-                    }
-                    
-                    // Strip X/Z root translation reference curves
-                    bool isRootPath = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
-                    bool isXZTranslation = newBinding.propertyName.Contains("m_LocalPosition.x") || newBinding.propertyName.Contains("m_LocalPosition.z");
-                    if (isRootPath && isXZTranslation)
-                    {
-                        continue;
-                    }
-
-                    AnimationUtility.SetObjectReferenceCurve(destClip, newBinding, keyframes);
-                }
-
-                var settings = AnimationUtility.GetAnimationClipSettings(sourceClip);
-                AnimationUtility.SetAnimationClipSettings(destClip, settings);
-
-                string nameClean = sourceClip.name.Replace('|', '_').Replace('.', '_');
-                string outPath = outputDir + "/" + nameClean + ".anim";
-                AssetDatabase.CreateAsset(destClip, outPath);
             }
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
         }
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
 
         // 2. Load fixed clips and assign to Animator Controller
         string[] guids = AssetDatabase.FindAssets("t:AnimationClip", new string[] { outputDir });
@@ -364,9 +398,9 @@ public class AnimatorSetupTool
 
             string clipName = clip.name.ToLower();
 
-            bool isIdle = clipName.Contains("idle") && (clipName.Contains("001") || !clipName.Contains("00"));
+            bool isIdle = clipName.Contains("idle") && clipName.Contains("idle_vua");
             bool isRun = clipName.Contains("run");
-            bool isAttack = clipName.Contains("attack");
+            bool isAttack = clipName.Contains("attack") && !clipName.Contains("attack_2");
             bool isDie = clipName.Contains("dying") || clipName.Contains("death") || clipName.Contains("die");
 
             if (isIdle && idleState.motion == null)

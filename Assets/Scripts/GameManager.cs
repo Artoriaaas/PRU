@@ -207,7 +207,7 @@ public class GameManager : MonoBehaviour
     [Header("King Model Settings")]
     [Tooltip("Drag your King FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx in Editor.")]
     public GameObject kingModelPrefab;
-    public Vector3 kingRotationOffset = new Vector3(0f, 0f, 0f);
+    public Vector3 kingRotationOffset = new Vector3(0f, 90f, 0f);
     public Vector3 kingPositionOffset = new Vector3(0f, 0f, 0f);
     public float kingScale = 60.0f;
     [Tooltip("Assign your Animator Controller for the King here.")]
@@ -289,7 +289,7 @@ public class GameManager : MonoBehaviour
                 }
                 else if (unitTypeIndex == 4)
                 {
-                    loadedModel = kingModelPrefab != null ? kingModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx");
+                    loadedModel = kingModelPrefab != null ? kingModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx");
                 }
             }
             else
@@ -454,6 +454,11 @@ public class GameManager : MonoBehaviour
                 var rends = graphics.GetComponentsInChildren<Renderer>();
                 foreach (var r in rends)
                 {
+                    // Skip weapon renderers (like the King's sword meshes[0].001) so they don't get overwritten with the body texture
+                    if (r.name.Contains("meshes[0].001") || r.name.ToLower().Contains("sword") || r.name.ToLower().Contains("weapon") || r.name.ToLower().Contains("bow") || r.name.ToLower().Contains("shield") || r.name.ToLower().Contains("arrow"))
+                    {
+                        continue;
+                    }
                     if (r.material != null)
                     {
                         r.material.SetTexture("_BaseMap", textureToApply);
@@ -462,46 +467,25 @@ public class GameManager : MonoBehaviour
                 }
             }
 
-            // Attach sword to King's right hand
-            if (unitTypeIndex == 4 && isPlayer)
+            // Parent sword bone (Armature/Bone) to RightHand at runtime.
+            // All animation curves for Armature/Bone are stripped in AnimatorSetupTool,
+            // so the sword won't fight between animation and parenting.
+            // This ensures the sword is permanently locked to the hand.
+            if (unitTypeIndex == 4)
             {
-                Transform rightHand = null;
+                Transform bone = graphics.transform.Find("Armature/Bone");
+                Transform hand = null;
                 foreach (var t in graphics.GetComponentsInChildren<Transform>(true))
                 {
                     if (t.name == "mixamorig:RightHand")
                     {
-                        rightHand = t;
+                        hand = t;
                         break;
                     }
                 }
-                if (rightHand != null)
+                if (bone != null && hand != null)
                 {
-#if UNITY_EDITOR
-                    GameObject swordPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/medieval sword 3d model-20260616T082623Z-3-001/medieval sword 3d model/medieval+sword+3d+model.fbx");
-                    if (swordPrefab != null)
-                    {
-                        GameObject sword = Instantiate(swordPrefab, rightHand);
-                        sword.name = "KingSword";
-                        // localPos Y=0.29: precisely aligns handle center to RightHand bone pivot (calibrated in-game)
-                        // Rotation (0,0,0): sword local Y aligns with hand's up axis (finger-curl grip direction in Mixamo rig)
-                        sword.transform.localPosition = new Vector3(0f, 0.29f, 15.0f);
-                        sword.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
-                        sword.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
-                        // Apply sword texture
-                        Texture2D swordTex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/medieval sword 3d model-20260616T082623Z-3-001/medieval sword 3d model/medieval+sword+3d+model.fbm/medieval+sword+3d+model_basecolor.jpg");
-                        if (swordTex != null)
-                        {
-                            foreach (var r in sword.GetComponentsInChildren<Renderer>())
-                            {
-                                if (r.material != null)
-                                {
-                                    r.material.SetTexture("_BaseMap", swordTex);
-                                    r.material.SetTexture("_MainTex", swordTex);
-                                }
-                            }
-                        }
-                    }
-#endif
+                    bone.SetParent(hand, true);
                 }
             }
 
@@ -699,6 +683,29 @@ public class GameManager : MonoBehaviour
             unit.animSpeedMultiplier = prefabUnit.animSpeedMultiplier;
         }
 
+        // Enforce base stats for each unit type as specified by the user
+        if (unitTypeIndex == 0) // Bộ
+        {
+            unit.hp = 100f;
+            unit.maxHp = 100f;
+            unit.atk = 10f;
+            unit.def = 5f;
+        }
+        else if (unitTypeIndex == 1) // Cung
+        {
+            unit.hp = 80f;
+            unit.maxHp = 80f;
+            unit.atk = 15f;
+            unit.def = 2f;
+        }
+        else if (unitTypeIndex == 4) // Tướng
+        {
+            unit.hp = 200f;
+            unit.maxHp = 200f;
+            unit.atk = 13f;
+            unit.def = 6f;
+        }
+
         if (unitTypeIndex == 1) // Archer
         {
             unit.attackCooldown = archerAttackCooldown;
@@ -718,23 +725,34 @@ public class GameManager : MonoBehaviour
             unit.def *= buffMultiplier;
         }
 
-        // Scale speed and attack range dynamically to match the grid generator's spacing (70f is base spacing for scale 1.0)
+        // Scale speed and attack range dynamically to match the grid generator's spacing
         BattlefieldGridGenerator gridGen = Object.FindAnyObjectByType<BattlefieldGridGenerator>();
+        float scale = 1f;
         if (gridGen != null)
         {
-            float scale = gridGen.rowSpacing / 70f;
-            unit.speed *= scale;
-            // Scale range but ensure it exceeds physical contact distance
-            float baseRange = Mathf.Max(unit.attackRange * scale, colRadius * 2.2f);
-            unit.attackRange = (unitTypeIndex == 1) ? (baseRange * 5f) : baseRange;
+            scale = gridGen.rowSpacing / 70f;
         }
         else
         {
-            // Fallback for runtime: scale speed and range relative to collider radius
-            float scaleFactor = colRadius / 0.4f;
-            unit.speed *= scaleFactor;
-            float baseRange = Mathf.Max(unit.attackRange * scaleFactor, colRadius * 2.2f);
-            unit.attackRange = (unitTypeIndex == 1) ? (baseRange * 5f) : baseRange;
+            scale = colRadius / 0.4f;
+        }
+
+        unit.speed *= scale;
+
+        // Scale range but ensure it exceeds physical contact distance (colRadius * 2.2f)
+        float baseRange = Mathf.Max(unit.attackRange * scale, colRadius * 2.2f);
+
+        if (unitTypeIndex == 1) // Cung (scales from 133.3757 -> 210 final range under normal scale)
+        {
+            unit.attackRange = 210f * scale;
+        }
+        else if (unitTypeIndex == 4) // Tướng (give slightly more range so he can easily reach and hit enemies)
+        {
+            unit.attackRange = baseRange * 1.25f;
+        }
+        else // Bộ
+        {
+            unit.attackRange = baseRange;
         }
 
         if (isPlayer)
