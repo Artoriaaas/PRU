@@ -31,10 +31,18 @@ public class UIManager : MonoBehaviour
     
     private GameObject _bottomPanel;
     public GameObject bottomPanel => _bottomPanel;
+    private GameObject _panelContent; // child container holding buttons + cards (can be hidden)
     private Button _switchViewBtn;
     private Text _switchViewText;
     private Text _scoutingReportText;
     private Button _togglePanelBtn;
+    private GameObject _showArrowBtn; // show.png button shown when panel is collapsed
+    private bool _panelCollapsed = false;
+    private Image _transitionFog;
+
+    private GameObject _errorBanner;
+    private Text _errorBannerText;
+    private float _errorBannerTimer = 0f;
 
     private void Reset()
     {
@@ -68,7 +76,25 @@ public class UIManager : MonoBehaviour
             }
             panelSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(path);
         }
+
+        // Ensure CustomUI sprites are imported as Sprite
+        string[] customSpritePaths = new string[] {
+            "Assets/Resources/CustomUI/BoBinhCard.png",
+            "Assets/Resources/CustomUI/CungThuCard.png",
+            "Assets/Resources/CustomUI/TuongQuanCard.png",
+            "Assets/Resources/CustomUI/show.png",
+        };
+        foreach (var spritePath in customSpritePaths)
+        {
+            var si = UnityEditor.AssetImporter.GetAtPath(spritePath) as UnityEditor.TextureImporter;
+            if (si != null && si.textureType != UnityEditor.TextureImporterType.Sprite)
+            {
+                si.textureType = UnityEditor.TextureImporterType.Sprite;
+                si.SaveAndReimport();
+            }
+        }
 #endif
+
 
         if (Instance == null)
         {
@@ -108,14 +134,15 @@ public class UIManager : MonoBehaviour
                 _placementHint = _canvasObj.transform.Find("PlacementHint")?.GetComponent<Text>();
                 _scoutingReportText = _canvasObj.transform.Find("ScoutingReportText")?.GetComponent<Text>();
                 
-                Transform startBtnTrans = _canvasObj.transform.Find("StartButton");
+                Transform startBtnTrans = _bottomPanel?.transform.Find("StartButton") ?? _canvasObj.transform.Find("StartButton");
                 if (startBtnTrans != null)
                 {
+                    if (_bottomPanel != null && !startBtnTrans.IsChildOf(_bottomPanel.transform))
+                        startBtnTrans.SetParent(_bottomPanel.transform, false);
+
                     _startBtn = startBtnTrans.GetComponent<Button>();
                     _startBtn.onClick.RemoveAllListeners();
-                    _startBtn.onClick.AddListener(() => {
-                        GameManager.Instance.StartBattle();
-                    });
+                    _startBtn.onClick.AddListener(() => { GameManager.Instance.StartBattle(); });
                     
                     // Setup new visual for StartButton
                     Image startImg = startBtnTrans.GetComponent<Image>();
@@ -132,41 +159,60 @@ public class UIManager : MonoBehaviour
                     if (txtTrans != null) txtTrans.gameObject.SetActive(false);
                 }
                 
-                Transform switchBtnTrans = _canvasObj.transform.Find("SwitchViewButton");
+                // Reconnect buttons - look inside BottomPanel first
+                Transform switchBtnTrans = _bottomPanel?.transform.Find("PanelContent/SwitchViewButton")
+                    ?? _bottomPanel?.transform.Find("SwitchViewButton")
+                    ?? _canvasObj.transform.Find("SwitchViewButton");
+                // Delete any old stray SwitchViewButton at canvas root level  
+                Transform oldSwitchAtRoot = _canvasObj.transform.Find("SwitchViewButton");
+                if (oldSwitchAtRoot != null && _bottomPanel != null && !oldSwitchAtRoot.IsChildOf(_bottomPanel.transform))
+                    DestroyImmediate(oldSwitchAtRoot.gameObject);
+
                 if (switchBtnTrans != null)
                 {
                     _switchViewBtn = switchBtnTrans.GetComponent<Button>();
                     _switchViewText = switchBtnTrans.Find("Text")?.GetComponent<Text>();
                     _switchViewBtn.onClick.RemoveAllListeners();
-                    _switchViewBtn.onClick.AddListener(() => {
-                        ToggleView();
-                    });
+                    _switchViewBtn.onClick.AddListener(() => { ToggleView(); });
                 }
                 
-                Transform toggleBtnTrans = _canvasObj.transform.Find("TogglePanelButton");
-                if (toggleBtnTrans == null)
+                Transform toggleBtnTrans = _bottomPanel?.transform.Find("PanelContent/TogglePanelButton")
+                    ?? _bottomPanel?.transform.Find("TogglePanelButton")
+                    ?? _canvasObj.transform.Find("TogglePanelButton");
+                // Delete any old stray TogglePanelButton at canvas root level
+                Transform oldToggleAtRoot = _canvasObj.transform.Find("TogglePanelButton");
+                if (oldToggleAtRoot != null && _bottomPanel != null && !oldToggleAtRoot.IsChildOf(_bottomPanel.transform))
+                    DestroyImmediate(oldToggleAtRoot.gameObject);
+
+                _panelContent = _bottomPanel?.transform.Find("PanelContent")?.gameObject;
+                _showArrowBtn = _bottomPanel?.transform.Find("ShowArrowButton")?.gameObject;
+
+                if (_showArrowBtn != null)
                 {
-                    Font arial = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    if (arial == null) arial = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                    if (arial == null) arial = Font.CreateDynamicFontFromOSFont("Arial", 24);
-                    CreateTogglePanelButton(_canvasObj.transform, arial);
+                    Button arrowBtn = _showArrowBtn.GetComponent<Button>();
+                    if (arrowBtn != null)
+                    {
+                        arrowBtn.onClick.RemoveAllListeners();
+                        arrowBtn.onClick.AddListener(() => { ExpandPanel(); });
+                    }
                 }
-                else
+
+                if (toggleBtnTrans != null)
                 {
                     _togglePanelBtn = toggleBtnTrans.GetComponent<Button>();
                     Text toggleText = toggleBtnTrans.Find("Text")?.GetComponent<Text>();
                     if (_togglePanelBtn != null)
                     {
                         _togglePanelBtn.onClick.RemoveAllListeners();
-                        _togglePanelBtn.onClick.AddListener(() => {
-                            if (_bottomPanel != null)
-                            {
-                                bool isActive = !_bottomPanel.activeSelf;
-                                _bottomPanel.SetActive(isActive);
-                                if (toggleText != null) toggleText.text = isActive ? "Hide Panel" : "Show Panel";
-                            }
-                        });
+                        _togglePanelBtn.onClick.AddListener(() => { TogglePanelCollapse(toggleText); });
                     }
+                }
+                else
+                {
+                    Font arial2 = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    if (arial2 == null) arial2 = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                    if (arial2 == null) arial2 = Font.CreateDynamicFontFromOSFont("Arial", 24);
+                    CreateTogglePanelButton(_panelContent != null ? _panelContent.transform : _bottomPanel.transform, arial2);
                 }
 
                 if (_canvasObj != null)
@@ -199,6 +245,34 @@ public class UIManager : MonoBehaviour
                     _gameOverPanel = gameOverTrans.gameObject;
                     _gameOverText = gameOverTrans.Find("GameOverText")?.GetComponent<Text>();
                 }
+                
+                // Reconnect error banner
+                Transform errorBannerTrans = _canvasObj.transform.Find("ErrorBanner");
+                if (errorBannerTrans != null)
+                {
+                    _errorBanner = errorBannerTrans.gameObject;
+                    _errorBannerText = errorBannerTrans.Find("Text")?.GetComponent<Text>();
+                }
+
+                // Reconnect or create TransitionFog — always start inactive
+                Transform existingFog = _canvasObj.transform.Find("TransitionFog");
+                if (existingFog != null)
+                {
+                    _transitionFog = existingFog.GetComponent<Image>();
+                }
+                else
+                {
+                    GameObject fogObj = new GameObject("TransitionFog");
+                    fogObj.transform.SetParent(_canvasObj.transform, false);
+                    _transitionFog = fogObj.AddComponent<Image>();
+                    RectTransform rtFog = _transitionFog.rectTransform;
+                    rtFog.anchorMin = Vector2.zero;
+                    rtFog.anchorMax = Vector2.one;
+                    rtFog.sizeDelta = Vector2.zero;
+                }
+                _transitionFog.color = new Color(0.85f, 0.85f, 0.9f, 0f);
+                _transitionFog.raycastTarget = false; // Off by default — only enable during animation
+                _transitionFog.gameObject.SetActive(false);
             }
 
             // Ensure EventSystem is present and not duplicated
@@ -224,83 +298,111 @@ public class UIManager : MonoBehaviour
 
     void Update()
     {
-        UpdateUIElements();
+        // Only tick error banner timer - don't re-apply UI layout every frame
+        if (_errorBannerTimer > 0)
+        {
+            _errorBannerTimer -= Time.deltaTime;
+            if (_errorBannerTimer <= 0 && _errorBanner != null)
+            {
+                _errorBanner.SetActive(false);
+            }
+        }
     }
 
     public void UpdateUIElements()
     {
+        // UpdateUIElements is intentionally lightweight now.
+        // Layout is set once during CreateUI / UpdatePlacementUI.
+        // Only update the panel sprite if panelSprite changes in Inspector.
         if (_bottomPanel != null)
         {
-            RectTransform rtPanel = _bottomPanel.GetComponent<RectTransform>();
-            if (rtPanel != null)
+            Image pImg = _bottomPanel.GetComponent<Image>();
+            if (pImg != null && panelSprite != null && pImg.sprite != panelSprite)
             {
-                rtPanel.anchoredPosition = panelPosition;
-                rtPanel.sizeDelta = new Vector2(1920f, 300f); // Use full 1920x300 size
-                
-                Image pImg = _bottomPanel.GetComponent<Image>();
-                if (pImg != null)
-                {
-                    Sprite activeSprite = panelSprite != null ? panelSprite : Resources.Load<Sprite>("output");
-                    if (activeSprite != null)
-                    {
-                        pImg.sprite = activeSprite;
-                        pImg.color = Color.white;
-                        pImg.type = Image.Type.Sliced;
-                    }
-                    else
-                    {
-                        pImg.sprite = null;
-                        pImg.color = new Color(0, 0, 0, 0.5f);
-                    }
-                }
+                pImg.sprite = panelSprite;
+                pImg.color = Color.white;
+                pImg.type = Image.Type.Sliced;
             }
-        }
-
-        Transform cardTrans = _bottomPanel != null ? _bottomPanel.transform.Find("UnitCard") : null;
-        if (cardTrans != null)
-        {
-            RectTransform rtCard = cardTrans.GetComponent<RectTransform>();
-            if (rtCard != null)
-            {
-                rtCard.anchoredPosition = cardPosition;
-                rtCard.sizeDelta = cardSize;
-            }
-            
-            Transform textTrans = cardTrans.Find("CardText");
-            if (textTrans != null)
-            {
-                RectTransform rtText = textTrans.GetComponent<RectTransform>();
-                if (rtText != null) rtText.sizeDelta = cardSize;
-
-                Text tComp = textTrans.GetComponent<Text>();
-                if (tComp != null) tComp.raycastTarget = false;
-            }
-        }
-
-        if (_placementHint != null)
-        {
-            _placementHint.rectTransform.anchoredPosition = new Vector2(0, hintTextPositionY);
         }
     }
 
+    // Called by the Editor "Preview UI" button.
+    // Reconnects all event listeners WITHOUT touching positions/layout.
     public void CreateUIPreview()
     {
-        ClearUIPreview();
-        
         if (Instance == null) Instance = this;
-        
-        CreateUI();
-        UpdateUIElements();
+
+        _canvasObj = GameObject.Find("UICanvas");
+        if (_canvasObj == null)
+        {
+            // Canvas doesn't exist yet, create fresh
+            CreateUI();
+            UpdatePlacementUI();
+            return;
+        }
+
+        // Canvas already exists -- only reconnect references so Play Mode works
+        _bottomPanel    = _canvasObj.transform.Find("BottomPanel")?.gameObject;
+        _panelContent   = _bottomPanel?.transform.Find("PanelContent")?.gameObject;
+        _unitsText      = _canvasObj.transform.Find("UnitsText")?.GetComponent<Text>();
+        _placementHint  = _canvasObj.transform.Find("PlacementHint")?.GetComponent<Text>();
+        _scoutingReportText = _canvasObj.transform.Find("ScoutingReportText")?.GetComponent<Text>();
+
+        Transform startBtnT = _bottomPanel?.transform.Find("StartButton") ?? _canvasObj.transform.Find("StartButton");
+        if (startBtnT != null) _startBtn = startBtnT.GetComponent<Button>();
+
+        Transform switchT = _bottomPanel?.transform.Find("PanelContent/SwitchViewButton")
+                         ?? _bottomPanel?.transform.Find("SwitchViewButton")
+                         ?? _canvasObj.transform.Find("SwitchViewButton");
+        if (switchT != null)
+        {
+            _switchViewBtn  = switchT.GetComponent<Button>();
+            _switchViewText = switchT.Find("Text")?.GetComponent<Text>();
+        }
+
+        Transform toggleT = _bottomPanel?.transform.Find("PanelContent/TogglePanelButton")
+                          ?? _bottomPanel?.transform.Find("TogglePanelButton")
+                          ?? _canvasObj.transform.Find("TogglePanelButton");
+        if (toggleT != null) _togglePanelBtn = toggleT.GetComponent<Button>();
+
+        _showArrowBtn = _bottomPanel?.transform.Find("ShowArrowButton")?.gameObject;
+
+        Transform fogT = _canvasObj.transform.Find("TransitionFog");
+        if (fogT != null)
+        {
+            _transitionFog = fogT.GetComponent<Image>();
+            _transitionFog.raycastTarget = false;
+            _transitionFog.gameObject.SetActive(false);
+        }
+
+        Transform gameOverT = _canvasObj.transform.Find("GameOverPanel");
+        if (gameOverT != null)
+        {
+            _gameOverPanel = gameOverT.gameObject;
+            _gameOverText  = gameOverT.Find("GameOverText")?.GetComponent<Text>();
+        }
+
+        Transform errorT = _canvasObj.transform.Find("ErrorBanner");
+        if (errorT != null)
+        {
+            _errorBanner     = errorT.gameObject;
+            _errorBannerText = errorT.Find("Text")?.GetComponent<Text>();
+        }
+
+        Debug.Log("[UIManager] Preview: References reconnected. Layout untouched.");
     }
 
+    // Destroys the preview canvas entirely so you can start fresh.
     public void ClearUIPreview()
     {
         GameObject canvas = GameObject.Find("UICanvas");
         if (canvas != null) DestroyImmediate(canvas);
-        
+
         GameObject eventSystem = GameObject.Find("EventSystem");
         if (eventSystem != null) DestroyImmediate(eventSystem);
     }
+
+    public void CreateUI_Public() { CreateUI(); UpdatePlacementUI(); }
 
     void CreateUI()
     {
@@ -390,38 +492,39 @@ public class UIManager : MonoBehaviour
         }
         
         RectTransform rtPanel = _bottomPanel.GetComponent<RectTransform>();
-        rtPanel.anchorMin = new Vector2(0.5f, 0f);
-        rtPanel.anchorMax = new Vector2(0.5f, 0f);
+        rtPanel.anchorMin = new Vector2(0f, 0f);
+        rtPanel.anchorMax = new Vector2(1f, 0f);
         rtPanel.pivot = new Vector2(0.5f, 0f);
-        rtPanel.anchoredPosition = panelPosition;
-        rtPanel.sizeDelta = new Vector2(1920f, 300f); // Use full 1920x300 size
+        rtPanel.anchoredPosition = Vector2.zero;
+        rtPanel.sizeDelta = new Vector2(0f, 350f);
 
-        // Unit Card
-        GameObject cardObj = new GameObject("UnitCard");
-        cardObj.transform.SetParent(_bottomPanel.transform, false);
-        Image cardImg = cardObj.AddComponent<Image>();
-        cardImg.color = new Color(0.1f, 0.4f, 0.8f, 1f); // Premium blue card
-        RectTransform rtCard = cardObj.GetComponent<RectTransform>();
-        rtCard.anchorMin = new Vector2(0.5f, 0.5f);
-        rtCard.anchorMax = new Vector2(0.5f, 0.5f);
-        rtCard.anchoredPosition = cardPosition;
-        rtCard.sizeDelta = cardSize;
-        
-        cardObj.AddComponent<DragDropCard>();
+        // ShowArrowButton - uses show.png, anchored at top-center of BottomPanel
+        // Always visible; clicking it toggles the panel
+        _showArrowBtn = new GameObject("ShowArrowButton");
+        _showArrowBtn.transform.SetParent(_bottomPanel.transform, false);
+        Image arrowImg = _showArrowBtn.AddComponent<Image>();
+        Sprite showSpr = Resources.Load<Sprite>("CustomUI/show");
+        if (showSpr != null) { arrowImg.sprite = showSpr; arrowImg.color = Color.white; }
+        else arrowImg.color = new Color(0.5f, 0.3f, 0.0f, 0.95f);
+        Button arrowBtn = _showArrowBtn.AddComponent<Button>();
+        RectTransform rtArrow = _showArrowBtn.GetComponent<RectTransform>();
+        rtArrow.anchorMin = new Vector2(0.5f, 1f);
+        rtArrow.anchorMax = new Vector2(0.5f, 1f);
+        rtArrow.pivot = new Vector2(0.5f, 0f);
+        rtArrow.anchoredPosition = new Vector2(0f, 0f); // sits just above the panel top edge
+        rtArrow.sizeDelta = new Vector2(120f, 60f);
+        arrowBtn.onClick.AddListener(() => { ExpandPanel(); });
 
-        // Text inside card
-        GameObject cardTextObj = new GameObject("CardText");
-        cardTextObj.transform.SetParent(cardObj.transform, false);
-        Text cardText = cardTextObj.AddComponent<Text>();
-        cardText.font = arial;
-        cardText.text = "Drag\nMe!";
-        cardText.fontSize = 18;
-        cardText.color = Color.white;
-        cardText.alignment = TextAnchor.MiddleCenter;
-        cardText.rectTransform.sizeDelta = cardSize;
-        cardText.raycastTarget = false; // Prevent text from blocking interaction
+        // PanelContent - child that holds buttons and cards; this is what slides/hides
+        _panelContent = new GameObject("PanelContent");
+        _panelContent.transform.SetParent(_bottomPanel.transform, false);
+        RectTransform rtContent = _panelContent.AddComponent<RectTransform>();
+        rtContent.anchorMin = Vector2.zero;
+        rtContent.anchorMax = Vector2.one;
+        rtContent.sizeDelta = Vector2.zero;
+        rtContent.anchoredPosition = Vector2.zero;
 
-        _placementHint.text = "Drag the blue card onto the grid to place units.";
+        _placementHint.text = "Kéo thẻ lên sân để đặt quân.";
         RectTransform rtHint = _placementHint.rectTransform;
         rtHint.anchorMin = new Vector2(0.5f, 0);
         rtHint.anchorMax = new Vector2(0.5f, 0);
@@ -431,7 +534,7 @@ public class UIManager : MonoBehaviour
 
         // Start Button
         GameObject btnObj = new GameObject("StartButton");
-        btnObj.transform.SetParent(_canvasObj.transform, false);
+        btnObj.transform.SetParent(_bottomPanel.transform, false);
         Image btnImg = btnObj.AddComponent<Image>();
         Sprite startSprite = Resources.Load<Sprite>("StartBattle");
         if (startSprite != null) {
@@ -466,36 +569,41 @@ public class UIManager : MonoBehaviour
             GameManager.Instance.StartBattle();
         });
 
-        // Switch View Button
+        // Switch View Button - inside PanelContent, top-right
         GameObject switchBtnObj = new GameObject("SwitchViewButton");
-        switchBtnObj.transform.SetParent(_canvasObj.transform, false);
+        switchBtnObj.transform.SetParent(_panelContent.transform, false);
         Image switchImg = switchBtnObj.AddComponent<Image>();
-        switchImg.color = new Color(0.8f, 0.5f, 0.1f);
+        switchImg.color = new Color(0.4f, 0.15f, 0.0f, 0.95f);
         _switchViewBtn = switchBtnObj.AddComponent<Button>();
+
+        Outline switchOutline = switchBtnObj.AddComponent<Outline>();
+        switchOutline.effectColor = new Color(0.85f, 0.65f, 0.1f, 1f);
+        switchOutline.effectDistance = new Vector2(2f, 2f);
         
         GameObject switchTextObj = new GameObject("Text");
         switchTextObj.transform.SetParent(switchBtnObj.transform, false);
         _switchViewText = switchTextObj.AddComponent<Text>();
         _switchViewText.font = arial;
-        _switchViewText.text = "View Enemy >";
-        _switchViewText.fontSize = 20;
+        _switchViewText.text = "Xem đội hình tướng địch";
+        _switchViewText.fontSize = 22;
         _switchViewText.color = Color.white;
         _switchViewText.alignment = TextAnchor.MiddleCenter;
-        _switchViewText.rectTransform.sizeDelta = new Vector2(160, 50);
+        RectTransform rtSwitchTxt = _switchViewText.rectTransform;
+        rtSwitchTxt.anchorMin = Vector2.zero;
+        rtSwitchTxt.anchorMax = Vector2.one;
+        rtSwitchTxt.sizeDelta = Vector2.zero;
 
         RectTransform rtSwitch = switchBtnObj.GetComponent<RectTransform>();
-        rtSwitch.anchorMin = new Vector2(0, 0);
-        rtSwitch.anchorMax = new Vector2(0, 0);
-        rtSwitch.pivot = new Vector2(0, 0);
-        rtSwitch.anchoredPosition = new Vector2(20, 20);
-        rtSwitch.sizeDelta = new Vector2(160, 50);
+        rtSwitch.anchorMin = new Vector2(0.5f, 1f);
+        rtSwitch.anchorMax = new Vector2(1f, 1f);
+        rtSwitch.pivot = new Vector2(1f, 1f);
+        rtSwitch.anchoredPosition = new Vector2(-10f, 0f);
+        rtSwitch.sizeDelta = new Vector2(0f, 55f);
 
-        _switchViewBtn.onClick.AddListener(() => {
-            ToggleView();
-        });
+        _switchViewBtn.onClick.AddListener(() => { ToggleView(); });
 
-        // Toggle Panel Button
-        CreateTogglePanelButton(_canvasObj.transform, arial);
+        // Toggle Panel Button - inside PanelContent, top-left
+        CreateTogglePanelButton(_panelContent.transform, arial);
 
         // Game Over Panel
         _gameOverPanel = new GameObject("GameOverPanel");
@@ -520,6 +628,45 @@ public class UIManager : MonoBehaviour
         rtGOText.sizeDelta = new Vector2(400, 100);
         
         _gameOverPanel.SetActive(false);
+
+        // Error Banner
+        _errorBanner = new GameObject("ErrorBanner");
+        _errorBanner.transform.SetParent(_canvasObj.transform, false);
+        Image bannerImg = _errorBanner.AddComponent<Image>();
+        Sprite showSprite = Resources.Load<Sprite>("CustomUI/show");
+        if (showSprite != null) bannerImg.sprite = showSprite;
+        else bannerImg.color = new Color(0.8f, 0.2f, 0.2f, 0.9f);
+        
+        RectTransform rtBanner = _errorBanner.GetComponent<RectTransform>();
+        rtBanner.anchorMin = new Vector2(0.5f, 0f);
+        rtBanner.anchorMax = new Vector2(0.5f, 0f);
+        rtBanner.pivot = new Vector2(0.5f, 0f);
+        rtBanner.anchoredPosition = new Vector2(0, 310);
+        rtBanner.sizeDelta = new Vector2(600, 150);
+
+        GameObject bannerTextObj = new GameObject("Text");
+        bannerTextObj.transform.SetParent(_errorBanner.transform, false);
+        _errorBannerText = bannerTextObj.AddComponent<Text>();
+        _errorBannerText.font = arial;
+        _errorBannerText.fontSize = 24;
+        _errorBannerText.color = Color.white;
+        _errorBannerText.alignment = TextAnchor.MiddleCenter;
+        RectTransform rtBannerText = _errorBannerText.rectTransform;
+        rtBannerText.anchorMin = Vector2.zero;
+        rtBannerText.anchorMax = Vector2.one;
+        rtBannerText.sizeDelta = Vector2.zero;
+        
+        _errorBanner.SetActive(false);
+    }
+
+    public void ShowErrorBanner(string message)
+    {
+        if (_errorBanner != null && _errorBannerText != null)
+        {
+            _errorBannerText.text = message;
+            _errorBanner.SetActive(true);
+            _errorBannerTimer = 3f;
+        }
     }
 
     private void CreateHitboxButton(Transform parent)
@@ -562,57 +709,172 @@ public class UIManager : MonoBehaviour
         });
     }
 
+    private Coroutine _slideRoutine;
+
+    private void TogglePanelCollapse(Text toggleText)
+    {
+        _panelCollapsed = !_panelCollapsed;
+        if (toggleText != null) toggleText.text = _panelCollapsed ? "Hiện chọn tướng" : "Ẩn chọn tướng";
+        
+        if (_slideRoutine != null) StopCoroutine(_slideRoutine);
+
+        float targetY = 0f;
+        if (_panelCollapsed && _bottomPanel != null && _showArrowBtn != null)
+        {
+            RectTransform rtPanel = _bottomPanel.GetComponent<RectTransform>();
+            RectTransform rtArrow = _showArrowBtn.GetComponent<RectTransform>();
+            float anchorY = rtPanel.rect.height * rtArrow.anchorMin.y;
+            float arrowBottomY = anchorY + rtArrow.anchoredPosition.y - rtArrow.rect.height * rtArrow.pivot.y;
+            targetY = -arrowBottomY;
+        }
+
+        _slideRoutine = StartCoroutine(SlidePanelRoutine(targetY));
+    }
+
+    private void ExpandPanel()
+    {
+        if (!_panelCollapsed) return;
+        _panelCollapsed = false;
+        if (_togglePanelBtn != null)
+        {
+            Text txt = _togglePanelBtn.transform.Find("Text")?.GetComponent<Text>();
+            if (txt != null) txt.text = "Ẩn chọn tướng";
+        }
+        
+        if (_slideRoutine != null) StopCoroutine(_slideRoutine);
+        _slideRoutine = StartCoroutine(SlidePanelRoutine(0f));
+    }
+
+    private System.Collections.IEnumerator SlidePanelRoutine(float targetY)
+    {
+        if (_bottomPanel == null) yield break;
+        RectTransform rt = _bottomPanel.GetComponent<RectTransform>();
+        float startY = rt.anchoredPosition.y;
+        float time = 0f;
+        float duration = 0.3f; // 300ms animation
+        
+        if (_showArrowBtn != null)
+        {
+            // Point UP when collapsed (-350), DOWN when shown (0) -> assumes show.png points UP by default
+            float rot = (targetY < -100f) ? 0f : 180f; 
+            _showArrowBtn.transform.localRotation = Quaternion.Euler(0, 0, rot);
+        }
+
+        while (time < duration)
+        {
+            time += Time.deltaTime;
+            float y = Mathf.Lerp(startY, targetY, time / duration);
+            rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, y);
+            yield return null;
+        }
+        rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, targetY);
+    }
+
     private void CreateTogglePanelButton(Transform parent, Font font)
     {
         GameObject toggleBtnObj = new GameObject("TogglePanelButton");
         toggleBtnObj.transform.SetParent(parent, false);
         Image toggleImg = toggleBtnObj.AddComponent<Image>();
-        toggleImg.color = new Color(0.1f, 0.2f, 0.3f, 0.9f);
+        toggleImg.color = new Color(0.4f, 0.15f, 0.0f, 0.95f);
         _togglePanelBtn = toggleBtnObj.AddComponent<Button>();
+
+        Outline toggleOutline = toggleBtnObj.AddComponent<Outline>();
+        toggleOutline.effectColor = new Color(0.85f, 0.65f, 0.1f, 1f);
+        toggleOutline.effectDistance = new Vector2(2f, 2f);
         
         GameObject toggleTextObj = new GameObject("Text");
         toggleTextObj.transform.SetParent(toggleBtnObj.transform, false);
         Text toggleText = toggleTextObj.AddComponent<Text>();
         toggleText.font = font;
-        toggleText.text = "Hide Panel";
-        toggleText.fontSize = 20;
+        toggleText.text = "Ẩn chọn tướng";
+        toggleText.fontSize = 22;
         toggleText.color = Color.white;
         toggleText.alignment = TextAnchor.MiddleCenter;
-        toggleText.rectTransform.sizeDelta = new Vector2(160, 40);
+        RectTransform rtTxt = toggleText.rectTransform;
+        rtTxt.anchorMin = Vector2.zero;
+        rtTxt.anchorMax = Vector2.one;
+        rtTxt.sizeDelta = Vector2.zero;
 
         RectTransform rtToggle = toggleBtnObj.GetComponent<RectTransform>();
-        rtToggle.anchorMin = new Vector2(0.5f, 0); // Bottom center
-        rtToggle.anchorMax = new Vector2(0.5f, 0);
-        rtToggle.pivot = new Vector2(0.5f, 0);
-        rtToggle.anchoredPosition = new Vector2(0, 320); // Just above the 300px panel
-        rtToggle.sizeDelta = new Vector2(160, 40);
+        rtToggle.anchorMin = new Vector2(0f, 1f);
+        rtToggle.anchorMax = new Vector2(0.5f, 1f);
+        rtToggle.pivot = new Vector2(0f, 1f);
+        rtToggle.anchoredPosition = new Vector2(10f, 0f);
+        rtToggle.sizeDelta = new Vector2(-10f, 55f);
 
-        _togglePanelBtn.onClick.AddListener(() => {
-            if (_bottomPanel != null)
-            {
-                bool isActive = !_bottomPanel.activeSelf;
-                _bottomPanel.SetActive(isActive);
-                toggleText.text = isActive ? "Hide Panel" : "Show Panel";
-            }
-        });
+        _togglePanelBtn.onClick.AddListener(() => { TogglePanelCollapse(toggleText); });
     }
 
     private void ToggleView()
     {
         if (CameraController.Instance == null) return;
 
-        if (CameraController.Instance.GetCurrentView() == CameraView.PlayerSetup)
+        CameraView targetView = CameraView.EnemySetup;
+        string newText = "Sắp xếp đội hình";
+
+        if (CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
         {
-            CameraController.Instance.SetView(CameraView.EnemySetup);
-            _switchViewText.text = "< View Player";
-        }
-        else if (CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
-        {
-            CameraController.Instance.SetView(CameraView.PlayerSetup);
-            _switchViewText.text = "View Enemy >";
+            targetView = CameraView.PlayerSetup;
+            newText = "Xem đội hình tướng địch";
         }
 
+        StartCoroutine(SwitchViewRoutine(targetView, newText));
+    }
+
+    private System.Collections.IEnumerator SwitchViewRoutine(CameraView targetView, string newButtonText)
+    {
+        // Create fog lazily if somehow missing
+        if (_transitionFog == null)
+        {
+            GameObject fogObj = new GameObject("TransitionFog");
+            if (_canvasObj != null) fogObj.transform.SetParent(_canvasObj.transform, false);
+            _transitionFog = fogObj.AddComponent<Image>();
+            RectTransform rtFog = _transitionFog.rectTransform;
+            rtFog.anchorMin = Vector2.zero;
+            rtFog.anchorMax = Vector2.one;
+            rtFog.sizeDelta = Vector2.zero;
+        }
+
+        _transitionFog.color = new Color(0.85f, 0.85f, 0.9f, 0f);
+        _transitionFog.raycastTarget = true;  // Block clicks during animation
+        _transitionFog.gameObject.SetActive(true);
+        _transitionFog.transform.SetAsLastSibling();
+
+        float duration = 0.4f;
+        float elapsed = 0f;
+        Color c = _transitionFog.color;
+
+        // Fade in: transparent -> opaque white fog
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            c.a = Mathf.Clamp01(elapsed / duration);
+            _transitionFog.color = c;
+            yield return null;
+        }
+        c.a = 1f;
+        _transitionFog.color = c;
+
+        // Switch camera view during full white-out
+        CameraController.Instance.SetView(targetView);
+        if (_switchViewText != null) _switchViewText.text = newButtonText;
         UpdatePlacementUI();
+
+        yield return new WaitForSecondsRealtime(0.15f);
+
+        // Fade out: opaque -> transparent
+        elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            c.a = Mathf.Clamp01(1f - elapsed / duration);
+            _transitionFog.color = c;
+            yield return null;
+        }
+        c.a = 0f;
+        _transitionFog.color = c;
+        _transitionFog.raycastTarget = false;  // Stop blocking input when invisible
+        _transitionFog.gameObject.SetActive(false);
     }
 
     public void UpdatePlacementUI()
@@ -649,85 +911,65 @@ public class UIManager : MonoBehaviour
 
         if (_bottomPanel != null)
         {
-            _bottomPanel.SetActive(isPlayer);
-
-            // Clear old cards to prevent duplicates
-            List<GameObject> toDestroy = new List<GameObject>();
-            foreach (Transform child in _bottomPanel.transform)
-            {
-                if (child.name.StartsWith("UnitCard"))
-                {
-                    toDestroy.Add(child.gameObject);
-                }
-            }
-            for (int i = 0; i < toDestroy.Count; i++)
-            {
-                DestroyImmediate(toDestroy[i]);
-            }
+            Transform cardParent = (_panelContent != null) ? _panelContent.transform : _bottomPanel.transform;
 
             if (isPlayer)
             {
-                int troopLvl = skillManager != null ? skillManager.troopLevel : 0;
-                int numCards = 1 + troopLvl;
-                int totalCards = numCards + 1; // Add 1 for the King card
-                float cardSpacing = 90f;
-                float startX = -((totalCards - 1) * cardSpacing) / 2f;
-                
-                Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                if (font == null) font = Resources.GetBuiltinResource<Font>("Arial.ttf");
 
-                // 1. Generate normal cards
-                for (int i = 0; i < numCards; i++)
+                // Only create cards if they don't already exist (preserve Inspector layout)
+                bool cardsExist = false;
+                foreach (Transform child in cardParent)
+
                 {
-                    int typeIndex = i;
-                    GameObject cardObj = new GameObject("UnitCard_" + typeIndex);
-                    cardObj.transform.SetParent(_bottomPanel.transform, false);
-                    Image cardImg = cardObj.AddComponent<Image>();
-                    
-                    // Set color and label text based on typeIndex
-                    string label = "";
-                    if (typeIndex == 0)
+                    if (child.name.StartsWith("UnitCard"))
                     {
-                        cardImg.color = new Color(0.1f, 0.4f, 0.8f, 1f); // Blue
-                        label = "Cận Chiến";
+                        cardsExist = true;
+                        break;
                     }
-                    else if (typeIndex == 1)
-                    {
-                        cardImg.color = new Color(0.1f, 0.6f, 0.2f, 1f); // Green
-                        label = "Cung Thủ";
-                    }
-                    else if (typeIndex == 2)
-                    {
-                        cardImg.color = new Color(0.5f, 0.1f, 0.7f, 1f); // Purple
-                        label = "Kỵ Binh";
-                    }
-                    else if (typeIndex == 3)
-                    {
-                        cardImg.color = new Color(0.85f, 0.5f, 0.1f, 1f); // Gold/Orange
-                        label = "Hổ Bôn";
-                    }
+                }
 
-                    RectTransform rtCard = cardObj.GetComponent<RectTransform>();
-                    rtCard.anchorMin = new Vector2(0.5f, 0.5f);
-                    rtCard.anchorMax = new Vector2(0.5f, 0.5f);
-                    rtCard.pivot = new Vector2(0.5f, 0.5f);
-                    rtCard.anchoredPosition = new Vector2(startX + i * cardSpacing, cardPosition.y);
-                    rtCard.sizeDelta = cardSize;
+                if (!cardsExist)
+                {
+                    int numCards = 3;
+                    float cardSpacing = 420f;
+                    float startX = -((numCards - 1) * cardSpacing) / 2f;
 
-                    var ddc = cardObj.AddComponent<DragDropCard>();
-                    ddc.unitTypeIndex = typeIndex;
+                    for (int i = 0; i < numCards; i++)
+                    {
+                        int typeIndex = i;
+                        GameObject cardObj = new GameObject("UnitCard_" + typeIndex);
+                        cardObj.transform.SetParent(cardParent, false);
+                        Image cardImg = cardObj.AddComponent<Image>();
+                        cardImg.color = Color.white;
 
-                    // Text inside card
-                    GameObject cardTextObj = new GameObject("CardText");
-                    cardTextObj.transform.SetParent(cardObj.transform, false);
-                    Text cardText = cardTextObj.AddComponent<Text>();
-                    cardText.font = font;
-                    cardText.text = label;
-                    cardText.fontSize = 14;
-                    cardText.color = Color.white;
-                    cardText.alignment = TextAnchor.MiddleCenter;
-                    cardText.rectTransform.sizeDelta = cardSize;
-                    cardText.raycastTarget = false;
+                        string spriteName = "";
+                        if (typeIndex == 0) spriteName = "CustomUI/BoBinhCard";
+                        else if (typeIndex == 1) spriteName = "CustomUI/CungThuCard";
+                        else if (typeIndex == 2) spriteName = "CustomUI/TuongQuanCard";
+
+                        Sprite spr = Resources.Load<Sprite>(spriteName);
+                        if (spr != null) cardImg.sprite = spr;
+
+                        RectTransform rtCard = cardObj.GetComponent<RectTransform>();
+                        rtCard.anchorMin = new Vector2(0.5f, 0.5f);
+                        rtCard.anchorMax = new Vector2(0.5f, 0.5f);
+                        rtCard.pivot = new Vector2(0.5f, 0.5f);
+                        // Y=-30 centers cards in lower area below the 55px button bar
+                        rtCard.anchoredPosition = new Vector2(startX + i * cardSpacing, -30f);
+                        rtCard.sizeDelta = new Vector2(380f, 230f);
+
+                        var ddc = cardObj.AddComponent<DragDropCard>();
+                        ddc.unitTypeIndex = typeIndex;
+                    }
+                }
+            }
+            
+            // Toggle visibility of unit cards based on whether it is player setup
+            foreach (Transform child in cardParent)
+            {
+                if (child.name.StartsWith("UnitCard"))
+                {
+                    child.gameObject.SetActive(isPlayer);
                 }
 
                 // 2. Generate King card (typeIndex = 4)
@@ -764,6 +1006,7 @@ public class UIManager : MonoBehaviour
             }
         }
 
+
         if (_placementHint != null)
         {
             _placementHint.text = isPlayer ? 
@@ -779,7 +1022,7 @@ public class UIManager : MonoBehaviour
                 _switchViewBtn.interactable = false;
                 if (_switchViewText != null)
                 {
-                    _switchViewText.text = "🔒 View Enemy (Lv3)";
+                    _switchViewText.text = "🔒 Xem đội hình (Lv3)";
                 }
             }
             else
@@ -788,8 +1031,8 @@ public class UIManager : MonoBehaviour
                 if (_switchViewText != null)
                 {
                     _switchViewText.text = (CameraController.Instance != null && CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
-                        ? "< View Player" 
-                        : "View Enemy >";
+                        ? "Sắp xếp đội hình" 
+                        : "Xem đội hình tướng địch";
                 }
             }
         }
@@ -859,14 +1102,25 @@ public class UIManagerEditor : Editor
 
         if (!Application.isPlaying)
         {
-            if (GUILayout.Button("▶  Preview UI in Editor", GUILayout.Height(36)))
+            EditorGUILayout.HelpBox(
+                "▶ Reconnect References: Giữ nguyên toàn bộ layout/vị trí bạn đã chỉnh. Chỉ kết nối lại code references.\n" +
+                "✖ Clear & Rebuild: XÓA toàn bộ UICanvas và tạo lại từ script (mất layout đã chỉnh).",
+                MessageType.Info);
+
+            if (GUILayout.Button("▶  Reconnect References (Giữ layout)", GUILayout.Height(36)))
             {
                 manager.CreateUIPreview();
             }
 
-            if (GUILayout.Button("✖  Clear UI Preview", GUILayout.Height(24)))
+            if (GUILayout.Button("✖  Clear & Rebuild từ Script", GUILayout.Height(24)))
             {
-                manager.ClearUIPreview();
+                if (EditorUtility.DisplayDialog("Xác nhận",
+                    "Hành động này sẽ XÓA toàn bộ UICanvas và tạo lại từ đầu.\nMọi vị trí bạn đã chỉnh sẽ bị mất!",
+                    "Xóa và tạo lại", "Hủy"))
+                {
+                    manager.ClearUIPreview();
+                    manager.CreateUI_Public();
+                }
             }
         }
     }
