@@ -931,9 +931,15 @@ public class UIManager : MonoBehaviour
                 if (!cardsExist)
                 {
                     int numCards = 3;
+                    int totalCards = numCards;
                     float cardSpacing = 420f;
-                    float startX = -((numCards - 1) * cardSpacing) / 2f;
+                    float startX = -((totalCards - 1) * cardSpacing) / 2f;
 
+                    Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    if (font == null) font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                    if (font == null) font = Font.CreateDynamicFontFromOSFont("Arial", 14);
+
+                    // 1. Generate normal cards
                     for (int i = 0; i < numCards; i++)
                     {
                         int typeIndex = i;
@@ -959,7 +965,7 @@ public class UIManager : MonoBehaviour
                         rtCard.sizeDelta = new Vector2(380f, 230f);
 
                         var ddc = cardObj.AddComponent<DragDropCard>();
-                        ddc.unitTypeIndex = typeIndex;
+                        ddc.unitTypeIndex = (typeIndex == 2) ? 4 : typeIndex;
                     }
                 }
             }
@@ -970,38 +976,6 @@ public class UIManager : MonoBehaviour
                 if (child.name.StartsWith("UnitCard"))
                 {
                     child.gameObject.SetActive(isPlayer);
-                }
-
-                // 2. Generate King card (typeIndex = 4)
-                {
-                    int kingTypeIndex = 4;
-                    GameObject kingCardObj = new GameObject("UnitCard_" + kingTypeIndex);
-                    kingCardObj.transform.SetParent(_bottomPanel.transform, false);
-                    Image kingCardImg = kingCardObj.AddComponent<Image>();
-                    kingCardImg.color = new Color(0.7f, 0.1f, 0.1f, 1f); // Crimson/Royal Red
-                    string kingLabel = "Vua";
-
-                    RectTransform rtKingCard = kingCardObj.GetComponent<RectTransform>();
-                    rtKingCard.anchorMin = new Vector2(0.5f, 0.5f);
-                    rtKingCard.anchorMax = new Vector2(0.5f, 0.5f);
-                    rtKingCard.pivot = new Vector2(0.5f, 0.5f);
-                    rtKingCard.anchoredPosition = new Vector2(startX + numCards * cardSpacing, cardPosition.y);
-                    rtKingCard.sizeDelta = cardSize;
-
-                    var ddcKing = kingCardObj.AddComponent<DragDropCard>();
-                    ddcKing.unitTypeIndex = kingTypeIndex;
-
-                    // Text inside King card
-                    GameObject kingTextObj = new GameObject("CardText");
-                    kingTextObj.transform.SetParent(kingCardObj.transform, false);
-                    Text kingText = kingTextObj.AddComponent<Text>();
-                    kingText.font = font;
-                    kingText.text = kingLabel;
-                    kingText.fontSize = 14;
-                    kingText.color = Color.white;
-                    kingText.alignment = TextAnchor.MiddleCenter;
-                    kingText.rectTransform.sizeDelta = cardSize;
-                    kingText.raycastTarget = false;
                 }
             }
         }

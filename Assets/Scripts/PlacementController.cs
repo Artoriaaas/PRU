@@ -18,7 +18,7 @@ public class PlacementController : MonoBehaviour
         if (typeIndex == 1) return new Color(0.1f, 0.6f, 0.2f, alpha);
         if (typeIndex == 2) return new Color(0.5f, 0.1f, 0.7f, alpha);
         if (typeIndex == 3) return new Color(0.85f, 0.5f, 0.1f, alpha);
-        if (typeIndex == 4) return new Color(0.7f, 0.1f, 0.1f, alpha); // Royal red for King
+        if (typeIndex == 4) return new Color(0.5f, 0.1f, 0.7f, alpha); // Purple for General/King
         return new Color(0.2f, 0.6f, 1f, alpha);
     }
 
@@ -419,14 +419,14 @@ public class PlacementController : MonoBehaviour
         if (tileObj.name.StartsWith(prefix) || tileObj.name.StartsWith("Tile_"))
         {
 
-            // "Big pad" = first pad (row0, col0) reserved for Tuong Quan (General)
-            bool isBigPad = tileObj.name == "PlayerPad_0_0" || tileObj.name == "PlayerPad_General";
-            if (unitTypeIndex == 2 && !isBigPad)
+            // "Big pad" = first pad (row3, col2) reserved for Tuong Quan (General)
+            bool isBigPad = tileObj.name == "PlayerPad_3_2 (1)";
+            if (unitTypeIndex == 4 && !isBigPad)
             {
                 if (UIManager.Instance != null) UIManager.Instance.ShowErrorBanner("Tướng Quân chỉ có thể đặt ở vị trí hình tròn to bên trái!");
                 return;
             }
-            if (unitTypeIndex != 2 && isBigPad)
+            if (unitTypeIndex != 4 && isBigPad)
             {
                 if (UIManager.Instance != null) UIManager.Instance.ShowErrorBanner("Vị trí này chỉ dành cho Tướng Quân!");
                 return;

@@ -18,12 +18,18 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
         if (typeIndex == 1) return new Color(0.1f, 0.6f, 0.2f, alpha);
         if (typeIndex == 2) return new Color(0.5f, 0.1f, 0.7f, alpha);
         if (typeIndex == 3) return new Color(0.85f, 0.5f, 0.1f, alpha);
-        if (typeIndex == 4) return new Color(0.7f, 0.1f, 0.1f, alpha); // Royal red for King
+        if (typeIndex == 4) return new Color(0.5f, 0.1f, 0.7f, alpha); // Purple for General/King
         return new Color(0.2f, 0.6f, 1f, alpha);
     }
 
     void Start()
     {
+        // Force General card (index 2) to 4 (King) so it matches logic in scene
+        if (unitTypeIndex == 2)
+        {
+            unitTypeIndex = 4;
+        }
+
         _canvas = GetComponentInParent<Canvas>();
         _image = GetComponent<Image>();
         if (_image != null)

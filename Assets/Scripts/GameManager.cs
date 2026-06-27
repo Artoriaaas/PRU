@@ -205,7 +205,7 @@ public class GameManager : MonoBehaviour
     public float arrowArcHeight = 15f;
 
     [Header("King Model Settings")]
-    [Tooltip("Drag your King FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân ta/Model_vua/model_vua@Great Sword Slash (2).fbx in Editor.")]
+    [Tooltip("Drag your King FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx in Editor.")]
     public GameObject kingModelPrefab;
     public Vector3 kingRotationOffset = new Vector3(0f, 0f, 0f);
     public Vector3 kingPositionOffset = new Vector3(0f, 0f, 0f);
@@ -289,7 +289,7 @@ public class GameManager : MonoBehaviour
                 }
                 else if (unitTypeIndex == 4)
                 {
-                    loadedModel = kingModelPrefab != null ? kingModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua@Great Sword Slash (2).fbx");
+                    loadedModel = kingModelPrefab != null ? kingModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx");
                 }
             }
             else
@@ -525,11 +525,21 @@ public class GameManager : MonoBehaviour
 
             if (autoAlignBottom)
             {
-                var renderers = graphics.GetComponentsInChildren<Renderer>();
-                if (renderers.Length > 0)
+                var allRenderers = graphics.GetComponentsInChildren<Renderer>();
+                List<Renderer> validRenderers = new List<Renderer>();
+                foreach (var r in allRenderers)
                 {
-                    Bounds b = renderers[0].bounds;
-                    for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+                    if (r.name.ToLower().Contains("sword") || 
+                        r.name.ToLower().Contains("bow") || 
+                        r.name.ToLower().Contains("shield") || 
+                        r.name.ToLower().Contains("arrow")) continue;
+                    validRenderers.Add(r);
+                }
+
+                if (validRenderers.Count > 0)
+                {
+                    Bounds b = validRenderers[0].bounds;
+                    for (int i = 1; i < validRenderers.Count; i++) b.Encapsulate(validRenderers[i].bounds);
 
                     float lowestY = b.min.y;
                     float offsetY = rootObj.transform.position.y - lowestY;
@@ -590,11 +600,21 @@ public class GameManager : MonoBehaviour
 
         if (!isCapsule)
         {
-            var renderers = rootObj.GetComponentsInChildren<Renderer>();
-            if (renderers.Length > 0)
+            var allRenderers = rootObj.GetComponentsInChildren<Renderer>();
+            List<Renderer> validRenderers = new List<Renderer>();
+            foreach (var r in allRenderers)
             {
-                Bounds bounds = renderers[0].bounds;
-                for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+                if (r.name.ToLower().Contains("sword") || 
+                    r.name.ToLower().Contains("bow") || 
+                    r.name.ToLower().Contains("shield") || 
+                    r.name.ToLower().Contains("arrow")) continue;
+                validRenderers.Add(r);
+            }
+
+            if (validRenderers.Count > 0)
+            {
+                Bounds bounds = validRenderers[0].bounds;
+                for (int i = 1; i < validRenderers.Count; i++) bounds.Encapsulate(validRenderers[i].bounds);
 
                 Vector3 localCenter = rootObj.transform.InverseTransformPoint(bounds.center);
                 Vector3 localSize = rootObj.transform.InverseTransformVector(bounds.size);
