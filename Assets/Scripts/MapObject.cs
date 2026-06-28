@@ -89,7 +89,7 @@ public class MapObject : MonoBehaviour, IPointerClickHandler, IPointerEnterHandl
     public void OnPointerClick(PointerEventData eventData)
     {
         Debug.Log(objectName + " selected");
-        if (objectName == "Thang Long")
+        if (objectName != null && (objectName.Contains("Thang Long") || objectName.ToLower().Contains("castle")))
         {
             GameManager.levelToLoadName = "Level3";
             UnityEngine.SceneManagement.SceneManager.LoadScene("2D5_Scene");

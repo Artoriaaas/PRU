@@ -14,4 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueData
   characterASprite: {fileID: 0}
   characterBSprite: {fileID: 0}
-  dialogueNodes: []
+  dialogueNodes:
+  - speakerName: 
+    text: 
+    isCharacterA: 0
+  - speakerName: 
+    text: 
+    isCharacterA: 0
