@@ -436,59 +436,6 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
---- !u!1 &1190596865
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1190596867}
-  - component: {fileID: 1190596866}
-  m_Layer: 0
-  m_Name: MapSceneBootstrapper
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1190596866
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1190596865}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0502590a9c9756c4bbf330daa3201725, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MapSceneBootstrapper
-  canvas: {fileID: 0}
-  canvasScaler: {fileID: 0}
-  topBarHeight: 85
-  bottomBarHeight: 0
-  leftPanelWidthRatio: 0.2
-  rightMiniMapWidth: 450
-  mapSize: {x: 997, y: 1577}
-  openingDialogue: {fileID: 0}
-  mapObjects: []
---- !u!4 &1190596867
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1190596865}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 661.2299, y: 0.00001, z: 187.03511}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -496,4 +443,3 @@ SceneRoots:
   - {fileID: 358912848}
   - {fileID: 797765283}
   - {fileID: 404181200}
-  - {fileID: 1190596867}

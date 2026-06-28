@@ -9,7 +9,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 84c25d82fb814954a15a26feee052c98, type: 3}
-  m_Name: GDKEdition
-  m_EditorClassIdentifier: Unity.Microsoft.GDK::Unity.XGamingRuntime.GdkEditionAsset
-  m_EditionNumber: -1
+  m_Script: {fileID: 11500000, guid: d018669f3f177774b9ea54228bfcdfb1, type: 3}
+  m_Name: MapOpeningDialogue
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  characterASprite: {fileID: 0}
+  characterBSprite: {fileID: 0}
+  dialogueNodes: []
