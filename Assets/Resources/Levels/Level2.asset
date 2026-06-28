@@ -13,11 +13,15 @@ MonoBehaviour:
   m_Name: Level2
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
   enemyPlacements:
+  - row: 3
+    column: 2
   - row: 1
-    column: 1
-  - row: 0
     column: 1
   - row: 0
     column: 2
   - row: 0
+    column: 3
+  - row: 2
+    column: 1
+  - row: 3
     column: 3

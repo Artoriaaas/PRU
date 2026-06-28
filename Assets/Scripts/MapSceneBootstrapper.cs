@@ -19,6 +19,10 @@ public class MapSceneBootstrapper : MonoBehaviour
     public float rightMiniMapWidth = 450f;
     public Vector2 mapSize = new Vector2(997f, 1577f);
 
+    [Header("Dialogue Settings")]
+    [Tooltip("Drag a DialogueData ScriptableObject here to configure the opening scene dialogue.")]
+    public DialogueData openingDialogue;
+
     [Header("Map Objects")]
     public List<MapObjectData> mapObjects = new List<MapObjectData>();
 
@@ -74,6 +78,7 @@ public class MapSceneBootstrapper : MonoBehaviour
         BuildMapObjects();
         BuildSettingsPanel();
         WireControllers();
+        BuildDialogueSystem();
     }
 
     void Start()
@@ -838,4 +843,120 @@ public class MapSceneBootstrapper : MonoBehaviour
         }
     }
 #endif
+
+    void BuildDialogueSystem()
+    {
+        // 1. Create fullscreen DialogueOverlay panel to block background interactions
+        GameObject dialogueOverlay = CreatePanel("DialogueOverlay", canvas.transform);
+        RectTransform overlayRT = dialogueOverlay.GetComponent<RectTransform>();
+        overlayRT.anchorMin = Vector2.zero;
+        overlayRT.anchorMax = Vector2.one;
+        overlayRT.pivot = new Vector2(0.5f, 0.5f);
+        overlayRT.offsetMin = Vector2.zero;
+        overlayRT.offsetMax = Vector2.zero;
+
+        Image overlayImg = dialogueOverlay.GetComponent<Image>();
+        overlayImg.color = new Color(0.05f, 0.05f, 0.05f, 0.65f);
+        overlayImg.raycastTarget = true; // Blocks clicks to everything behind it!
+
+        // Add Button component to overlay so we can detect clicks anywhere to advance
+        dialogueOverlay.AddComponent<Button>();
+
+        // 2. Create DialogueBox panel: Stretch horizontally across the screen, touch bottom edge
+        GameObject dialogueBox = CreatePanel("DialogueBox", dialogueOverlay.transform);
+        RectTransform boxRT = dialogueBox.GetComponent<RectTransform>();
+        boxRT.anchorMin = new Vector2(0f, 0f);      // Bottom-left
+        boxRT.anchorMax = new Vector2(1f, 0f);      // Bottom-right
+        boxRT.pivot = new Vector2(0.5f, 0f);
+        boxRT.offsetMin = new Vector2(0f, 0f);       // Touch left and bottom
+        boxRT.offsetMax = new Vector2(0f, 220f);     // Stretch right, height = 220
+
+        Image boxImg = dialogueBox.GetComponent<Image>();
+        boxImg.color = new Color(0.12f, 0.10f, 0.08f, 0.95f);
+        ApplySprite(boxImg, "SettingPanel", true);
+
+        // Add a nice premium gold border at the top of the dialogue box
+        GameObject border = CreatePanel("Border", dialogueBox.transform);
+        RectTransform borderRT = border.GetComponent<RectTransform>();
+        borderRT.anchorMin = new Vector2(0f, 1f); // Align to top
+        borderRT.anchorMax = new Vector2(1f, 1f);
+        borderRT.pivot = new Vector2(0.5f, 1f);
+        borderRT.offsetMin = new Vector2(0f, -3f);
+        borderRT.offsetMax = new Vector2(0f, 0f);
+        Image borderImg = border.GetComponent<Image>();
+        borderImg.color = new Color(0.95f, 0.85f, 0.55f, 0.8f);
+
+        // 3. Create Left Portrait (Character A) resting on top of dialogue box
+        GameObject leftPortObj = new GameObject("LeftPortrait");
+        leftPortObj.transform.SetParent(dialogueOverlay.transform, false);
+        Image leftPortImg = leftPortObj.AddComponent<Image>();
+        RectTransform leftPortRT = leftPortObj.GetComponent<RectTransform>();
+        leftPortRT.anchorMin = new Vector2(0f, 0f);
+        leftPortRT.anchorMax = new Vector2(0f, 0f);
+        leftPortRT.pivot = new Vector2(0f, 0f);
+        leftPortRT.sizeDelta = new Vector2(200f, 300f);
+        leftPortRT.anchoredPosition = new Vector2(80f, 220f); // Rest exactly on top of box
+
+        // 4. Create Right Portrait (Character B) resting on top of dialogue box
+        GameObject rightPortObj = new GameObject("RightPortrait");
+        rightPortObj.transform.SetParent(dialogueOverlay.transform, false);
+        Image rightPortImg = rightPortObj.AddComponent<Image>();
+        RectTransform rightPortRT = rightPortObj.GetComponent<RectTransform>();
+        rightPortRT.anchorMin = new Vector2(1f, 0f);
+        rightPortRT.anchorMax = new Vector2(1f, 0f);
+        rightPortRT.pivot = new Vector2(1f, 0f);
+        rightPortRT.sizeDelta = new Vector2(200f, 300f);
+        rightPortRT.anchoredPosition = new Vector2(-80f, 220f); // Rest exactly on top of box
+
+        // 5. Name Text (placed inside DialogueBox at top, centered layout padding)
+        Text nameText = CreateText(dialogueBox.transform, "SpeakerNameText", "Name", 24, TextAnchor.MiddleLeft);
+        nameText.rectTransform.anchorMin = new Vector2(0f, 0.70f);
+        nameText.rectTransform.anchorMax = new Vector2(1f, 0.92f);
+        nameText.rectTransform.offsetMin = new Vector2(100f, 0f); // Centered padding
+        nameText.rectTransform.offsetMax = new Vector2(-100f, 0f);
+        nameText.color = new Color(0.95f, 0.85f, 0.55f);
+        nameText.fontStyle = FontStyle.Bold;
+
+        // 6. Dialogue Text (placed inside DialogueBox below Name)
+        Text dialogueText = CreateText(dialogueBox.transform, "DialogueContentText", "Dialogue text goes here...", 20, TextAnchor.UpperLeft);
+        dialogueText.rectTransform.anchorMin = new Vector2(0f, 0.1f);
+        dialogueText.rectTransform.anchorMax = new Vector2(1f, 0.68f);
+        dialogueText.rectTransform.offsetMin = new Vector2(100f, 0f); // Centered padding
+        dialogueText.rectTransform.offsetMax = new Vector2(-100f, 0f);
+        dialogueText.color = new Color(0.9f, 0.9f, 0.9f);
+
+        // 7. Add DialogueSystem component to drive the logic and interactions
+        DialogueSystem dialogueSys = dialogueOverlay.AddComponent<DialogueSystem>();
+        dialogueSys.dialogueOverlay = dialogueOverlay;
+        dialogueSys.leftPortrait = leftPortImg;
+        dialogueSys.rightPortrait = rightPortImg;
+        dialogueSys.nameText = nameText;
+        dialogueSys.dialogueText = dialogueText;
+        dialogueSys.dialogueData = openingDialogue;
+
+        // Capture side panel state dynamically to hide and restore them
+        bool savedQuestPanelVisible = false;
+        bool savedMiniMapVisible = false;
+
+        dialogueSys.onDialogueStart = () =>
+        {
+            savedQuestPanelVisible = questPanelVisible;
+            savedMiniMapVisible = miniMapVisible;
+
+            if (leftPanelRT != null) leftPanelRT.gameObject.SetActive(false);
+            if (rightMiniMapRT != null) rightMiniMapRT.gameObject.SetActive(false);
+            if (hideMapButtonRT != null) hideMapButtonRT.gameObject.SetActive(false);
+            if (leftPanelToggleRT != null) leftPanelToggleRT.gameObject.SetActive(false);
+            if (topBarRT != null) topBarRT.gameObject.SetActive(false);
+        };
+
+        dialogueSys.onDialogueEnd = () =>
+        {
+            if (leftPanelRT != null) leftPanelRT.gameObject.SetActive(savedQuestPanelVisible);
+            if (rightMiniMapRT != null) rightMiniMapRT.gameObject.SetActive(savedMiniMapVisible);
+            if (hideMapButtonRT != null) hideMapButtonRT.gameObject.SetActive(true);
+            if (leftPanelToggleRT != null) leftPanelToggleRT.gameObject.SetActive(true);
+            if (topBarRT != null) topBarRT.gameObject.SetActive(true);
+        };
+    }
 }

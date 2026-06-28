@@ -21,6 +21,23 @@ public class AnimatorSetupTool
     [MenuItem("Tools/PRU/Setup Animator Controller")]
     public static void SetupAnimator()
     {
+        // Force King models to Generic so their animations can be imported properly
+        string kingModelPath = "Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx";
+        ModelImporter kingImporter = AssetImporter.GetAtPath(kingModelPath) as ModelImporter;
+        if (kingImporter != null && kingImporter.animationType != ModelImporterAnimationType.Generic)
+        {
+            kingImporter.animationType = ModelImporterAnimationType.Generic;
+            kingImporter.SaveAndReimport();
+        }
+
+        string kingIdlePath = "Assets/Models/NewModel/Model quân ta/Model_vua/animation_idle_vua.fbx";
+        ModelImporter kingIdleImporter = AssetImporter.GetAtPath(kingIdlePath) as ModelImporter;
+        if (kingIdleImporter != null && kingIdleImporter.animationType != ModelImporterAnimationType.Generic)
+        {
+            kingIdleImporter.animationType = ModelImporterAnimationType.Generic;
+            kingIdleImporter.SaveAndReimport();
+        }
+
         // 0. Ensure rigs are Humanoid
         ConvertRigsToHumanoid();
 
@@ -33,11 +50,15 @@ public class AnimatorSetupTool
 
         // Setup Infantry Controller
         string infantryControllerPath = folderPath + "/QuanLinhAnimatorController.controller";
-        AnimatorController infantryController = SetupController(infantryControllerPath, false);
+        AnimatorController infantryController = SetupController(infantryControllerPath, 0);
 
         // Setup Archer Controller
         string archerControllerPath = folderPath + "/QuanCungAnimatorController.controller";
-        AnimatorController archerController = SetupController(archerControllerPath, true);
+        AnimatorController archerController = SetupController(archerControllerPath, 1);
+
+        // Setup King Controller
+        string kingControllerPath = folderPath + "/QuanVuaAnimatorController.controller";
+        AnimatorController kingController = SetupController(kingControllerPath, 2);
 
         // Assign to GameManager in the current active scene
         GameManager[] managers = Object.FindObjectsByType<GameManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -48,6 +69,14 @@ public class AnimatorSetupTool
                 Undo.RecordObject(manager, "Assign Animator Controllers");
                 manager.unitAnimatorController = infantryController;
                 manager.archerAnimatorController = archerController;
+                manager.kingAnimatorController = kingController;
+
+                // Set King defaults in Inspector
+                manager.kingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx");
+                manager.kingScale = 60f;
+                manager.kingRotationOffset = new Vector3(0f, 90f, 0f);
+                manager.kingPositionOffset = new Vector3(0f, 0f, 0f);
+
                 manager.archerModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
                 manager.archerScale = 60f;
                 manager.archerRotationOffset = Vector3.zero;
@@ -58,7 +87,7 @@ public class AnimatorSetupTool
                 UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(manager.gameObject.scene);
             }
 
-            Debug.Log("Assigned Animator Controllers and archer model settings to all GameManagers in scene!");
+            Debug.Log("Assigned Animator Controllers and archer/king model settings to all GameManagers in scene!");
         }
         else
         {
@@ -68,7 +97,7 @@ public class AnimatorSetupTool
         Debug.Log("Animator Controller Setup completed successfully!");
     }
 
-    private static AnimatorController SetupController(string controllerPath, bool isArcher)
+    private static AnimatorController SetupController(string controllerPath, int unitType)
     {
         AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(controllerPath);
         if (controller == null)
@@ -92,10 +121,15 @@ public class AnimatorSetupTool
 
         rootStateMachine.defaultState = idleState;
 
-        if (isArcher)
+        if (unitType == 1)
         {
             AssignArcherClipsToStates(idleState, runState, attackState, dieState);
             attackState.speed = 1.5f; // Played at 1.5x speed matches natural bow draw and release (~2.88s duration)
+        }
+        else if (unitType == 2)
+        {
+            AssignKingClipsToStates(idleState, runState, attackState, dieState);
+            attackState.speed = 1.0f;
         }
         else
         {
@@ -146,9 +180,10 @@ public class AnimatorSetupTool
             
             // Only look inside the Assets/Models/NewModel folder
             if (!path.Replace('\\', '/').Contains("Assets/Models/NewModel")) continue;
-            // Exclude archer files from infantry setup.
+            // Exclude archer and king files from infantry setup.
             if (path.Replace('\\', '/').Contains("Model_cung_quan_ta")) continue;
             if (path.Replace('\\', '/').Contains("animation_cung_quan_ta")) continue;
+            if (path.Replace('\\', '/').Contains("Model_vua")) continue;
 
             Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
             foreach (Object asset in allAssets)
@@ -210,6 +245,189 @@ public class AnimatorSetupTool
         dieState.motion = LoadArcherClip(archerFolder + "/Standing Death Forward.fbx", "mixamo.com", false);
 
         Debug.Log("--- END ASSIGNING ARCHER CLIPS ---");
+    }
+
+    private static void AssignKingClipsToStates(AnimatorState idleState, AnimatorState runState, AnimatorState attackState, AnimatorState dieState)
+    {
+        Debug.Log("--- START ASSIGNING KING CLIPS ---");
+        idleState.motion = null;
+        runState.motion = null;
+        attackState.motion = null;
+        dieState.motion = null;
+
+        // 1. Extract and fix curves from BOTH fbx files
+        string[] fbxPaths = new string[] {
+            "Assets/Models/NewModel/Model quân ta/Model_vua/animation_idle_vua.fbx",
+            "Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx"
+        };
+        
+        string outputDir = "Assets/Art/Animations/KingClips";
+        if (System.IO.Directory.Exists(outputDir))
+        {
+            System.IO.Directory.Delete(outputDir, true);
+        }
+        System.IO.Directory.CreateDirectory(outputDir);
+        AssetDatabase.Refresh();
+
+        foreach (string fbxPath in fbxPaths)
+        {
+            Object[] subAssets = AssetDatabase.LoadAllAssetRepresentationsAtPath(fbxPath);
+            if (subAssets != null && subAssets.Length > 0)
+            {
+                foreach (Object asset in subAssets)
+                {
+                    AnimationClip sourceClip = asset as AnimationClip;
+                    if (sourceClip == null || sourceClip.name.StartsWith("__preview__")) continue;
+
+                    AnimationClip destClip = new AnimationClip();
+
+                    // Copy float curves and rewrite paths targeting correct Armature
+                    var floatBindings = AnimationUtility.GetCurveBindings(sourceClip);
+                    foreach (var binding in floatBindings)
+                    {
+                        var newBinding = binding;
+                        newBinding.path = newBinding.path.Replace("Armature.001/", "Armature/")
+                                                         .Replace("Armature.002/", "Armature/")
+                                                         .Replace("Armature.003/", "Armature/")
+                                                         .Replace("Armature.004/", "Armature/");
+                        if (newBinding.path.StartsWith("Armature.001")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                        if (newBinding.path.StartsWith("Armature.002")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                        if (newBinding.path.StartsWith("Armature.003")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                        if (newBinding.path.StartsWith("Armature.004")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+
+                        // Strip ALL sword bone curves (Armature/Bone and children)
+                        // The sword will be parented to RightHand at runtime, so animation
+                        // curves for Bone would fight with the parenting and cause sliding/detaching.
+                        bool isSwordBone = newBinding.path == "Armature/Bone" || newBinding.path.StartsWith("Armature/Bone/");
+                        if (isSwordBone)
+                        {
+                            continue;
+                        }
+
+                        // Strip ALL bone scale curves to prevent animation from overriding bone scale
+                        if (newBinding.propertyName.Contains("m_LocalScale"))
+                        {
+                            continue;
+                        }
+
+                        // Strip rotation on root Armature or mixamorig:Hips to prevent tilting/sideways rotation
+                        bool isHipsOrRootRotation = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
+                        if (isHipsOrRootRotation && newBinding.propertyName.Contains("m_LocalRotation"))
+                        {
+                            continue;
+                        }
+
+                        // Strip X/Z root translation to prevent root motion sliding
+                        bool isRootPath = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
+                        bool isXZTranslation = newBinding.propertyName.Contains("m_LocalPosition.x") || newBinding.propertyName.Contains("m_LocalPosition.z");
+                        if (isRootPath && isXZTranslation)
+                        {
+                            continue;
+                        }
+
+                        AnimationCurve curve = AnimationUtility.GetEditorCurve(sourceClip, binding);
+                        AnimationUtility.SetEditorCurve(destClip, newBinding, curve);
+                    }
+
+                    // Copy object reference curves and rewrite paths
+                    var objectBindings = AnimationUtility.GetObjectReferenceCurveBindings(sourceClip);
+                    foreach (var binding in objectBindings)
+                    {
+                        var newBinding = binding;
+                        newBinding.path = newBinding.path.Replace("Armature.001/", "Armature/")
+                                                         .Replace("Armature.002/", "Armature/")
+                                                         .Replace("Armature.003/", "Armature/")
+                                                         .Replace("Armature.004/", "Armature/");
+                        if (newBinding.path.StartsWith("Armature.001")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                        if (newBinding.path.StartsWith("Armature.002")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                        if (newBinding.path.StartsWith("Armature.003")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+                        if (newBinding.path.StartsWith("Armature.004")) newBinding.path = "Armature" + newBinding.path.Substring(12);
+
+                        // Strip ALL sword bone reference curves
+                        bool isSwordBone = newBinding.path == "Armature/Bone" || newBinding.path.StartsWith("Armature/Bone/");
+                        if (isSwordBone)
+                        {
+                            continue;
+                        }
+
+                        // Strip ALL bone scale reference curves
+                        if (newBinding.propertyName.Contains("m_LocalScale"))
+                        {
+                            continue;
+                        }
+
+                        // Strip rotation on root Armature or mixamorig:Hips reference curves
+                        bool isHipsOrRootRotation = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
+                        if (isHipsOrRootRotation && newBinding.propertyName.Contains("m_LocalRotation"))
+                        {
+                            continue;
+                        }
+
+                        // Strip X/Z root translation reference curves
+                        bool isRootPath = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
+                        bool isXZTranslation = newBinding.propertyName.Contains("m_LocalPosition.x") || newBinding.propertyName.Contains("m_LocalPosition.z");
+                        if (isRootPath && isXZTranslation)
+                        {
+                            continue;
+                        }
+
+                        var keyframes = AnimationUtility.GetObjectReferenceCurve(sourceClip, binding);
+                        AnimationUtility.SetObjectReferenceCurve(destClip, newBinding, keyframes);
+                    }
+
+                    var settings = AnimationUtility.GetAnimationClipSettings(sourceClip);
+                    AnimationUtility.SetAnimationClipSettings(destClip, settings);
+
+                    string fbxPrefix = System.IO.Path.GetFileNameWithoutExtension(fbxPath);
+                    string nameClean = fbxPrefix + "_" + sourceClip.name.Replace('|', '_').Replace('.', '_');
+                    string outPath = outputDir + "/" + nameClean + ".anim";
+                    AssetDatabase.CreateAsset(destClip, outPath);
+                }
+            }
+        }
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        // 2. Load fixed clips and assign to Animator Controller
+        string[] guids = AssetDatabase.FindAssets("t:AnimationClip", new string[] { outputDir });
+        foreach (string guid in guids)
+        {
+            string clipPath = AssetDatabase.GUIDToAssetPath(guid);
+            AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
+            if (clip == null) continue;
+
+            string clipName = clip.name.ToLower();
+
+            bool isIdle = clipName.Contains("idle") && clipName.Contains("idle_vua");
+            bool isRun = clipName.Contains("run");
+            bool isAttack = clipName.Contains("attack") && !clipName.Contains("attack_2");
+            bool isDie = clipName.Contains("dying") || clipName.Contains("death") || clipName.Contains("die");
+
+            if (isIdle && idleState.motion == null)
+            {
+                idleState.motion = clip;
+                EnableLoopTime(clip);
+                Debug.Log(">> Assigned Fixed King Idle clip: " + clip.name);
+            }
+            else if (isRun && runState.motion == null)
+            {
+                runState.motion = clip;
+                EnableLoopTime(clip);
+                Debug.Log(">> Assigned Fixed King Run clip: " + clip.name);
+            }
+            else if (isAttack && attackState.motion == null)
+            {
+                attackState.motion = clip;
+                Debug.Log(">> Assigned Fixed King Attack clip: " + clip.name);
+            }
+            else if (isDie && dieState.motion == null)
+            {
+                dieState.motion = clip;
+                Debug.Log(">> Assigned Fixed King Die clip: " + clip.name);
+            }
+        }
+
+        Debug.Log("--- END ASSIGNING KING CLIPS ---");
     }
 
     private static AnimationClip LoadArcherClip(string path, string clipName, bool loop, float firstFrame = 0, float lastFrame = 0, bool crop = false)
@@ -316,6 +534,7 @@ public class AnimatorSetupTool
             if (!path.ToLower().EndsWith(".fbx")) continue;
             if (path.Replace('\\', '/').Contains("Model_cung_quan_ta")) continue;
             if (path.Contains("animation_cung_quan_ta")) continue;
+            if (path.Replace('\\', '/').Contains("Model_vua")) continue;
             
             Debug.Log($"[Rig Check] Found FBX: {path}");
 

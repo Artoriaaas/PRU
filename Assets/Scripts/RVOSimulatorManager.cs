@@ -110,6 +110,8 @@ public class RVOSimulatorManager : MonoBehaviour
 
         CapsuleCollider col = unit.GetComponent<CapsuleCollider>();
         float radius = col != null ? col.radius : 0.4f;
+        // Cap the simulation radius to prevent giant units from causing deadlock blocks
+        float rvoRadius = Mathf.Min(radius, 2.0f);
 
         float2 pos = new float2(unit.transform.position.x, unit.transform.position.z);
 
@@ -119,7 +121,7 @@ public class RVOSimulatorManager : MonoBehaviour
             maxNeighbors,
             timeHorizon,
             timeHorizonObst,
-            radius * safetyMargin,
+            rvoRadius * safetyMargin,
             unit.speed,
             float2.zero
         );
@@ -175,7 +177,7 @@ public class RVOSimulatorManager : MonoBehaviour
             CapsuleCollider col = unit.GetComponent<CapsuleCollider>();
             if (col != null)
             {
-                _simulator.SetAgentRadius(agentId, col.radius * safetyMargin);
+                _simulator.SetAgentRadius(agentId, Mathf.Min(col.radius, 2.0f) * safetyMargin);
             }
 
             // Compute preferred velocity
@@ -238,7 +240,7 @@ public class RVOSimulatorManager : MonoBehaviour
         if (GameManager.Instance == null) return false;
 
         CapsuleCollider col = unit.GetComponent<CapsuleCollider>();
-        float radius = col != null ? col.radius : 0.4f;
+        float radius = col != null ? Mathf.Min(col.radius, 2.0f) : 0.4f;
 
         List<Unit> teammates = unit.isPlayer ? GameManager.Instance.playerUnits : GameManager.Instance.enemyUnits;
         float closestDist = float.MaxValue;
@@ -256,7 +258,7 @@ public class RVOSimulatorManager : MonoBehaviour
             float dist = toTeammate.magnitude;
 
             CapsuleCollider teamCol = teammate.GetComponent<CapsuleCollider>();
-            float teamRadius = teamCol != null ? teamCol.radius : 0.4f;
+            float teamRadius = teamCol != null ? Mathf.Min(teamCol.radius, 2.0f) : 0.4f;
             float combinedRadius = radius + teamRadius;
 
             // Hysteresis for check distance: look ahead further if already steering

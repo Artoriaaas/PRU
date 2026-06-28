@@ -203,6 +203,17 @@ public class GameManager : MonoBehaviour
     public GameObject arrowPrefab;
     public float arrowSpeed = 400f;
     public float arrowArcHeight = 15f;
+
+    [Header("King Model Settings")]
+    [Tooltip("Drag your King FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx in Editor.")]
+    public GameObject kingModelPrefab;
+    public Vector3 kingRotationOffset = new Vector3(0f, 90f, 0f);
+    public Vector3 kingPositionOffset = new Vector3(0f, 0f, 0f);
+    public float kingScale = 60.0f;
+    [Tooltip("Assign your Animator Controller for the King here.")]
+    public RuntimeAnimatorController kingAnimatorController;
+
+    [Header("Unit Templates")]
     public float archerAttackCooldown = 2.5f;
 
     [Header("Unit Templates")]
@@ -260,7 +271,7 @@ public class GameManager : MonoBehaviour
         GameObject rootObj = new GameObject(isPlayer ? ($"PlayerUnit_Type{unitTypeIndex}") : "EnemyUnit");
         rootObj.transform.position = position;
 
-        bool isCapsule = forceCapsuleForTesting || (isPlayer && unitTypeIndex > 1);
+        bool isCapsule = forceCapsuleForTesting || (isPlayer && unitTypeIndex > 1 && unitTypeIndex != 4);
 
         GameObject loadedModel = null;
 #if UNITY_EDITOR
@@ -275,6 +286,10 @@ public class GameManager : MonoBehaviour
                 else if (unitTypeIndex == 1)
                 {
                     loadedModel = archerModelPrefab != null ? archerModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
+                }
+                else if (unitTypeIndex == 4)
+                {
+                    loadedModel = kingModelPrefab != null ? kingModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx");
                 }
             }
             else
@@ -292,7 +307,9 @@ public class GameManager : MonoBehaviour
 #endif
         if (loadedModel == null)
         {
-            loadedModel = (unitTypeIndex == 1) ? archerModelPrefab : unitModelPrefab;
+            if (unitTypeIndex == 1) loadedModel = archerModelPrefab;
+            else if (unitTypeIndex == 4) loadedModel = kingModelPrefab;
+            else loadedModel = unitModelPrefab;
         }
 
         GameObject graphicsObj = null;
@@ -301,15 +318,30 @@ public class GameManager : MonoBehaviour
         {
             GameObject graphics = Instantiate(loadedModel, rootObj.transform);
             graphicsObj = graphics;
-            graphics.transform.localPosition = Vector3.zero;
             
             // Choose offsets and scale based on unit type
-            Vector3 rotationOffset = (unitTypeIndex == 1) ? archerRotationOffset : modelRotationOffset;
-            Vector3 positionOffset = (unitTypeIndex == 1) ? archerPositionOffset : modelPositionOffset;
-            float scaleVal = (unitTypeIndex == 1) ? archerScale : modelScale;
-            RuntimeAnimatorController animController = (unitTypeIndex == 1) ? archerAnimatorController : unitAnimatorController;
+            Vector3 rotationOffset = modelRotationOffset;
+            Vector3 positionOffset = modelPositionOffset;
+            float scaleVal = modelScale;
+            RuntimeAnimatorController animController = unitAnimatorController;
+
+            if (unitTypeIndex == 1)
+            {
+                rotationOffset = archerRotationOffset;
+                positionOffset = archerPositionOffset;
+                scaleVal = archerScale;
+                animController = archerAnimatorController;
+            }
+            else if (unitTypeIndex == 4)
+            {
+                rotationOffset = kingRotationOffset;
+                positionOffset = kingPositionOffset;
+                scaleVal = kingScale;
+                animController = kingAnimatorController;
+            }
 
             // Override prefab's local rotation with our offset to fix orientation
+            graphics.transform.localPosition = positionOffset;
             graphics.transform.localRotation = Quaternion.Euler(rotationOffset);
             graphics.transform.localScale = new Vector3(scaleVal, scaleVal, scaleVal);
 
@@ -398,6 +430,11 @@ public class GameManager : MonoBehaviour
                 // Let it use its embedded/standard materials if no override texture is specified.
                 textureToApply = archerBaseColorTexture;
             }
+            else if (unitTypeIndex == 4 && isPlayer)
+            {
+                // King model has its own dedicated texture
+                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta/Model_vua/Textures/model_vua_basecolor.jpg");
+            }
             else if (isPlayer)
             {
                 textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta/model_quan_ta/tripo_convert_74080320-2742-4915-ab54-fe52dd1aaaa6.fbm/model_quan_ta_basecolor.JPEG");
@@ -417,11 +454,38 @@ public class GameManager : MonoBehaviour
                 var rends = graphics.GetComponentsInChildren<Renderer>();
                 foreach (var r in rends)
                 {
+                    // Skip weapon renderers (like the King's sword meshes[0].001) so they don't get overwritten with the body texture
+                    if (r.name.Contains("meshes[0].001") || r.name.ToLower().Contains("sword") || r.name.ToLower().Contains("weapon") || r.name.ToLower().Contains("bow") || r.name.ToLower().Contains("shield") || r.name.ToLower().Contains("arrow"))
+                    {
+                        continue;
+                    }
                     if (r.material != null)
                     {
                         r.material.SetTexture("_BaseMap", textureToApply);
                         r.material.SetTexture("_MainTex", textureToApply);
                     }
+                }
+            }
+
+            // Parent sword bone (Armature/Bone) to RightHand at runtime.
+            // All animation curves for Armature/Bone are stripped in AnimatorSetupTool,
+            // so the sword won't fight between animation and parenting.
+            // This ensures the sword is permanently locked to the hand.
+            if (unitTypeIndex == 4)
+            {
+                Transform bone = graphics.transform.Find("Armature/Bone");
+                Transform hand = null;
+                foreach (var t in graphics.GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name == "mixamorig:RightHand")
+                    {
+                        hand = t;
+                        break;
+                    }
+                }
+                if (bone != null && hand != null)
+                {
+                    bone.SetParent(hand, true);
                 }
             }
 
@@ -445,11 +509,21 @@ public class GameManager : MonoBehaviour
 
             if (autoAlignBottom)
             {
-                var renderers = graphics.GetComponentsInChildren<Renderer>();
-                if (renderers.Length > 0)
+                var allRenderers = graphics.GetComponentsInChildren<Renderer>();
+                List<Renderer> validRenderers = new List<Renderer>();
+                foreach (var r in allRenderers)
                 {
-                    Bounds b = renderers[0].bounds;
-                    for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+                    if (r.name.ToLower().Contains("sword") || 
+                        r.name.ToLower().Contains("bow") || 
+                        r.name.ToLower().Contains("shield") || 
+                        r.name.ToLower().Contains("arrow")) continue;
+                    validRenderers.Add(r);
+                }
+
+                if (validRenderers.Count > 0)
+                {
+                    Bounds b = validRenderers[0].bounds;
+                    for (int i = 1; i < validRenderers.Count; i++) b.Encapsulate(validRenderers[i].bounds);
 
                     float lowestY = b.min.y;
                     float offsetY = rootObj.transform.position.y - lowestY;
@@ -510,11 +584,21 @@ public class GameManager : MonoBehaviour
 
         if (!isCapsule)
         {
-            var renderers = rootObj.GetComponentsInChildren<Renderer>();
-            if (renderers.Length > 0)
+            var allRenderers = rootObj.GetComponentsInChildren<Renderer>();
+            List<Renderer> validRenderers = new List<Renderer>();
+            foreach (var r in allRenderers)
             {
-                Bounds bounds = renderers[0].bounds;
-                for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+                if (r.name.ToLower().Contains("sword") || 
+                    r.name.ToLower().Contains("bow") || 
+                    r.name.ToLower().Contains("shield") || 
+                    r.name.ToLower().Contains("arrow")) continue;
+                validRenderers.Add(r);
+            }
+
+            if (validRenderers.Count > 0)
+            {
+                Bounds bounds = validRenderers[0].bounds;
+                for (int i = 1; i < validRenderers.Count; i++) bounds.Encapsulate(validRenderers[i].bounds);
 
                 Vector3 localCenter = rootObj.transform.InverseTransformPoint(bounds.center);
                 Vector3 localSize = rootObj.transform.InverseTransformVector(bounds.size);
@@ -599,6 +683,29 @@ public class GameManager : MonoBehaviour
             unit.animSpeedMultiplier = prefabUnit.animSpeedMultiplier;
         }
 
+        // Enforce base stats for each unit type as specified by the user
+        if (unitTypeIndex == 0) // Bộ
+        {
+            unit.hp = 100f;
+            unit.maxHp = 100f;
+            unit.atk = 10f;
+            unit.def = 5f;
+        }
+        else if (unitTypeIndex == 1) // Cung
+        {
+            unit.hp = 80f;
+            unit.maxHp = 80f;
+            unit.atk = 15f;
+            unit.def = 2f;
+        }
+        else if (unitTypeIndex == 4) // Tướng
+        {
+            unit.hp = 200f;
+            unit.maxHp = 200f;
+            unit.atk = 13f;
+            unit.def = 6f;
+        }
+
         if (unitTypeIndex == 1) // Archer
         {
             unit.attackCooldown = archerAttackCooldown;
@@ -618,23 +725,34 @@ public class GameManager : MonoBehaviour
             unit.def *= buffMultiplier;
         }
 
-        // Scale speed and attack range dynamically to match the grid generator's spacing (70f is base spacing for scale 1.0)
+        // Scale speed and attack range dynamically to match the grid generator's spacing
         BattlefieldGridGenerator gridGen = Object.FindAnyObjectByType<BattlefieldGridGenerator>();
+        float scale = 1f;
         if (gridGen != null)
         {
-            float scale = gridGen.rowSpacing / 70f;
-            unit.speed *= scale;
-            // Scale range but ensure it exceeds physical contact distance
-            float baseRange = Mathf.Max(unit.attackRange * scale, colRadius * 2.2f);
-            unit.attackRange = (unitTypeIndex == 1) ? (baseRange * 5f) : baseRange;
+            scale = gridGen.rowSpacing / 70f;
         }
         else
         {
-            // Fallback for runtime: scale speed and range relative to collider radius
-            float scaleFactor = colRadius / 0.4f;
-            unit.speed *= scaleFactor;
-            float baseRange = Mathf.Max(unit.attackRange * scaleFactor, colRadius * 2.2f);
-            unit.attackRange = (unitTypeIndex == 1) ? (baseRange * 5f) : baseRange;
+            scale = colRadius / 0.4f;
+        }
+
+        unit.speed *= scale;
+
+        // Scale range but ensure it exceeds physical contact distance (colRadius * 2.2f)
+        float baseRange = Mathf.Max(unit.attackRange * scale, colRadius * 2.2f);
+
+        if (unitTypeIndex == 1) // Cung (scales from 133.3757 -> 210 final range under normal scale)
+        {
+            unit.attackRange = 210f * scale;
+        }
+        else if (unitTypeIndex == 4) // Tướng (give slightly more range so he can easily reach and hit enemies)
+        {
+            unit.attackRange = baseRange * 1.25f;
+        }
+        else // Bộ
+        {
+            unit.attackRange = baseRange;
         }
 
         if (isPlayer)

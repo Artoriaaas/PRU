@@ -1000,9 +1000,11 @@ public class UIManager : MonoBehaviour
 
             if (isPlayer)
             {
+
                 // Only create cards if they don't already exist (preserve Inspector layout)
                 bool cardsExist = false;
                 foreach (Transform child in cardParent)
+
                 {
                     if (child.name.StartsWith("UnitCard"))
                     {
@@ -1014,9 +1016,15 @@ public class UIManager : MonoBehaviour
                 if (!cardsExist)
                 {
                     int numCards = 3;
+                    int totalCards = numCards;
                     float cardSpacing = 420f;
-                    float startX = -((numCards - 1) * cardSpacing) / 2f;
+                    float startX = -((totalCards - 1) * cardSpacing) / 2f;
 
+                    Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    if (font == null) font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                    if (font == null) font = Font.CreateDynamicFontFromOSFont("Arial", 14);
+
+                    // 1. Generate normal cards
                     for (int i = 0; i < numCards; i++)
                     {
                         int typeIndex = i;
@@ -1042,7 +1050,7 @@ public class UIManager : MonoBehaviour
                         rtCard.sizeDelta = new Vector2(380f, 230f);
 
                         var ddc = cardObj.AddComponent<DragDropCard>();
-                        ddc.unitTypeIndex = typeIndex;
+                        ddc.unitTypeIndex = (typeIndex == 2) ? 4 : typeIndex;
                     }
                 }
             }
