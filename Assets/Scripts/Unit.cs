@@ -54,7 +54,17 @@ public class Unit : MonoBehaviour
         if (_target == null) return transform.position;
 
         Vector3 targetPos = _target.transform.position;
-        if (_myReservedSlot != null && _currentAttackTarget == _target)
+        if (unitTypeIndex == 1) // Archer does not occupy slots and stands at 90% of attackRange
+        {
+            Vector3 dirFromTarget = (transform.position - _target.transform.position).normalized;
+            dirFromTarget.y = 0;
+            if (dirFromTarget == Vector3.zero)
+            {
+                dirFromTarget = transform.forward;
+            }
+            targetPos = _target.transform.position + dirFromTarget * (attackRange * 0.9f);
+        }
+        else if (_myReservedSlot != null && _currentAttackTarget == _target)
         {
             targetPos = _currentAttackTarget.GetSlotWorldPosition(_myReservedSlot, this);
         }
@@ -128,6 +138,13 @@ public class Unit : MonoBehaviour
         ReleaseReservedSlot();
         
         if (target == null) return;
+
+        // Archers do not occupy slots on their targets
+        if (unitTypeIndex == 1)
+        {
+            _currentAttackTarget = target;
+            return;
+        }
         
         if (target._attackSlots.Count == 0)
         {
@@ -269,6 +286,11 @@ public class Unit : MonoBehaviour
                 float speedRatio = (currentSpeed / naturalSpeed) * animSpeedMultiplier;
                 _animator.speed = Mathf.Clamp(speedRatio, 0.15f, 3.0f);
             }
+            else if (state == UnitState.Attacking)
+            {
+                // Speed up King's attack animation visually by 1.6x so it doesn't look too slow
+                _animator.speed = (unitTypeIndex == 4) ? 1.6f : 1.0f;
+            }
             else
             {
                 _animator.speed = 1.0f;
@@ -277,25 +299,7 @@ public class Unit : MonoBehaviour
 
         if (GameManager.Instance != null && GameManager.Instance.currentState == GameState.Battle)
         {
-            // Dynamic boundaries based on the scene layout scale (large grid system vs legacy bootstrapper)
-            float minX = -5.2f;
-            float maxX = 5.2f;
-            float minZ = -17f;
-            float maxZ = 25f;
-
-            BattlefieldGridGenerator gridGen = Object.FindAnyObjectByType<BattlefieldGridGenerator>();
-            if (gridGen != null)
-            {
-                minX = -1100f;
-                maxX = 1100f;
-                minZ = -45f;
-                maxZ = 230f;
-            }
-
-            // Clamp position within arena boundaries to prevent walking through background quads or walls
-            float clampedX = Mathf.Clamp(transform.position.x, minX, maxX);
-            float clampedZ = Mathf.Clamp(transform.position.z, minZ, maxZ);
-            transform.position = new Vector3(clampedX, transform.position.y, clampedZ);
+            ClampToBoundaries();
 
             if (_target == null || _target.state == UnitState.Dead || 
                 (state != UnitState.Attacking && Time.frameCount % 60 == 0))
@@ -396,6 +400,13 @@ public class Unit : MonoBehaviour
             }
         }
 
+        // Archers bypass slot requirements completely and target the closest enemy
+        if (unitTypeIndex == 1)
+        {
+            SetTarget(bestTargetAny);
+            return;
+        }
+
         Unit finalTarget = bestTargetWithFreeSlot != null ? bestTargetWithFreeSlot : bestTargetAny;
         SetTarget(finalTarget);
     }
@@ -434,7 +445,17 @@ public class Unit : MonoBehaviour
         }
 
         Vector3 targetPos = _target.transform.position;
-        if (_myReservedSlot != null && _currentAttackTarget == _target)
+        if (unitTypeIndex == 1) // Archer does not occupy slots and stands at 90% of attackRange
+        {
+            Vector3 dirFromTarget = (transform.position - _target.transform.position).normalized;
+            dirFromTarget.y = 0;
+            if (dirFromTarget == Vector3.zero)
+            {
+                dirFromTarget = transform.forward;
+            }
+            targetPos = _target.transform.position + dirFromTarget * (attackRange * 0.9f);
+        }
+        else if (_myReservedSlot != null && _currentAttackTarget == _target)
         {
             targetPos = _currentAttackTarget.GetSlotWorldPosition(_myReservedSlot, this);
         }
@@ -506,19 +527,8 @@ public class Unit : MonoBehaviour
         }
 
         // Slide along boundaries if trying to move past them to prevent getting stuck
-        float minX = -5.2f;
-        float maxX = 5.2f;
-        float minZ = -17f;
-        float maxZ = 25f;
-
-        BattlefieldGridGenerator gridGen = Object.FindAnyObjectByType<BattlefieldGridGenerator>();
-        if (gridGen != null)
-        {
-            minX = -1100f;
-            maxX = 1100f;
-            minZ = -45f;
-            maxZ = 230f;
-        }
+        float minX, maxX, minZ, maxZ;
+        GetBoundaries(out minX, out maxX, out minZ, out maxZ);
 
         if (transform.position.z <= minZ && finalDirection.z < 0)
         {
@@ -638,22 +648,7 @@ public class Unit : MonoBehaviour
             transform.position += lateralPushDir * pushAmount;
 
             // Clamp immediately to prevent push from exceeding boundaries
-            float minX = -5.2f;
-            float maxX = 5.2f;
-            float minZ = -17f;
-            float maxZ = 25f;
-
-            BattlefieldGridGenerator gridGen = Object.FindAnyObjectByType<BattlefieldGridGenerator>();
-            if (gridGen != null)
-            {
-                minX = -1100f;
-                maxX = 1100f;
-                minZ = -45f;
-                maxZ = 230f;
-            }
-            float clampedX = Mathf.Clamp(transform.position.x, minX, maxX);
-            float clampedZ = Mathf.Clamp(transform.position.z, minZ, maxZ);
-            transform.position = new Vector3(clampedX, transform.position.y, clampedZ);
+            ClampToBoundaries();
         }
     }
 
@@ -663,25 +658,8 @@ public class Unit : MonoBehaviour
 
         if (GameManager.Instance != null && GameManager.Instance.currentState == GameState.Battle)
         {
-            // Dynamic boundaries based on the scene layout scale (large grid system vs legacy bootstrapper)
-            float minX = -5.2f;
-            float maxX = 5.2f;
-            float minZ = -17f;
-            float maxZ = 25f;
-
-            BattlefieldGridGenerator gridGen = Object.FindAnyObjectByType<BattlefieldGridGenerator>();
-            if (gridGen != null)
-            {
-                minX = -1100f;
-                maxX = 1100f;
-                minZ = -45f;
-                maxZ = 230f;
-            }
-
             // Final clamp to prevent any physics/OnTriggerStay push from pushing units past the boundaries
-            float clampedX = Mathf.Clamp(transform.position.x, minX, maxX);
-            float clampedZ = Mathf.Clamp(transform.position.z, minZ, maxZ);
-            transform.position = new Vector3(clampedX, transform.position.y, clampedZ);
+            ClampToBoundaries();
         }
 
         // Align archer bow dynamically based on combat state
@@ -932,6 +910,7 @@ public class Unit : MonoBehaviour
         state = UnitState.Dead;
         GameManager.Instance.ReportDeath(this);
         
+        float destroyDelay = 2f;
         if (_animator != null)
         {
             _animator.SetBool("IsDead", true);
@@ -939,6 +918,16 @@ public class Unit : MonoBehaviour
             _animator.SetBool("IsAttacking", false);
             _animator.SetTrigger("Die");
             Debug.Log($"[PRU Debug] {name} animator parameters set: IsDead=true, Die trigger fired.");
+            
+            // Set destroy delay to the exact length of the dying animation clip
+            var clips = _animator.runtimeAnimatorController.animationClips;
+            foreach (var clip in clips)
+            {
+                if (clip.name.ToLower().Contains("die") || clip.name.ToLower().Contains("dying") || clip.name.ToLower().Contains("death"))
+                {
+                    destroyDelay = Mathf.Max(destroyDelay, clip.length);
+                }
+            }
         }
         else
         {
@@ -969,8 +958,8 @@ public class Unit : MonoBehaviour
             }
         }
         
-        Debug.Log($"[PRU Debug] {name} destroying in 2.0s");
-        Destroy(gameObject, 2f);
+        Debug.Log($"[PRU Debug] {name} destroying in {destroyDelay}s");
+        Destroy(gameObject, destroyDelay);
     }
 
     private bool IsPathBlockedByTeammate(Vector3 targetPos)
@@ -981,7 +970,7 @@ public class Unit : MonoBehaviour
         if (GameManager.Instance == null) return false;
 
         CapsuleCollider col = GetComponent<CapsuleCollider>();
-        float myRadius = col != null ? col.radius : 0.4f;
+        float myRadius = col != null ? Mathf.Min(col.radius, 2.0f) : 0.4f;
 
         Vector3 A = transform.position;
         Vector3 B = targetPos;
@@ -1018,7 +1007,7 @@ public class Unit : MonoBehaviour
                 float distToSegment = Vector3.Distance(C, P);
 
                 CapsuleCollider teamCol = teammate.GetComponent<CapsuleCollider>();
-                float teamRadius = teamCol != null ? teamCol.radius : 0.4f;
+                float teamRadius = teamCol != null ? Mathf.Min(teamCol.radius, 2.0f) : 0.4f;
 
                 // We need to account for both our radius and the teammate's radius.
                 // If the distance from the teammate's center to the path segment is less than the sum of their radii,
@@ -1038,5 +1027,54 @@ public class Unit : MonoBehaviour
         }
 
         return false;
+    }
+
+    private void GetBoundaries(out float minX, out float maxX, out float minZ, out float maxZ)
+    {
+        minX = -5.2f;
+        maxX = 5.2f;
+        minZ = -17f;
+        maxZ = 25f;
+
+        BattlefieldGridGenerator gridGen = Object.FindAnyObjectByType<BattlefieldGridGenerator>();
+        if (gridGen != null)
+        {
+            minX = -1100f;
+            maxX = 1100f;
+            maxZ = 230f;
+
+            float colRadius = 0.4f;
+            CapsuleCollider col = GetComponent<CapsuleCollider>();
+            if (col != null)
+            {
+                colRadius = col.radius;
+            }
+
+            // Staggered background wall boundaries (Quad_Enemy, Quad, Quad_Player)
+            // Add safety offset of +1.0f + colRadius so the visual mesh never penetrates the quad.
+            float x = transform.position.x;
+            if (x < -310f)
+            {
+                minZ = -36.25f + colRadius + 1.0f;
+            }
+            else if (x <= 250f)
+            {
+                minZ = -42.00f + colRadius + 1.0f;
+            }
+            else
+            {
+                minZ = -45.99f + colRadius + 1.0f;
+            }
+        }
+    }
+
+    private void ClampToBoundaries()
+    {
+        if (GameManager.Instance == null || GameManager.Instance.currentState != GameState.Battle) return;
+        float minX, maxX, minZ, maxZ;
+        GetBoundaries(out minX, out maxX, out minZ, out maxZ);
+        float clampedX = Mathf.Clamp(transform.position.x, minX, maxX);
+        float clampedZ = Mathf.Clamp(transform.position.z, minZ, maxZ);
+        transform.position = new Vector3(clampedX, transform.position.y, clampedZ);
     }
 }
