@@ -42,14 +42,30 @@ public class DialogueSystem : MonoBehaviour
 
     void Awake()
     {
-        // Auto-load sprites from Resources if not assigned
-        if (characterASprite == null)
+        // Force-load sprites from Resources to fix null/inspector issues
+        characterASprite = Resources.Load<Sprite>("CustomUI/TuongQuan");
+        characterBSprite = Resources.Load<Sprite>("CustomUI/TuongDich");
+
+        // Ensure portraits fill edge-to-edge but are 2x larger and wider
+        if (leftPortrait != null)
         {
-            characterASprite = Resources.Load<Sprite>("CustomUI/TuongQuanCard");
+            leftPortrait.preserveAspect = false;
+            RectTransform rtL = leftPortrait.GetComponent<RectTransform>();
+            rtL.anchorMin = new Vector2(0f, 0f);
+            rtL.anchorMax = new Vector2(0f, 0f);
+            rtL.pivot = new Vector2(0f, 0f);
+            rtL.anchoredPosition = Vector2.zero; // Bottom-left corner
+            rtL.sizeDelta = new Vector2(1210f, 1500f); // Tăng bề ngang thêm 10%
         }
-        if (characterBSprite == null)
+        if (rightPortrait != null)
         {
-            characterBSprite = Resources.Load<Sprite>("CustomUI/CungThuCard");
+            rightPortrait.preserveAspect = false;
+            RectTransform rtR = rightPortrait.GetComponent<RectTransform>();
+            rtR.anchorMin = new Vector2(1f, 0f);
+            rtR.anchorMax = new Vector2(1f, 0f);
+            rtR.pivot = new Vector2(1f, 0f);
+            rtR.anchoredPosition = Vector2.zero; // Bottom-right corner
+            rtR.sizeDelta = new Vector2(1210f, 1500f); // Tăng bề ngang thêm 10%
         }
     }
 
@@ -186,20 +202,20 @@ public class DialogueSystem : MonoBehaviour
         // Highlight speaker portrait, dim the listener
         if (node.isCharacterA)
         {
-            leftTargetScale = new Vector3(1.05f, 1.05f, 1.05f);
+            leftTargetScale = new Vector3(2.1f, 2.1f, 2.1f); // To gấp 2 lần (1.05 * 2)
             leftTargetColor = Color.white;
 
-            rightTargetScale = new Vector3(0.92f, 0.92f, 0.92f);
+            rightTargetScale = new Vector3(1.84f, 1.84f, 1.84f); // To gấp 2 lần (0.92 * 2)
             rightTargetColor = new Color(0.4f, 0.4f, 0.4f, 0.7f);
 
             nameText.alignment = TextAnchor.MiddleLeft;
         }
         else
         {
-            leftTargetScale = new Vector3(0.92f, 0.92f, 0.92f);
+            leftTargetScale = new Vector3(1.84f, 1.84f, 1.84f);
             leftTargetColor = new Color(0.4f, 0.4f, 0.4f, 0.7f);
 
-            rightTargetScale = new Vector3(1.05f, 1.05f, 1.05f);
+            rightTargetScale = new Vector3(2.1f, 2.1f, 2.1f);
             rightTargetColor = Color.white;
 
             nameText.alignment = TextAnchor.MiddleRight;

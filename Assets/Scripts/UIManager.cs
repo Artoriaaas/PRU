@@ -83,6 +83,8 @@ public class UIManager : MonoBehaviour
             "Assets/Resources/CustomUI/CungThuCard.png",
             "Assets/Resources/CustomUI/TuongQuanCard.png",
             "Assets/Resources/CustomUI/show.png",
+            "Assets/Resources/CustomUI/TuongQuan.png",
+            "Assets/Resources/CustomUI/TuongDich.png",
         };
         foreach (var spritePath in customSpritePaths)
         {
