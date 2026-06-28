@@ -49,33 +49,38 @@ public class DialogueSystem : MonoBehaviour
         // Ensure portraits fill edge-to-edge but are 2x larger and wider
         if (leftPortrait != null)
         {
-            leftPortrait.preserveAspect = false;
+            leftPortrait.preserveAspect = true;
             RectTransform rtL = leftPortrait.GetComponent<RectTransform>();
             rtL.anchorMin = new Vector2(0f, 0f);
             rtL.anchorMax = new Vector2(0f, 0f);
             rtL.pivot = new Vector2(0f, 0f);
             rtL.anchoredPosition = Vector2.zero; // Bottom-left corner
-            rtL.sizeDelta = new Vector2(1210f, 1500f); // Tăng bề ngang thêm 10%
+            rtL.sizeDelta = new Vector2(600f, 700f); 
         }
         if (rightPortrait != null)
         {
-            rightPortrait.preserveAspect = false;
+            rightPortrait.preserveAspect = true;
             RectTransform rtR = rightPortrait.GetComponent<RectTransform>();
             rtR.anchorMin = new Vector2(1f, 0f);
             rtR.anchorMax = new Vector2(1f, 0f);
             rtR.pivot = new Vector2(1f, 0f);
             rtR.anchoredPosition = Vector2.zero; // Bottom-right corner
-            rtR.sizeDelta = new Vector2(1210f, 1500f); // Tăng bề ngang thêm 10%
+            rtR.sizeDelta = new Vector2(600f, 700f); 
         }
     }
 
     void Start()
     {
         mapCamera = FindAnyObjectByType<MapCameraController>();
-        
+
+        float width = 600f;
+        float height = 700f;
+
         // Load dialogue content from ScriptableObject if assigned
         if (dialogueData != null)
         {
+            width = dialogueData.portraitWidth;
+            height = dialogueData.portraitHeight;
             if (dialogueData.characterASprite != null) characterASprite = dialogueData.characterASprite;
             if (dialogueData.characterBSprite != null) characterBSprite = dialogueData.characterBSprite;
             
@@ -84,6 +89,16 @@ public class DialogueSystem : MonoBehaviour
             {
                 dialogueNodes.Add(node);
             }
+        }
+
+        // Apply sizes to portraits
+        if (leftPortrait != null)
+        {
+            leftPortrait.GetComponent<RectTransform>().sizeDelta = new Vector2(width, height);
+        }
+        if (rightPortrait != null)
+        {
+            rightPortrait.GetComponent<RectTransform>().sizeDelta = new Vector2(width, height);
         }
 
         // Setup initial default dialogue nodes as fallback
@@ -202,20 +217,20 @@ public class DialogueSystem : MonoBehaviour
         // Highlight speaker portrait, dim the listener
         if (node.isCharacterA)
         {
-            leftTargetScale = new Vector3(2.1f, 2.1f, 2.1f); // To gấp 2 lần (1.05 * 2)
+            leftTargetScale = new Vector3(1.05f, 1.05f, 1.05f); // Speaker scale (originally 1.05)
             leftTargetColor = Color.white;
 
-            rightTargetScale = new Vector3(1.84f, 1.84f, 1.84f); // To gấp 2 lần (0.92 * 2)
+            rightTargetScale = new Vector3(0.92f, 0.92f, 0.92f); // Listener scale (originally 0.92)
             rightTargetColor = new Color(0.4f, 0.4f, 0.4f, 0.7f);
 
             nameText.alignment = TextAnchor.MiddleLeft;
         }
         else
         {
-            leftTargetScale = new Vector3(1.84f, 1.84f, 1.84f);
+            leftTargetScale = new Vector3(0.92f, 0.92f, 0.92f);
             leftTargetColor = new Color(0.4f, 0.4f, 0.4f, 0.7f);
 
-            rightTargetScale = new Vector3(2.1f, 2.1f, 2.1f);
+            rightTargetScale = new Vector3(1.05f, 1.05f, 1.05f);
             rightTargetColor = Color.white;
 
             nameText.alignment = TextAnchor.MiddleRight;

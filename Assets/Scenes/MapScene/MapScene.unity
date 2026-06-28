@@ -292,7 +292,7 @@ MonoBehaviour:
   leftPanelWidthRatio: 0.22
   rightMiniMapWidth: 360
   mapSize: {x: 997, y: 1577}
-  openingDialogue: {fileID: 0}
+  openingDialogue: {fileID: 11400000, guid: bd42361e1ae75a547be766b083d09107, type: 2}
   mapObjects:
   - name: Thang Long
     spriteName: Castle

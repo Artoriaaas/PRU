@@ -20,6 +20,12 @@ public class DialogueData : ScriptableObject
     [Tooltip("Drag the sprite for Character B (Left Portrait) here.")]
     public Sprite characterBSprite;
 
+    [Header("Portrait Sizes")]
+    [Tooltip("Width of the character portrait on screen.")]
+    public float portraitWidth = 600f;
+    [Tooltip("Height of the character portrait on screen.")]
+    public float portraitHeight = 700f;
+
     [Header("Dialogue Sequence")]
     public List<DialogueNode> dialogueNodes = new List<DialogueNode>();
 }

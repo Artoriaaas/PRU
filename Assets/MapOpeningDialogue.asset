@@ -12,12 +12,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d018669f3f177774b9ea54228bfcdfb1, type: 3}
   m_Name: MapOpeningDialogue
   m_EditorClassIdentifier: Assembly-CSharp::DialogueData
-  characterASprite: {fileID: 0}
-  characterBSprite: {fileID: 0}
+  characterASprite: {fileID: 21300000, guid: db03004804b7d3a4bb58712b0c0e3719, type: 3}
+  characterBSprite: {fileID: 21300000, guid: 9ba36f5f07c5a5d43b092f7ed8d9a9e1, type: 3}
+  portraitWidth: 800
+  portraitHeight: 700
   dialogueNodes:
-  - speakerName: 
-    text: 
+  - speakerName: "T\u01B0\u1EDBng Qu\xE2n A"
+    text: "B\xE1o c\xE1o! Qu\xE2n ta \u0111\xE3 ti\u1EBFn s\xE1t th\xE0nh Th\u0103ng
+      Long. Tr\u1EADn chi\u1EBFn quy\u1EBFt \u0111\u1ECBnh s\u1EAFp b\u1EAFt \u0111\u1EA7u!"
+    isCharacterA: 1
+  - speakerName: "Cung Th\u1EE7 B"
+    text: "H\xE3y c\u1EA9n tr\u1ECDng, th\u01B0a T\u01B0\u1EDBng qu\xE2n. Qu\xE2n
+      \u0111\u1ECBch b\u1ED1 tr\xED r\u1EA5t nhi\u1EC1u cung th\u1EE7 mai ph\u1EE5c
+      \u1EDF v\xE1ch \u0111\xE1 hi\u1EC3m tr\u1EDF ph\xEDa tr\u01B0\u1EDBc."
     isCharacterA: 0
-  - speakerName: 
-    text: 
-    isCharacterA: 0
+  - speakerName: "T\u01B0\u1EDBng Qu\xE2n A"
+    text: "R\u1EA5t t\u1ED1t. To\xE0n qu\xE2n nghe l\u1EC7nh: Ch\xFA \xFD \u0111\u1ED9i
+      h\xECnh, chu\u1EA9n b\u1ECB ngh\xEAnh chi\u1EBFn b\u1EA3o v\u1EC7 ho\xE0ng
+      th\xE0nh!"
+    isCharacterA: 1
