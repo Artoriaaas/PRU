@@ -313,11 +313,11 @@ public class SkillManager : MonoBehaviour
         tBtnText.rectTransform.sizeDelta = new Vector2(100, 40);
 
         RectTransform rtToggleBtn = toggleBtnObj.GetComponent<RectTransform>();
-        rtToggleBtn.anchorMin = new Vector2(1, 1);
-        rtToggleBtn.anchorMax = new Vector2(1, 1);
-        rtToggleBtn.pivot = new Vector2(1, 1);
-        rtToggleBtn.anchoredPosition = new Vector2(-20, -20);
-        rtToggleBtn.sizeDelta = new Vector2(100, 40);
+        rtToggleBtn.anchorMin = new Vector2(0.5f, 1);
+        rtToggleBtn.anchorMax = new Vector2(0.5f, 1);
+        rtToggleBtn.pivot = new Vector2(0.5f, 1);
+        rtToggleBtn.anchoredPosition = new Vector2(0, -20);
+        rtToggleBtn.sizeDelta = new Vector2(120, 50);
 
         // 1. Skill Panel Container (Height increased to fit 4 rows and points)
         _skillPanelObj = new GameObject("SkillPanel");
@@ -335,11 +335,12 @@ public class SkillManager : MonoBehaviour
         }
 
         RectTransform rtPanel = _skillPanelObj.GetComponent<RectTransform>();
-        rtPanel.anchorMin = new Vector2(1, 1);
-        rtPanel.anchorMax = new Vector2(1, 1);
-        rtPanel.pivot = new Vector2(1, 1);
-        rtPanel.anchoredPosition = new Vector2(-20, -70);
+        rtPanel.anchoredPosition = new Vector2(0, -100); // Canh giữa màn hình
+        rtPanel.pivot = new Vector2(0.5f, 1); // Pivot ở giữa trên cùng
+        rtPanel.anchorMin = new Vector2(0.5f, 1);
+        rtPanel.anchorMax = new Vector2(0.5f, 1);
         rtPanel.sizeDelta = new Vector2(400, 300);
+        rtPanel.localScale = new Vector3(2f, 2f, 2f); // Tăng kích thước gấp đôi
 
         // Title text
         GameObject titleObj = new GameObject("Title");
@@ -370,13 +371,13 @@ public class SkillManager : MonoBehaviour
         _pointsText.font = font;
         _pointsText.fontSize = 15;
         _pointsText.color = Color.white;
-        _pointsText.alignment = TextAnchor.MiddleLeft;
+        _pointsText.alignment = TextAnchor.MiddleRight;
         RectTransform rtPoints = _pointsText.rectTransform;
-        rtPoints.anchorMin = new Vector2(0f, 1f);
-        rtPoints.anchorMax = new Vector2(0.6f, 1f);
-        rtPoints.pivot = new Vector2(0f, 1f);
-        rtPoints.anchoredPosition = new Vector2(15, -230);
-        rtPoints.sizeDelta = new Vector2(0, 25);
+        rtPoints.anchorMin = new Vector2(1f, 1f);
+        rtPoints.anchorMax = new Vector2(1f, 1f);
+        rtPoints.pivot = new Vector2(1f, 1f);
+        rtPoints.anchoredPosition = new Vector2(-15, -230);
+        rtPoints.sizeDelta = new Vector2(200, 25);
 
         GameObject resetBtnObj = new GameObject("ResetButton");
         resetBtnObj.transform.SetParent(_skillPanelObj.transform, false);
@@ -396,11 +397,11 @@ public class SkillManager : MonoBehaviour
         rText.rectTransform.sizeDelta = new Vector2(70, 25);
 
         RectTransform rtReset = resetBtnObj.GetComponent<RectTransform>();
-        rtReset.anchorMin = new Vector2(1f, 1f);
-        rtReset.anchorMax = new Vector2(1f, 1f);
-        rtReset.pivot = new Vector2(1f, 1f);
-        rtReset.anchoredPosition = new Vector2(-15, -230);
-        rtReset.sizeDelta = new Vector2(70, 25);
+        rtReset.anchorMin = new Vector2(0f, 1f);
+        rtReset.anchorMax = new Vector2(0f, 1f);
+        rtReset.pivot = new Vector2(0f, 1f);
+        rtReset.anchoredPosition = new Vector2(35, -230);
+        rtReset.sizeDelta = new Vector2(80, 25);
 
         // 4. Floating Tooltip Panel Setup
         _tooltipPanelObj = new GameObject("SkillTooltip");
@@ -457,7 +458,7 @@ public class SkillManager : MonoBehaviour
         rtLabel.anchorMin = new Vector2(0f, 1f);
         rtLabel.anchorMax = new Vector2(0.35f, 1f);
         rtLabel.pivot = new Vector2(0f, 1f);
-        rtLabel.anchoredPosition = new Vector2(15, yOffset);
+        rtLabel.anchoredPosition = new Vector2(35, yOffset);
         rtLabel.sizeDelta = new Vector2(0, 30);
 
         // Buttons

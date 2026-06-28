@@ -26,7 +26,7 @@ public class UIManager : MonoBehaviour
     private Text _unitsText;
     private Button _startBtn;
     private GameObject _gameOverPanel;
-    private Text _gameOverText;
+    private Image _gameOverImage;
     private Text _placementHint;
     
     private GameObject _bottomPanel;
@@ -103,6 +103,8 @@ public class UIManager : MonoBehaviour
             // Search for existing UI in the scene
             _canvasObj = GameObject.Find("UICanvas");
             
+
+
             if (_canvasObj == null)
             {
                 CreateUI();
@@ -243,7 +245,59 @@ public class UIManager : MonoBehaviour
                 if (gameOverTrans != null)
                 {
                     _gameOverPanel = gameOverTrans.gameObject;
-                    _gameOverText = gameOverTrans.Find("GameOverText")?.GetComponent<Text>();
+                    _gameOverImage = gameOverTrans.Find("GameOverImage")?.GetComponent<Image>();
+                    
+                    if (_gameOverImage == null)
+                    {
+                        // Clean up old GameOverPanel content
+                        foreach (Transform child in gameOverTrans)
+                        {
+                            Destroy(child.gameObject);
+                        }
+
+                        // Recreate Result Image
+                        GameObject goImgObj = new GameObject("GameOverImage");
+                        goImgObj.transform.SetParent(gameOverTrans, false);
+                        _gameOverImage = goImgObj.AddComponent<Image>();
+                        _gameOverImage.preserveAspect = true;
+                        RectTransform rtGOImg = _gameOverImage.rectTransform;
+                        rtGOImg.anchorMin = new Vector2(0.5f, 0.5f);
+                        rtGOImg.anchorMax = new Vector2(0.5f, 0.5f);
+                        rtGOImg.anchoredPosition = new Vector2(0, 150); 
+                        rtGOImg.sizeDelta = new Vector2(1500, 750);
+
+                        // Recreate Return to Battle Button
+                        GameObject returnBtnObj = new GameObject("ReturnToBattleButton");
+                        returnBtnObj.transform.SetParent(gameOverTrans, false);
+                        Image returnBtnImg = returnBtnObj.AddComponent<Image>();
+                        returnBtnImg.sprite = LoadUISprite("ReturnToBattle");
+                        returnBtnImg.preserveAspect = false; // Bỏ preserve aspect để các nút đều nhau
+                        Button returnBtn = returnBtnObj.AddComponent<Button>();
+                        returnBtn.onClick.AddListener(() => {
+                            UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+                        });
+                        RectTransform rtReturnBtn = returnBtnObj.GetComponent<RectTransform>();
+                        rtReturnBtn.anchorMin = new Vector2(0.5f, 0.5f);
+                        rtReturnBtn.anchorMax = new Vector2(0.5f, 0.5f);
+                        rtReturnBtn.anchoredPosition = new Vector2(-220, -180);
+                        rtReturnBtn.sizeDelta = new Vector2(400, 100);
+
+                        // Recreate Back to Map Button
+                        GameObject mapBtnObj = new GameObject("BackToMapButton");
+                        mapBtnObj.transform.SetParent(gameOverTrans, false);
+                        Image mapBtnImg = mapBtnObj.AddComponent<Image>();
+                        mapBtnImg.sprite = LoadUISprite("BackToMap");
+                        mapBtnImg.preserveAspect = false; // Bỏ preserve aspect để các nút đều nhau
+                        Button mapBtn = mapBtnObj.AddComponent<Button>();
+                        mapBtn.onClick.AddListener(() => {
+                            UnityEngine.SceneManagement.SceneManager.LoadScene("MapScene"); 
+                        });
+                        RectTransform rtMapBtn = mapBtnObj.GetComponent<RectTransform>();
+                        rtMapBtn.anchorMin = new Vector2(0.5f, 0.5f);
+                        rtMapBtn.anchorMax = new Vector2(0.5f, 0.5f);
+                        rtMapBtn.anchoredPosition = new Vector2(220, -180);
+                        rtMapBtn.sizeDelta = new Vector2(400, 100);
+                    }
                 }
                 
                 // Reconnect error banner
@@ -379,7 +433,7 @@ public class UIManager : MonoBehaviour
         if (gameOverT != null)
         {
             _gameOverPanel = gameOverT.gameObject;
-            _gameOverText  = gameOverT.Find("GameOverText")?.GetComponent<Text>();
+            _gameOverImage = gameOverT.Find("GameOverImage")?.GetComponent<Image>();
         }
 
         Transform errorT = _canvasObj.transform.Find("ErrorBanner");
@@ -615,17 +669,48 @@ public class UIManager : MonoBehaviour
         rtGameOverPanel.anchorMax = Vector2.one;
         rtGameOverPanel.sizeDelta = Vector2.zero;
 
-        GameObject goTextObj = new GameObject("GameOverText");
-        goTextObj.transform.SetParent(_gameOverPanel.transform, false);
-        _gameOverText = goTextObj.AddComponent<Text>();
-        _gameOverText.font = arial;
-        _gameOverText.fontSize = 60;
-        _gameOverText.color = Color.white;
-        _gameOverText.alignment = TextAnchor.MiddleCenter;
-        RectTransform rtGOText = _gameOverText.rectTransform;
-        rtGOText.anchorMin = new Vector2(0.5f, 0.5f);
-        rtGOText.anchorMax = new Vector2(0.5f, 0.5f);
-        rtGOText.sizeDelta = new Vector2(400, 100);
+        // Result Image
+        GameObject goImgObj = new GameObject("GameOverImage");
+        goImgObj.transform.SetParent(_gameOverPanel.transform, false);
+        _gameOverImage = goImgObj.AddComponent<Image>();
+        _gameOverImage.preserveAspect = true;
+        RectTransform rtGOImg = _gameOverImage.rectTransform;
+        rtGOImg.anchorMin = new Vector2(0.5f, 0.5f);
+        rtGOImg.anchorMax = new Vector2(0.5f, 0.5f);
+        rtGOImg.anchoredPosition = new Vector2(0, 150); 
+        rtGOImg.sizeDelta = new Vector2(1500, 750);
+
+        // Return to Battle Button
+        GameObject returnBtnObj = new GameObject("ReturnToBattleButton");
+        returnBtnObj.transform.SetParent(_gameOverPanel.transform, false);
+        Image returnBtnImg = returnBtnObj.AddComponent<Image>();
+        returnBtnImg.sprite = LoadUISprite("ReturnToBattle");
+        returnBtnImg.preserveAspect = false;
+        Button returnBtn = returnBtnObj.AddComponent<Button>();
+        returnBtn.onClick.AddListener(() => {
+            UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+        });
+        RectTransform rtReturnBtn = returnBtnObj.GetComponent<RectTransform>();
+        rtReturnBtn.anchorMin = new Vector2(0.5f, 0.5f);
+        rtReturnBtn.anchorMax = new Vector2(0.5f, 0.5f);
+        rtReturnBtn.anchoredPosition = new Vector2(-220, -180);
+        rtReturnBtn.sizeDelta = new Vector2(400, 100);
+
+        // Back to Map Button
+        GameObject mapBtnObj = new GameObject("BackToMapButton");
+        mapBtnObj.transform.SetParent(_gameOverPanel.transform, false);
+        Image mapBtnImg = mapBtnObj.AddComponent<Image>();
+        mapBtnImg.sprite = LoadUISprite("BackToMap");
+        mapBtnImg.preserveAspect = false;
+        Button mapBtn = mapBtnObj.AddComponent<Button>();
+        mapBtn.onClick.AddListener(() => {
+            UnityEngine.SceneManagement.SceneManager.LoadScene("MapScene"); 
+        });
+        RectTransform rtMapBtn = mapBtnObj.GetComponent<RectTransform>();
+        rtMapBtn.anchorMin = new Vector2(0.5f, 0.5f);
+        rtMapBtn.anchorMax = new Vector2(0.5f, 0.5f);
+        rtMapBtn.anchoredPosition = new Vector2(220, -180);
+        rtMapBtn.sizeDelta = new Vector2(400, 100);
         
         _gameOverPanel.SetActive(false);
 
@@ -1031,14 +1116,21 @@ public class UIManager : MonoBehaviour
         _gameOverPanel.SetActive(true);
         if (playerWon)
         {
-            _gameOverText.text = "VICTORY!";
-            _gameOverText.color = Color.green;
+            _gameOverImage.sprite = LoadUISprite("Victory");
         }
         else
         {
-            _gameOverText.text = "DEFEAT!";
-            _gameOverText.color = Color.red;
+            _gameOverImage.sprite = LoadUISprite("Defeat");
         }
+    }
+
+    private Sprite LoadUISprite(string name)
+    {
+        Sprite s = Resources.Load<Sprite>("UI/" + name);
+        if (s != null) return s;
+        Texture2D tex = Resources.Load<Texture2D>("UI/" + name);
+        if (tex != null) return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+        return null;
     }
 }
 

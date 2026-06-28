@@ -61,29 +61,7 @@ public class MapSceneBootstrapper : MonoBehaviour
         rightMiniMapWidth = 360f; // Force override for MiniMap size
         bottomBarHeight = 0f;     // Force override for Bottom Panel
 
-        // Add Thang Long (Castle) at the specified location
-        mapObjects.Add(new MapObjectData {
-            name = "Thang Long",
-            spriteName = "Castle", // Fixed sprite name path
-            anchoredPos = new Vector2(50f, 250f), // Adjusted position (up 50, right 10)
-            size = new Vector2(100f, 100f)        // Adjusted size for visibility
-        });
-
-        // Add a Village House above Thang Long
-        mapObjects.Add(new MapObjectData {
-            name = "Village",
-            spriteName = "VillageHouse",
-            anchoredPos = new Vector2(50f, 400f), // 150px above Thang Long
-            size = new Vector2(60f, 60f)          // 3/5 of original size
-        });
-
-        // Add a Gold House to the left of Thang Long
-        mapObjects.Add(new MapObjectData {
-            name = "Gold Mine",
-            spriteName = "GoldHouse",
-            anchoredPos = new Vector2(-150f, 370f), // Moved down by 30px
-            size = new Vector2(50f, 50f)            // Slightly smaller than 60f
-        });
+        // Bạn có thể tạo dữ liệu từ ContextMenu "Tạo Dữ Liệu MapObjects Mặc Định" trên component này
 
         BuildCanvas();
         BuildEventSystem();
@@ -176,9 +154,6 @@ public class MapSceneBootstrapper : MonoBehaviour
         bg.color = Color.white;
         bg.raycastTarget = false;
 
-        AddResourceIcon(bar.transform, "FoodPanel", "CropCurrency", "Lương thực: 5000", 0f);
-        AddResourceIcon(bar.transform, "CoinPanel", "CoinCurrency", "Tiền: 3000", 1f);
-        AddResourceIcon(bar.transform, "ArmyPanel", "ArmyCurrency", "Quân: 1200", 2f);
 
         Text dateText = CreateText(bar.transform, "DateText", "Năm 1285", 22, TextAnchor.MiddleCenter);
         RectTransform dtRT = dateText.rectTransform;
@@ -574,7 +549,7 @@ public class MapSceneBootstrapper : MonoBehaviour
 
         CreateSettingsButton(menuBox.transform, "SaveButton", "Save", 100f, () => Debug.Log("Save Clicked"));
         CreateSettingsButton(menuBox.transform, "LoadButton", "Load", 30f, () => Debug.Log("Load Clicked"));
-        CreateSettingsButton(menuBox.transform, "QuitButton", "Quit", -40f, () => Application.Quit());
+        CreateSettingsButton(menuBox.transform, "QuitButton", "Back to menu", -40f, () => UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenuScene"));
 
         GameObject musicControl = new GameObject("MusicControl");
         RectTransform mcRT = musicControl.AddComponent<RectTransform>();
@@ -596,10 +571,10 @@ public class MapSceneBootstrapper : MonoBehaviour
         RectTransform sliderRT = sliderObj.AddComponent<RectTransform>();
         sliderRT.SetParent(musicControl.transform, false);
         sliderRT.anchorMin = new Vector2(0.5f, 0.5f);
-        sliderRT.anchorMax = new Vector2(1f, 0.5f);
-        sliderRT.pivot = new Vector2(0f, 0.5f);
+        sliderRT.anchorMax = new Vector2(0.5f, 0.5f);
+        sliderRT.pivot = new Vector2(0.5f, 0.5f);
         sliderRT.sizeDelta = new Vector2(140f, 20f);
-        sliderRT.anchoredPosition = new Vector2(10f, 0f);
+        sliderRT.anchoredPosition = new Vector2(70f, 0f);
 
         Image sliderBg = sliderObj.AddComponent<Image>();
         ApplySprite(sliderBg, "MusicBar", true);
@@ -795,4 +770,72 @@ public class MapSceneBootstrapper : MonoBehaviour
 
         return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
     }
+    
+    [ContextMenu("Tạo Dữ Liệu MapObjects Mặc Định")]
+    public void GenerateDefaultMapObjects()
+    {
+        if (mapObjects == null) mapObjects = new List<MapObjectData>();
+        mapObjects.Clear();
+        mapObjects.Add(new MapObjectData {
+            name = "Thang Long", spriteName = "Castle", 
+            anchoredPos = new Vector2(50f, 250f), size = new Vector2(100f, 100f)        
+        });
+        mapObjects.Add(new MapObjectData {
+            name = "Village", spriteName = "VillageHouse",
+            anchoredPos = new Vector2(50f, 400f), size = new Vector2(60f, 60f)          
+        });
+        mapObjects.Add(new MapObjectData {
+            name = "Gold Mine", spriteName = "GoldHouse",
+            anchoredPos = new Vector2(-150f, 370f), size = new Vector2(50f, 50f)            
+        });
+        
+        // 3 toà thành mới ở các chỗ giao nhau (có thể chỉnh toạ độ trong inspector)
+        mapObjects.Add(new MapObjectData {
+            name = "Castle 1", spriteName = "Castle",
+            anchoredPos = new Vector2(-180f, 520f), size = new Vector2(80f, 80f)
+        });
+        mapObjects.Add(new MapObjectData {
+            name = "Castle 2", spriteName = "Castle",
+            anchoredPos = new Vector2(250f, 580f), size = new Vector2(80f, 80f)
+        });
+        mapObjects.Add(new MapObjectData {
+            name = "Castle 3", spriteName = "Castle",
+            anchoredPos = new Vector2(15f, 0f), size = new Vector2(80f, 80f)
+        });
+
+#if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(this);
+#endif
+    }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (mapObjects == null || mapObjects.Count == 0)
+        {
+            UnityEditor.EditorApplication.delayCall += () =>
+            {
+                if (this == null) return;
+                if (mapObjects == null || mapObjects.Count == 0)
+                {
+                    GenerateDefaultMapObjects();
+                }
+            };
+        }
+
+        // Đồng bộ live lúc đang Play
+        if (Application.isPlaying && mapContentRT != null)
+        {
+            foreach (var data in mapObjects)
+            {
+                Transform t = mapContentRT.Find(data.name);
+                if (t != null && t is RectTransform rt)
+                {
+                    rt.anchoredPosition = data.anchoredPos;
+                    rt.sizeDelta = data.size;
+                }
+            }
+        }
+    }
+#endif
 }

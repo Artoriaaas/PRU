@@ -4,6 +4,7 @@ using UnityEngine.UI;
 
 public class MainMenuIntro : MonoBehaviour
 {
+    public static bool hasSeenIntro = false;
     [Header("Intro UI")]
     public CanvasGroup introOverlayGroup;
     public Text introText;
@@ -42,6 +43,14 @@ public class MainMenuIntro : MonoBehaviour
         if (introOverlayGroup == null || menuLayers == null || menuLayers.Length == 0)
         {
             IntroFinished = true;
+            return;
+        }
+
+        if (hasSeenIntro)
+        {
+            IntroFinished = true;
+            SetMenuLayersAlpha(1f, true);
+            ResetIntroOverlay();
             return;
         }
 
@@ -96,6 +105,7 @@ public class MainMenuIntro : MonoBehaviour
 
         yield return FadeMenuLayers(1f);
         IntroFinished = true;
+        hasSeenIntro = true;
         ResetIntroOverlay();
     }
 
