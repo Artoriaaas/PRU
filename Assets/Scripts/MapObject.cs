@@ -98,6 +98,22 @@ public class MapObject : MonoBehaviour, IPointerClickHandler, IPointerEnterHandl
             objectName.ToLower().Contains("castle")
         ))
         {
+            int mapProgress = PlayerPrefs.GetInt("MapProgress", 0);
+            string expectedCastle = "";
+            switch (mapProgress)
+            {
+                case 0: expectedCastle = "Hoan Châu"; break;
+                case 1: expectedCastle = "Trại Yên"; break;
+                case 2: expectedCastle = "Thiên Trường"; break;
+                case 3: expectedCastle = "Thăng Long"; break;
+            }
+
+            if (expectedCastle != "" && !objectName.Contains(expectedCastle))
+            {
+                Debug.Log($"[MapObject] Click blocked. You must clear {expectedCastle} first.");
+                return;
+            }
+
             // Tutorial locks: Step < 2 forces Hoan Châu selection
             int tutorialStep = PlayerPrefs.GetInt("TutorialStep", 0);
             if (tutorialStep < 2)

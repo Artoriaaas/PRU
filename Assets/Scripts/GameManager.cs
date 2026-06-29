@@ -864,11 +864,33 @@ public class GameManager : MonoBehaviour
             // Handle tutorial completion step and award 3 skill points
             if (activeCastleName == "Hoan Châu")
             {
-                PlayerPrefs.SetInt("TutorialStep", 2);
-                PlayerPrefs.Save();
-                SkillManager.SkillPointsStatic += 3;
-                Debug.Log($"[GameManager] Tutorial battle won! Awarded 3 skill points. Current points={SkillManager.SkillPointsStatic}");
+                if (PlayerPrefs.GetInt("TutorialStep", 0) < 2)
+                {
+                    PlayerPrefs.SetInt("TutorialStep", 2);
+                    PlayerPrefs.Save();
+                    SkillManager.SkillPointsStatic += 3;
+                    Debug.Log($"[GameManager] Tutorial battle won! Awarded 3 skill points. Current points={SkillManager.SkillPointsStatic}");
+                }
             }
+
+            int mapProgress = PlayerPrefs.GetInt("MapProgress", 0);
+            if (activeCastleName == "Hoan Châu" && mapProgress == 0)
+            {
+                PlayerPrefs.SetInt("MapProgress", 1);
+            }
+            else if (activeCastleName == "Trại Yên" && mapProgress == 1)
+            {
+                PlayerPrefs.SetInt("MapProgress", 2);
+            }
+            else if (activeCastleName == "Thiên Trường" && mapProgress == 2)
+            {
+                PlayerPrefs.SetInt("MapProgress", 3);
+            }
+            else if (activeCastleName == "Thăng Long" && mapProgress == 3)
+            {
+                PlayerPrefs.SetInt("MapProgress", 4);
+            }
+            PlayerPrefs.Save();
 
             if (UIManager.Instance != null) UIManager.Instance.ShowGameOver(true);
         }
