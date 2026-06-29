@@ -9,6 +9,7 @@ public class GameManager : MonoBehaviour
     public static string levelToLoadName = "";
 
     public GameState currentState = GameState.Setup;
+    [HideInInspector] public bool isLevelEditorMode = false;
     
     public List<Unit> playerUnits = new List<Unit>();
     public List<Unit> enemyUnits = new List<Unit>();
@@ -254,7 +255,7 @@ public class GameManager : MonoBehaviour
             Transform pad = enemyGrid.transform.Find(padName);
             if (pad != null)
             {
-                SpawnUnit(false, pad.position);
+                SpawnUnit(false, pad.position, placement.unitTypeIndex);
                 placedEnemyUnits++;
             }
             else
@@ -300,7 +301,7 @@ public class GameManager : MonoBehaviour
                 }
                 else if (unitTypeIndex == 1)
                 {
-                    loadedModel = archerModelPrefab != null ? archerModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
+                    loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/model_quan_cung/animation_ban_cung_quan_dich.fbx");
                 }
             }
         }
@@ -375,6 +376,9 @@ public class GameManager : MonoBehaviour
                 animator.Update(0f);
             }
 
+            // The new archer model has the bow and arrow fully integrated into the FBX's skeletal hierarchy (under mixamorig:LeftHand/Bow_root and mixamorig:RightHand/Bone).
+            // The bow itself is a SkinnedMeshRenderer, so runtime manual parenting is no longer necessary.
+            /*
             if (unitTypeIndex == 1)
             {
                 Transform bowArmature = null;
@@ -420,6 +424,7 @@ public class GameManager : MonoBehaviour
                     bowArmature.localScale = Vector3.one;
                 }
             }
+            */
 
             // Setup textures dynamically to fix white character model issue
             Texture2D textureToApply = null;

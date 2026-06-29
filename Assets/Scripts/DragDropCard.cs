@@ -59,7 +59,12 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
         GameObject bestPad = null;
         float bestDist = float.MaxValue;
 
-        string prefix = "PlayerPad_";
+        bool isPlayer = true;
+        if (CameraController.Instance != null && CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
+        {
+            isPlayer = false;
+        }
+        string prefix = isPlayer ? "PlayerPad_" : "EnemyPad_";
 
         foreach (var hit in hits)
         {
@@ -69,7 +74,8 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
                 if (hit.distance < bestDist)
                 {
                     // Enforce King vs other unit pad restrictions
-                    if (hit.collider.name == "PlayerPad_3_2 (1)")
+                    bool isBigPad = hit.collider.name == "PlayerPad_3_2 (1)" || hit.collider.name == "EnemyPad_3_2 (1)";
+                    if (isBigPad)
                     {
                         if (unitTypeIndex != 4) continue;
                     }
@@ -126,8 +132,10 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
             isPlayer = false;
         }
 
+        bool isEditor = GameManager.Instance != null && GameManager.Instance.isLevelEditorMode;
+
         // Do not allow dragging/placing enemy units at runtime (only via Level Editor)
-        if (!isPlayer) return;
+        if (!isPlayer && !isEditor) return;
 
         int maxUnits = isPlayer ? GameManager.Instance.maxPlayerUnits : GameManager.Instance.maxEnemyUnits;
         int placedUnits = isPlayer ? GameManager.Instance.placedPlayerUnits : GameManager.Instance.placedEnemyUnits;
@@ -259,8 +267,10 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
             isPlayer = false;
         }
 
+        bool isEditor = GameManager.Instance != null && GameManager.Instance.isLevelEditorMode;
+
         // Do not allow card selection/clicking when in enemy setup view
-        if (!isPlayer) return;
+        if (!isPlayer && !isEditor) return;
 
         int maxUnits = isPlayer ? GameManager.Instance.maxPlayerUnits : GameManager.Instance.maxEnemyUnits;
         int placedUnits = isPlayer ? GameManager.Instance.placedPlayerUnits : GameManager.Instance.placedEnemyUnits;

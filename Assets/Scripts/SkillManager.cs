@@ -51,10 +51,10 @@ public class SkillManager : MonoBehaviour
         set => _troopLevel = value;
     }
 
-    private static int _scoutingLevel = 0;
+    private static int _scoutingLevel = 3;
     public int scoutingLevel
     {
-        get => _scoutingLevel;
+        get => 3;
         set => _scoutingLevel = value;
     }
 
@@ -339,7 +339,7 @@ public class SkillManager : MonoBehaviour
         rtPanel.pivot = new Vector2(0.5f, 1); // Pivot ở giữa trên cùng
         rtPanel.anchorMin = new Vector2(0.5f, 1);
         rtPanel.anchorMax = new Vector2(0.5f, 1);
-        rtPanel.sizeDelta = new Vector2(400, 300);
+        rtPanel.sizeDelta = new Vector2(400, 260);
         rtPanel.localScale = new Vector3(2f, 2f, 2f); // Tăng kích thước gấp đôi
 
         // Title text
@@ -358,11 +358,10 @@ public class SkillManager : MonoBehaviour
         rtTitle.anchoredPosition = new Vector2(0, -10);
         rtTitle.sizeDelta = new Vector2(0, 30);
 
-        // 2. Generate rows for each of the 4 skills
+        // 2. Generate rows for each of the 3 skills (Scouting removed)
         CreateSkillRow("Doanh trại", "Barracks", -65, font);
         CreateSkillRow("Quân chủng", "Troop", -105, font);
-        CreateSkillRow("Trinh thám", "Scouting", -145, font);
-        CreateSkillRow("Hậu cần", "Logistics", -185, font);
+        CreateSkillRow("Hậu cần", "Logistics", -145, font);
 
         // 3. Points and Reset at the bottom
         GameObject pointsObj = new GameObject("PointsText");
@@ -376,7 +375,7 @@ public class SkillManager : MonoBehaviour
         rtPoints.anchorMin = new Vector2(1f, 1f);
         rtPoints.anchorMax = new Vector2(1f, 1f);
         rtPoints.pivot = new Vector2(1f, 1f);
-        rtPoints.anchoredPosition = new Vector2(-15, -230);
+        rtPoints.anchoredPosition = new Vector2(-15, -190);
         rtPoints.sizeDelta = new Vector2(200, 25);
 
         GameObject resetBtnObj = new GameObject("ResetButton");
@@ -400,7 +399,7 @@ public class SkillManager : MonoBehaviour
         rtReset.anchorMin = new Vector2(0f, 1f);
         rtReset.anchorMax = new Vector2(0f, 1f);
         rtReset.pivot = new Vector2(0f, 1f);
-        rtReset.anchoredPosition = new Vector2(35, -230);
+        rtReset.anchoredPosition = new Vector2(35, -190);
         rtReset.sizeDelta = new Vector2(80, 25);
 
         // 4. Floating Tooltip Panel Setup

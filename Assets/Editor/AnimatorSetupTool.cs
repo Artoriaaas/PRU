@@ -229,22 +229,273 @@ public class AnimatorSetupTool
         Debug.Log("--- END ASSIGNING CLIPS FROM NEWMODEL FOLDER ---");
     }
 
+    private static void ConvertArcherRigsToGeneric()
+    {
+        Debug.Log("--- START CONVERTING ARCHER RIGS TO GENERIC ---");
+        string[] paths = new string[] {
+            "Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx",
+            "Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/model_quan_cung@Standing Idle.fbx",
+            "Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/model_quan_cung@Standing Run Forward.fbx",
+            "Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/Standing Death Forward.fbx",
+            "Assets/Models/NewModel/Model quân địch/model_quan_cung/animation_ban_cung_quan_dich.fbx"
+        };
+        foreach (string path in paths)
+        {
+            ModelImporter importer = AssetImporter.GetAtPath(path) as ModelImporter;
+            if (importer != null)
+            {
+                bool modified = false;
+                if (importer.animationType != ModelImporterAnimationType.Generic)
+                {
+                    importer.animationType = ModelImporterAnimationType.Generic;
+                    modified = true;
+                }
+
+                // Specifically for animation_ban_cung_quan_ta.fbx, correct the clip animations definition
+                if (path.EndsWith("animation_ban_cung_quan_ta.fbx"))
+                {
+                    if (importer.clipAnimations == null || 
+                        importer.clipAnimations.Length != 1 || 
+                        importer.clipAnimations[0].name != "animation_ban_cung" || 
+                        importer.clipAnimations[0].takeName != "Armature.001|Armature.001|Armature.001|animation_ban_cung")
+                    {
+                        var clips = new ModelImporterClipAnimation[1];
+                        clips[0] = new ModelImporterClipAnimation();
+                        clips[0].name = "animation_ban_cung";
+                        clips[0].takeName = "Armature.001|Armature.001|Armature.001|animation_ban_cung";
+                        clips[0].firstFrame = 130;
+                        clips[0].lastFrame = 260;
+                        clips[0].loopTime = false;
+                        importer.clipAnimations = clips;
+                        modified = true;
+                    }
+                }
+                else if (path.EndsWith("animation_ban_cung_quan_dich.fbx"))
+                {
+                    if (importer.clipAnimations == null || 
+                        importer.clipAnimations.Length != 1 || 
+                        importer.clipAnimations[0].name != "animation_ban_cung" || 
+                        importer.clipAnimations[0].takeName != "Armature.001|Armature.001|Armature.001|Armature.001|animation_ban_cung")
+                    {
+                        var clips = new ModelImporterClipAnimation[1];
+                        clips[0] = new ModelImporterClipAnimation();
+                        clips[0].name = "animation_ban_cung";
+                        clips[0].takeName = "Armature.001|Armature.001|Armature.001|Armature.001|animation_ban_cung";
+                        clips[0].firstFrame = 130;
+                        clips[0].lastFrame = 260;
+                        clips[0].loopTime = false;
+                        importer.clipAnimations = clips;
+                        modified = true;
+                    }
+                }
+
+                if (modified)
+                {
+                    importer.SaveAndReimport();
+                    Debug.Log("Converted Archer Rig / Clip to Generic: " + path);
+                }
+            }
+        }
+        Debug.Log("--- END CONVERTING ARCHER RIGS TO GENERIC ---");
+    }
+
     private static void AssignArcherClipsToStates(AnimatorState idleState, AnimatorState runState, AnimatorState attackState, AnimatorState dieState)
     {
-        Debug.Log("--- START ASSIGNING ARCHER CLIPS ---");
+        Debug.Log("--- START ASSIGNING ARCHER CLIPS (GENERIC) ---");
         idleState.motion = null;
         runState.motion = null;
         attackState.motion = null;
         dieState.motion = null;
 
-        const string archerFolder = "Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta";
+        // 1. Force Archer models to Generic
+        ConvertArcherRigsToGeneric();
 
-        idleState.motion = LoadArcherClip(archerFolder + "/model_quan_cung@Standing Idle.fbx", "Standing Idle", true);
-        runState.motion = LoadArcherClip(archerFolder + "/model_quan_cung@Standing Run Forward.fbx", "Standing Run Forward", true);
-        attackState.motion = LoadArcherClip(archerFolder + "/animation_ban_cung_quan_ta.fbx", "Armature.001|animation_ban_cung", false, 130, 260, true);
-        dieState.motion = LoadArcherClip(archerFolder + "/Standing Death Forward.fbx", "mixamo.com", false);
+        string[] fbxPaths = new string[] {
+            "Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx",
+            "Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/model_quan_cung@Standing Idle.fbx",
+            "Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/model_quan_cung@Standing Run Forward.fbx",
+            "Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/Standing Death Forward.fbx"
+        };
+        
+        string outputDir = "Assets/Art/Animations/ArcherClips";
+        if (System.IO.Directory.Exists(outputDir))
+        {
+            System.IO.Directory.Delete(outputDir, true);
+        }
+        System.IO.Directory.CreateDirectory(outputDir);
+        AssetDatabase.Refresh();
 
-        Debug.Log("--- END ASSIGNING ARCHER CLIPS ---");
+        foreach (string fbxPath in fbxPaths)
+        {
+            Object[] subAssets = AssetDatabase.LoadAllAssetRepresentationsAtPath(fbxPath);
+            if (subAssets != null && subAssets.Length > 0)
+            {
+                foreach (Object asset in subAssets)
+                {
+                    AnimationClip sourceClip = asset as AnimationClip;
+                    if (sourceClip == null || sourceClip.name.StartsWith("__preview__")) continue;
+
+                    AnimationClip destClip = new AnimationClip();
+
+                    // Copy float curves and rewrite paths targeting correct Armature.001
+                    var floatBindings = AnimationUtility.GetCurveBindings(sourceClip);
+                    foreach (var binding in floatBindings)
+                    {
+                        var newBinding = binding;
+                        
+                        // Rewrite path
+                        if (newBinding.path.StartsWith("mixamorig:Hips"))
+                        {
+                            newBinding.path = "Armature.001/" + newBinding.path;
+                        }
+                        else if (newBinding.path.StartsWith("Armature/"))
+                        {
+                            newBinding.path = "Armature.001/" + newBinding.path.Substring(9);
+                        }
+                        else if (newBinding.path == "Armature")
+                        {
+                            newBinding.path = "Armature.001";
+                        }
+                        else if (newBinding.path.StartsWith("Armature.001"))
+                        {
+                            // Already starts with Armature.001, keep it
+                        }
+                        else if (newBinding.path != "")
+                        {
+                            newBinding.path = "Armature.001/" + newBinding.path;
+                        }
+
+                        // Strip ALL bone scale curves to prevent animation from overriding bone scale
+                        if (newBinding.propertyName.Contains("m_LocalScale"))
+                        {
+                            continue;
+                        }
+
+                        // Strip rotation on root Armature.001 (but NOT mixamorig:Hips) to prevent tilting/sideways rotation
+                        bool isRootRotation = newBinding.path == "Armature.001";
+                        if (isRootRotation && newBinding.propertyName.Contains("m_LocalRotation"))
+                        {
+                            continue;
+                        }
+
+                        // Strip X/Y/Z root translation to prevent root motion sliding and vertical offset issues
+                        bool isRootPath = newBinding.path == "Armature.001" || newBinding.path == "Armature.001/mixamorig:Hips";
+                        bool isTranslation = newBinding.propertyName.Contains("m_LocalPosition");
+                        if (isRootPath && isTranslation)
+                        {
+                            continue;
+                        }
+
+                        AnimationCurve curve = AnimationUtility.GetEditorCurve(sourceClip, binding);
+                        AnimationUtility.SetEditorCurve(destClip, newBinding, curve);
+                    }
+
+                    // Copy object reference curves and rewrite paths
+                    var objectBindings = AnimationUtility.GetObjectReferenceCurveBindings(sourceClip);
+                    foreach (var binding in objectBindings)
+                    {
+                        var newBinding = binding;
+                        
+                        // Rewrite path
+                        if (newBinding.path.StartsWith("mixamorig:Hips"))
+                        {
+                            newBinding.path = "Armature.001/" + newBinding.path;
+                        }
+                        else if (newBinding.path.StartsWith("Armature/"))
+                        {
+                            newBinding.path = "Armature.001/" + newBinding.path.Substring(9);
+                        }
+                        else if (newBinding.path == "Armature")
+                        {
+                            newBinding.path = "Armature.001";
+                        }
+                        else if (newBinding.path.StartsWith("Armature.001"))
+                        {
+                            // Already starts with Armature.001, keep it
+                        }
+                        else if (newBinding.path != "")
+                        {
+                            newBinding.path = "Armature.001/" + newBinding.path;
+                        }
+
+                        // Strip ALL bone scale reference curves
+                        if (newBinding.propertyName.Contains("m_LocalScale"))
+                        {
+                            continue;
+                        }
+
+                        // Strip rotation on root Armature.001 (but NOT mixamorig:Hips) reference curves
+                        bool isRootRotation = newBinding.path == "Armature.001";
+                        if (isRootRotation && newBinding.propertyName.Contains("m_LocalRotation"))
+                        {
+                            continue;
+                        }
+
+                        // Strip X/Y/Z root translation reference curves to prevent root motion sliding and vertical offset issues
+                        bool isRootPath = newBinding.path == "Armature.001" || newBinding.path == "Armature.001/mixamorig:Hips";
+                        bool isTranslation = newBinding.propertyName.Contains("m_LocalPosition");
+                        if (isRootPath && isTranslation)
+                        {
+                            continue;
+                        }
+
+                        var keyframes = AnimationUtility.GetObjectReferenceCurve(sourceClip, binding);
+                        AnimationUtility.SetObjectReferenceCurve(destClip, newBinding, keyframes);
+                    }
+
+                    var settings = AnimationUtility.GetAnimationClipSettings(sourceClip);
+                    AnimationUtility.SetAnimationClipSettings(destClip, settings);
+
+                    string fbxPrefix = System.IO.Path.GetFileNameWithoutExtension(fbxPath);
+                    string nameClean = fbxPrefix + "_" + sourceClip.name.Replace('|', '_').Replace('.', '_');
+                    string outPath = outputDir + "/" + nameClean + ".anim";
+                    AssetDatabase.CreateAsset(destClip, outPath);
+                }
+            }
+        }
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+
+        // 2. Load fixed clips and assign to Animator Controller
+        string[] guids = AssetDatabase.FindAssets("t:AnimationClip", new string[] { outputDir });
+        foreach (string guid in guids)
+        {
+            string clipPath = AssetDatabase.GUIDToAssetPath(guid);
+            AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(clipPath);
+            if (clip == null) continue;
+
+            string clipName = clip.name.ToLower();
+
+            bool isIdle = clipName.Contains("idle");
+            bool isRun = clipName.Contains("run");
+            bool isAttack = clipName.Contains("animation_ban_cung") || clipName.Contains("ban_cung");
+            bool isDie = clipName.Contains("death") || clipName.Contains("die");
+
+            if (isIdle && idleState.motion == null)
+            {
+                idleState.motion = clip;
+                EnableLoopTime(clip);
+                Debug.Log(">> Assigned Fixed Archer Idle clip: " + clip.name);
+            }
+            else if (isRun && runState.motion == null)
+            {
+                runState.motion = clip;
+                EnableLoopTime(clip);
+                Debug.Log(">> Assigned Fixed Archer Run clip: " + clip.name);
+            }
+            else if (isAttack && attackState.motion == null)
+            {
+                attackState.motion = clip;
+                Debug.Log(">> Assigned Fixed Archer Attack clip: " + clip.name);
+            }
+            else if (isDie && dieState.motion == null)
+            {
+                dieState.motion = clip;
+                Debug.Log(">> Assigned Fixed Archer Die clip: " + clip.name);
+            }
+        }
+
+        Debug.Log("--- END ASSIGNING ARCHER CLIPS (GENERIC) ---");
     }
 
     private static void AssignKingClipsToStates(AnimatorState idleState, AnimatorState runState, AnimatorState attackState, AnimatorState dieState)

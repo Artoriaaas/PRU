@@ -44,6 +44,10 @@ public class UIManager : MonoBehaviour
     private Text _errorBannerText;
     private float _errorBannerTimer = 0f;
 
+    private Button _editorToggleBtn;
+    private Text _editorToggleText;
+    private Button _saveLevelBtn;
+
     private void Reset()
     {
 #if UNITY_EDITOR
@@ -344,11 +348,63 @@ public class UIManager : MonoBehaviour
 #endif
             }
 
+            CreateEditorControls();
+            BindButtonListeners();
             UpdatePlacementUI();
         }
         else
         {
             Destroy(this);
+        }
+    }
+
+    private void OnEnable()
+    {
+        BindButtonListeners();
+    }
+
+    private void BindButtonListeners()
+    {
+        if (_startBtn != null)
+        {
+            _startBtn.onClick.RemoveAllListeners();
+            _startBtn.onClick.AddListener(() => { GameManager.Instance.StartBattle(); });
+        }
+        if (_switchViewBtn != null)
+        {
+            _switchViewBtn.onClick.RemoveAllListeners();
+            _switchViewBtn.onClick.AddListener(() => { ToggleView(); });
+        }
+        if (_showArrowBtn != null)
+        {
+            Button arrowBtn = _showArrowBtn.GetComponent<Button>();
+            if (arrowBtn != null)
+            {
+                arrowBtn.onClick.RemoveAllListeners();
+                arrowBtn.onClick.AddListener(() => { ExpandPanel(); });
+            }
+        }
+        if (_togglePanelBtn != null)
+        {
+            Text toggleText = _togglePanelBtn.transform.Find("Text")?.GetComponent<Text>();
+            _togglePanelBtn.onClick.RemoveAllListeners();
+            _togglePanelBtn.onClick.AddListener(() => { TogglePanelCollapse(toggleText); });
+        }
+        if (_editorToggleBtn != null)
+        {
+            _editorToggleBtn.onClick.RemoveAllListeners();
+            _editorToggleBtn.onClick.AddListener(() => {
+                if (GameManager.Instance != null)
+                {
+                    GameManager.Instance.isLevelEditorMode = !GameManager.Instance.isLevelEditorMode;
+                    UpdatePlacementUI();
+                }
+            });
+        }
+        if (_saveLevelBtn != null)
+        {
+            _saveLevelBtn.onClick.RemoveAllListeners();
+            _saveLevelBtn.onClick.AddListener(() => { SaveLevelData(); });
         }
     }
 
@@ -894,6 +950,7 @@ public class UIManager : MonoBehaviour
 
     private void ToggleView()
     {
+        Debug.Log($"[UIManager] ToggleView called. CurrentView={(CameraController.Instance != null ? CameraController.Instance.GetCurrentView().ToString() : "null")}");
         if (CameraController.Instance == null) return;
 
         CameraView targetView = CameraView.EnemySetup;
@@ -905,11 +962,13 @@ public class UIManager : MonoBehaviour
             newText = "Xem đội hình tướng địch";
         }
 
+        Debug.Log($"[UIManager] Starting SwitchViewRoutine to targetView={targetView}, newText={newText}");
         StartCoroutine(SwitchViewRoutine(targetView, newText));
     }
 
     private System.Collections.IEnumerator SwitchViewRoutine(CameraView targetView, string newButtonText)
     {
+        Debug.Log($"[UIManager] SwitchViewRoutine started. TargetView={targetView}");
         // Create fog lazily if somehow missing
         if (_transitionFog == null)
         {
@@ -943,7 +1002,9 @@ public class UIManager : MonoBehaviour
         _transitionFog.color = c;
 
         // Switch camera view during full white-out
+        Debug.Log($"[UIManager] SwitchViewRoutine: Setting camera view to {targetView}. CurrentView before={CameraController.Instance.GetCurrentView()}");
         CameraController.Instance.SetView(targetView);
+        Debug.Log($"[UIManager] SwitchViewRoutine: Camera SetView completed. CurrentView after={CameraController.Instance.GetCurrentView()}");
         if (_switchViewText != null) _switchViewText.text = newButtonText;
         UpdatePlacementUI();
 
@@ -990,118 +1051,317 @@ public class UIManager : MonoBehaviour
         int remaining = isPlayer ? 
             (GameManager.Instance.maxPlayerUnits - GameManager.Instance.placedPlayerUnits) : 0;
 
+        bool isEditor = GameManager.Instance != null && GameManager.Instance.isLevelEditorMode;
+
         if (_unitsText != null)
         {
-            _unitsText.gameObject.SetActive(isPlayer);
-            _unitsText.text = $"Available Units: {remaining}";
+            _unitsText.gameObject.SetActive(isPlayer || isEditor);
+            if (isPlayer)
+            {
+                _unitsText.text = $"Available Units: {remaining}";
+            }
+            else
+            {
+                _unitsText.text = $"Enemy Units: {GameManager.Instance.placedEnemyUnits}/{GameManager.Instance.maxEnemyUnits}";
+            }
         }
 
         if (_bottomPanel != null)
         {
             Transform cardParent = (_panelContent != null) ? _panelContent.transform : _bottomPanel.transform;
 
-            if (isPlayer)
-            {
-
-                // Only create cards if they don't already exist (preserve Inspector layout)
-                bool cardsExist = false;
-                foreach (Transform child in cardParent)
-
-                {
-                    if (child.name.StartsWith("UnitCard"))
-                    {
-                        cardsExist = true;
-                        break;
-                    }
-                }
-
-                if (!cardsExist)
-                {
-                    int numCards = 3;
-                    int totalCards = numCards;
-                    float cardSpacing = 420f;
-                    float startX = -((totalCards - 1) * cardSpacing) / 2f;
-
-                    Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    if (font == null) font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                    if (font == null) font = Font.CreateDynamicFontFromOSFont("Arial", 14);
-
-                    // 1. Generate normal cards
-                    for (int i = 0; i < numCards; i++)
-                    {
-                        int typeIndex = i;
-                        GameObject cardObj = new GameObject("UnitCard_" + typeIndex);
-                        cardObj.transform.SetParent(cardParent, false);
-                        Image cardImg = cardObj.AddComponent<Image>();
-                        cardImg.color = Color.white;
-
-                        string spriteName = "";
-                        if (typeIndex == 0) spriteName = "CustomUI/BoBinhCard";
-                        else if (typeIndex == 1) spriteName = "CustomUI/CungThuCard";
-                        else if (typeIndex == 2) spriteName = "CustomUI/TuongQuanCard";
-
-                        Sprite spr = Resources.Load<Sprite>(spriteName);
-                        if (spr != null) cardImg.sprite = spr;
-
-                        RectTransform rtCard = cardObj.GetComponent<RectTransform>();
-                        rtCard.anchorMin = new Vector2(0.5f, 0.5f);
-                        rtCard.anchorMax = new Vector2(0.5f, 0.5f);
-                        rtCard.pivot = new Vector2(0.5f, 0.5f);
-                        // Y=-30 centers cards in lower area below the 55px button bar
-                        rtCard.anchoredPosition = new Vector2(startX + i * cardSpacing, -30f);
-                        rtCard.sizeDelta = new Vector2(380f, 230f);
-
-                        var ddc = cardObj.AddComponent<DragDropCard>();
-                        ddc.unitTypeIndex = (typeIndex == 2) ? 4 : typeIndex;
-                    }
-                }
-            }
-            
-            // Toggle visibility of unit cards based on whether it is player setup
+            // Only create cards if they don't already exist (preserve Inspector layout)
+            bool cardsExist = false;
             foreach (Transform child in cardParent)
             {
                 if (child.name.StartsWith("UnitCard"))
                 {
-                    child.gameObject.SetActive(isPlayer);
+                    cardsExist = true;
+                    break;
+                }
+            }
+
+            if (!cardsExist)
+            {
+                int numCards = 3;
+                int totalCards = numCards;
+                float cardSpacing = 420f;
+                float startX = -((totalCards - 1) * cardSpacing) / 2f;
+
+                Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                if (font == null) font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                if (font == null) font = Font.CreateDynamicFontFromOSFont("Arial", 14);
+
+                // 1. Generate normal cards
+                for (int i = 0; i < numCards; i++)
+                {
+                    int typeIndex = i;
+                    GameObject cardObj = new GameObject("UnitCard_" + typeIndex);
+                    cardObj.transform.SetParent(cardParent, false);
+                    Image cardImg = cardObj.AddComponent<Image>();
+                    cardImg.color = Color.white;
+
+                    string spriteName = "";
+                    if (typeIndex == 0) spriteName = "CustomUI/BoBinhCard";
+                    else if (typeIndex == 1) spriteName = "CustomUI/CungThuCard";
+                    else if (typeIndex == 2) spriteName = "CustomUI/TuongQuanCard";
+
+                    Sprite spr = Resources.Load<Sprite>(spriteName);
+                    if (spr != null) cardImg.sprite = spr;
+
+                    RectTransform rtCard = cardObj.GetComponent<RectTransform>();
+                    rtCard.anchorMin = new Vector2(0.5f, 0.5f);
+                    rtCard.anchorMax = new Vector2(0.5f, 0.5f);
+                    rtCard.pivot = new Vector2(0.5f, 0.5f);
+                    rtCard.anchoredPosition = new Vector2(startX + i * cardSpacing, -30f);
+                    rtCard.sizeDelta = new Vector2(380f, 230f);
+
+                    var ddc = cardObj.AddComponent<DragDropCard>();
+                    ddc.unitTypeIndex = (typeIndex == 2) ? 4 : typeIndex;
+                }
+            }
+            
+            // Toggle visibility of unit cards based on whether it is player setup or editor mode
+            bool showCards = isPlayer || isEditor;
+            foreach (Transform child in cardParent)
+            {
+                if (child.name.StartsWith("UnitCard"))
+                {
+                    child.gameObject.SetActive(showCards);
                 }
             }
         }
-
 
         if (_placementHint != null)
         {
-            _placementHint.text = isPlayer ? 
-                "Drag the card onto the grid to place units." : 
-                "Viewing enemy setup (Pre-configured from Level Editor)";
-        }
-
-        // Lock or Unlock Switch View Button based on Scouting Level
-        if (_switchViewBtn != null)
-        {
-            if (skillManager != null && skillManager.scoutingLevel < 3)
+            if (isEditor)
             {
-                _switchViewBtn.interactable = false;
-                if (_switchViewText != null)
-                {
-                    _switchViewText.text = "🔒 Xem đội hình (Lv3)";
-                }
+                _placementHint.gameObject.SetActive(true);
+                _placementHint.text = isPlayer ? 
+                    "[LEVEL EDITOR] Place player units on player grid." : 
+                    "[LEVEL EDITOR] Place enemy units on enemy grid.";
             }
             else
             {
-                _switchViewBtn.interactable = true;
-                if (_switchViewText != null)
-                {
-                    _switchViewText.text = (CameraController.Instance != null && CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
-                        ? "Sắp xếp đội hình" 
-                        : "Xem đội hình tướng địch";
-                }
+                _placementHint.gameObject.SetActive(isPlayer);
+                _placementHint.text = isPlayer ? 
+                    "Drag the card onto the grid to place units." : 
+                    "Viewing enemy setup (Pre-configured from Level Editor)";
+            }
+        }
+
+        // Switch View Button is always unlocked and interactable (scouting mechanism removed)
+        if (_switchViewBtn != null)
+        {
+            _switchViewBtn.interactable = true;
+            if (_switchViewText != null)
+            {
+                _switchViewText.text = (CameraController.Instance != null && CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
+                    ? "Sắp xếp đội hình" 
+                    : "Xem đội hình tướng địch";
             }
         }
         
         if (_togglePanelBtn != null)
         {
-            _togglePanelBtn.gameObject.SetActive(isPlayer);
+            _togglePanelBtn.gameObject.SetActive(isPlayer || isEditor);
         }
+
+        // Update Level Editor buttons
+        if (_editorToggleText != null)
+        {
+            _editorToggleText.text = isEditor ? "Level Editor: ON" : "Level Editor: OFF";
+            Image img = _editorToggleBtn != null ? _editorToggleBtn.GetComponent<Image>() : null;
+            if (img != null)
+            {
+                img.color = isEditor ? new Color(0.1f, 0.5f, 0.8f, 0.95f) : new Color(0.2f, 0.4f, 0.6f, 0.9f);
+            }
+        }
+
+        if (_saveLevelBtn != null)
+        {
+            _saveLevelBtn.gameObject.SetActive(isEditor);
+        }
+    }
+
+    private void CreateEditorControls()
+    {
+        if (_canvasObj == null) return;
+
+        Font arial = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        if (arial == null) arial = Resources.GetBuiltinResource<Font>("Arial.ttf");
+
+        // 1. Level Editor Toggle Button
+        Transform toggleTrans = _canvasObj.transform.Find("EditorToggleButton");
+        if (toggleTrans == null)
+        {
+            GameObject toggleBtnObj = new GameObject("EditorToggleButton");
+            toggleBtnObj.transform.SetParent(_canvasObj.transform, false);
+            Image img = toggleBtnObj.AddComponent<Image>();
+            img.color = new Color(0.2f, 0.4f, 0.6f, 0.9f);
+
+            Outline outline = toggleBtnObj.AddComponent<Outline>();
+            outline.effectColor = new Color(0.95f, 0.85f, 0.55f);
+            outline.effectDistance = new Vector2(1f, 1f);
+
+            _editorToggleBtn = toggleBtnObj.AddComponent<Button>();
+
+            GameObject textObj = new GameObject("Text");
+            textObj.transform.SetParent(toggleBtnObj.transform, false);
+            _editorToggleText = textObj.AddComponent<Text>();
+            _editorToggleText.font = arial;
+            _editorToggleText.text = "Level Editor: OFF";
+            _editorToggleText.fontSize = 15;
+            _editorToggleText.color = Color.white;
+            _editorToggleText.alignment = TextAnchor.MiddleCenter;
+            _editorToggleText.rectTransform.sizeDelta = new Vector2(200, 45);
+
+            RectTransform rt = toggleBtnObj.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 1f);
+            rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(-110, -20);
+            rt.sizeDelta = new Vector2(200, 45);
+
+            _editorToggleBtn.onClick.AddListener(() => {
+                if (GameManager.Instance != null)
+                {
+                    GameManager.Instance.isLevelEditorMode = !GameManager.Instance.isLevelEditorMode;
+                    UpdatePlacementUI();
+                }
+            });
+        }
+        else
+        {
+            _editorToggleBtn = toggleTrans.GetComponent<Button>();
+            _editorToggleText = toggleTrans.Find("Text")?.GetComponent<Text>();
+        }
+
+        // 2. Save Level Button
+        Transform saveTrans = _canvasObj.transform.Find("SaveLevelButton");
+        if (saveTrans == null)
+        {
+            GameObject saveBtnObj = new GameObject("SaveLevelButton");
+            saveBtnObj.transform.SetParent(_canvasObj.transform, false);
+            Image img = saveBtnObj.AddComponent<Image>();
+            img.color = new Color(0.1f, 0.6f, 0.3f, 0.95f);
+
+            Outline outline = saveBtnObj.AddComponent<Outline>();
+            outline.effectColor = new Color(0.85f, 0.65f, 0.1f, 1f);
+            outline.effectDistance = new Vector2(2f, 2f);
+
+            _saveLevelBtn = saveBtnObj.AddComponent<Button>();
+
+            GameObject textObj = new GameObject("Text");
+            textObj.transform.SetParent(saveBtnObj.transform, false);
+            Text txt = textObj.AddComponent<Text>();
+            txt.font = arial;
+            txt.text = "💾 Save Level";
+            txt.fontSize = 20;
+            txt.color = Color.white;
+            txt.alignment = TextAnchor.MiddleCenter;
+            txt.rectTransform.sizeDelta = new Vector2(200, 45);
+
+            RectTransform rt = saveBtnObj.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 1f);
+            rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(110, -20);
+            rt.sizeDelta = new Vector2(200, 45);
+
+            _saveLevelBtn.onClick.AddListener(() => {
+                SaveLevelData();
+            });
+        }
+        else
+        {
+            _saveLevelBtn = saveTrans.GetComponent<Button>();
+        }
+    }
+
+    private void SaveLevelData()
+    {
+        if (GameManager.Instance == null) return;
+        LevelData activeLevel = GameManager.Instance.activeLevel;
+        if (activeLevel == null)
+        {
+            ShowErrorBanner("Active Level is not assigned!");
+            return;
+        }
+
+        GameObject enemyGrid = GameObject.Find("EnemyGrid");
+        if (enemyGrid == null)
+        {
+            var allGo = Resources.FindObjectsOfTypeAll<GameObject>();
+            foreach (var go in allGo)
+            {
+                if (go.name == "EnemyGrid" && go.scene.isLoaded)
+                {
+                    enemyGrid = go;
+                    break;
+                }
+            }
+        }
+        if (enemyGrid == null)
+        {
+            ShowErrorBanner("EnemyGrid not found in scene!");
+            return;
+        }
+
+        var units = UnityEngine.Object.FindObjectsByType<Unit>(UnityEngine.FindObjectsInactive.Exclude, UnityEngine.FindObjectsSortMode.None);
+        List<EnemyPlacement> placements = new List<EnemyPlacement>();
+
+        foreach (var u in units)
+        {
+            if (u == null || u.isPlayer || u.state == UnitState.Dead) continue;
+
+            Transform closestPad = null;
+            float minDist = float.MaxValue;
+            foreach (Transform pad in enemyGrid.transform)
+            {
+                if (pad.name.StartsWith("EnemyPad_"))
+                {
+                    float dist = Vector3.Distance(u.transform.position, pad.position);
+                    if (dist < minDist)
+                    {
+                        minDist = dist;
+                        closestPad = pad;
+                    }
+                }
+            }
+
+            if (closestPad != null && minDist < 2.5f)
+            {
+                string padName = closestPad.name;
+                string coordPart = padName.Replace("EnemyPad_", "");
+                string[] coords = coordPart.Split('_');
+                if (coords.Length >= 2)
+                {
+                    string rStr = coords[0];
+                    string cStr = coords[1];
+                    int spaceIdx = cStr.IndexOf(' ');
+                    if (spaceIdx >= 0) cStr = cStr.Substring(0, spaceIdx);
+
+                    if (int.TryParse(rStr, out int r) && int.TryParse(cStr, out int c))
+                    {
+                        EnemyPlacement ep = new EnemyPlacement();
+                        ep.row = r;
+                        ep.column = c;
+                        ep.unitTypeIndex = u.unitTypeIndex;
+                        placements.Add(ep);
+                    }
+                }
+            }
+        }
+
+        activeLevel.enemyPlacements = placements;
+
+#if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(activeLevel);
+        UnityEditor.AssetDatabase.SaveAssets();
+        Debug.Log($"Level Saved: {placements.Count} enemy units saved to level '{activeLevel.name}'");
+        ShowErrorBanner($"Saved {placements.Count} enemy units to level!");
+#endif
     }
 
     public void HidePlacementUI()
