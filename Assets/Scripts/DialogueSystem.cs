@@ -9,6 +9,11 @@ public class DialogueSystem : MonoBehaviour
     [Tooltip("Drag a DialogueData ScriptableObject here to configure opening dialogue. If empty, falls back to default opening dialog.")]
     public DialogueData dialogueData;
 
+    public static DialogueSystem Instance;
+    public System.Func<int, bool> shouldPauseDialogueAtNode;
+    public bool isPausedForTutorial = false;
+    public bool disableFallback = false;
+
     [Header("UI References")]
     public GameObject dialogueOverlay;
     public Image leftPortrait;
@@ -42,6 +47,7 @@ public class DialogueSystem : MonoBehaviour
 
     void Awake()
     {
+        Instance = this;
         // Force-load sprites from Resources to fix null/inspector issues
         characterASprite = Resources.Load<Sprite>("CustomUI/TuongQuan");
         characterBSprite = Resources.Load<Sprite>("CustomUI/TuongDich");
@@ -73,6 +79,20 @@ public class DialogueSystem : MonoBehaviour
     {
         mapCamera = FindAnyObjectByType<MapCameraController>();
 
+        // Ensure tutorial sprites are loaded if tutorial is active
+        int tutorialStep = PlayerPrefs.GetInt("TutorialStep", 0);
+        Debug.Log("[DialogueSystem] Start. Step: " + tutorialStep + ", Load sprite: " + (Resources.Load<Sprite>("CustomUI/QuangKhai") != null));
+        if (tutorialStep == 0)
+        {
+            characterASprite = Resources.Load<Sprite>("CustomUI/QuangKhaiL"); // Trần Quang Khải on left
+            characterBSprite = Resources.Load<Sprite>("CustomUI/TuongDich");   // Toa Đô on right
+        }
+        else if (tutorialStep == 2)
+        {
+            characterASprite = Resources.Load<Sprite>("CustomUI/TuongQuan");  // Trần Thánh Tông on left
+            characterBSprite = Resources.Load<Sprite>("CustomUI/QuangKhai");   // Trần Quang Khải on right
+        }
+
         float width = 600f;
         float height = 700f;
 
@@ -102,7 +122,7 @@ public class DialogueSystem : MonoBehaviour
         }
 
         // Setup initial default dialogue nodes as fallback
-        if (dialogueNodes.Count == 0)
+        if (dialogueNodes.Count == 0 && !disableFallback)
         {
             dialogueNodes.Add(new DialogueNode
             {
@@ -136,7 +156,17 @@ public class DialogueSystem : MonoBehaviour
         }
 
         // Start the dialogue sequence
-        StartDialogue();
+        if (dialogueNodes.Count > 0)
+        {
+            StartDialogue();
+        }
+        else
+        {
+            if (dialogueOverlay != null)
+            {
+                dialogueOverlay.SetActive(false);
+            }
+        }
     }
 
     void Update()
@@ -192,7 +222,40 @@ public class DialogueSystem : MonoBehaviour
         }
         else
         {
+            // Check if we should pause/interrupt the dialogue before displaying next node
+            if (shouldPauseDialogueAtNode != null && shouldPauseDialogueAtNode(currentNodeIndex + 1))
+            {
+                isPausedForTutorial = true;
+                if (dialogueOverlay != null)
+                {
+                    dialogueOverlay.SetActive(false);
+                }
+                Debug.Log($"[DialogueSystem] Dialogue paused at node {currentNodeIndex + 1} for tutorial upgrade selection.");
+                return;
+            }
+
             // Advance to next node
+            currentNodeIndex++;
+            if (currentNodeIndex < dialogueNodes.Count)
+            {
+                DisplayCurrentNode();
+            }
+            else
+            {
+                EndDialogue();
+            }
+        }
+    }
+
+    public void ResumeDialogue()
+    {
+        if (isPausedForTutorial)
+        {
+            isPausedForTutorial = false;
+            if (dialogueOverlay != null)
+            {
+                dialogueOverlay.SetActive(true);
+            }
             currentNodeIndex++;
             if (currentNodeIndex < dialogueNodes.Count)
             {

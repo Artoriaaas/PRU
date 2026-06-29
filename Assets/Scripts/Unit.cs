@@ -608,7 +608,7 @@ public class Unit : MonoBehaviour
 
             float minSafeDistance = myRadius + otherRadius;
 
-            if (state == UnitState.Attacking && otherUnit.state == UnitState.Attacking)
+            if (state == UnitState.Attacking)
             {
                 float baseR1 = _baseColliderRadius > 0 ? _baseColliderRadius : 0.4f;
                 float baseR2 = otherUnit._baseColliderRadius > 0 ? otherUnit._baseColliderRadius : 0.4f;

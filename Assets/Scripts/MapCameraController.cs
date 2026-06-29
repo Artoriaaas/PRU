@@ -18,6 +18,7 @@ public class MapCameraController : MonoBehaviour
 
     [Header("Drag Settings")]
     public float dragSpeed = 1.0f;
+    public bool lockMovement = false;
 
     private bool isDragging;
     private Vector2 lastMousePos;
@@ -33,6 +34,7 @@ public class MapCameraController : MonoBehaviour
 
     void Update()
     {
+        if (lockMovement) return;
         HandleDrag();
         HandleZoom();
     }
@@ -136,6 +138,18 @@ public class MapCameraController : MonoBehaviour
 
         mapContent.localScale = Vector3.one * currentZoom;
         mapContent.anchoredPosition = ClampPosition(Vector2.zero);
+
+        if (miniMapController != null)
+            miniMapController.UpdateControlScreen();
+    }
+
+    public void FocusOnPosition(Vector2 localPos, float targetZoom)
+    {
+        currentZoom = Mathf.Clamp(targetZoom, minZoom, maxZoom);
+        mapContent.localScale = Vector3.one * currentZoom;
+        
+        Vector2 targetPos = -localPos * currentZoom;
+        mapContent.anchoredPosition = ClampPosition(targetPos);
 
         if (miniMapController != null)
             miniMapController.UpdateControlScreen();

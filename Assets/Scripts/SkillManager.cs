@@ -27,9 +27,15 @@ public class SkillHoverDetector : MonoBehaviour, UnityEngine.EventSystems.IPoint
 public class SkillManager : MonoBehaviour
 {
     public static SkillManager Instance { get; private set; }
+    public static System.Action<string> OnSkillUpgraded;
 
     [Header("Skill Point State")]
     private static int _skillPoints = 5;
+    public static int SkillPointsStatic
+    {
+        get => _skillPoints;
+        set => _skillPoints = value;
+    }
     public int skillPoints
     {
         get => _skillPoints;
@@ -152,6 +158,11 @@ public class SkillManager : MonoBehaviour
         if (UIManager.Instance != null)
         {
             UIManager.Instance.UpdatePlacementUI();
+        }
+
+        if (OnSkillUpgraded != null)
+        {
+            OnSkillUpgraded.Invoke(skillType);
         }
         return true;
     }

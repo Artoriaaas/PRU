@@ -7,6 +7,7 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
     public static string levelToLoadName = "";
+    public static string activeCastleName = "";
 
     public GameState currentState = GameState.Setup;
     [HideInInspector] public bool isLevelEditorMode = false;
@@ -77,6 +78,8 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+        BGMManager.Instance.PlayMusic("Audio/PrepareTheme", true);
+
         if (SkillManager.Instance != null)
         {
             maxPlayerUnits = 6 + SkillManager.Instance.barracksLevel;
@@ -792,6 +795,7 @@ public class GameManager : MonoBehaviour
         if (enemyGrid != null) enemyGrid.SetActive(false);
 
         currentState = GameState.Battle;
+        BGMManager.Instance.PlayMusic("Audio/BattleTheme", true);
 
         // Initialize RVO simulation
         if (RVOSimulatorManager.Instance != null)
@@ -849,11 +853,23 @@ public class GameManager : MonoBehaviour
         if (playerUnits.Count == 0)
         {
             currentState = GameState.GameOver;
+            BGMManager.Instance.PlayMusic("Audio/Defeat", false);
             if (UIManager.Instance != null) UIManager.Instance.ShowGameOver(false);
         }
         else if (enemyUnits.Count == 0)
         {
             currentState = GameState.GameOver;
+            BGMManager.Instance.PlayMusic("Audio/Victory", false);
+            
+            // Handle tutorial completion step and award 3 skill points
+            if (activeCastleName == "Hoan Châu")
+            {
+                PlayerPrefs.SetInt("TutorialStep", 2);
+                PlayerPrefs.Save();
+                SkillManager.SkillPointsStatic += 3;
+                Debug.Log($"[GameManager] Tutorial battle won! Awarded 3 skill points. Current points={SkillManager.SkillPointsStatic}");
+            }
+
             if (UIManager.Instance != null) UIManager.Instance.ShowGameOver(true);
         }
     }

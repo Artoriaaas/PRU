@@ -83,9 +83,22 @@ public class MapSceneBootstrapper : MonoBehaviour
 
     void Start()
     {
+        BGMManager.Instance.PlayMusic("Audio/MapTheme", true);
+
         if (GetComponent<SkillManager>() == null)
         {
             gameObject.AddComponent<SkillManager>();
+        }
+
+        int tutorialStep = PlayerPrefs.GetInt("TutorialStep", 0);
+        if (tutorialStep == 1)
+        {
+            if (mapCamera != null)
+            {
+                mapCamera.FocusOnPosition(new Vector2(175f, -350f), 3.2f);
+                mapCamera.lockMovement = true;
+            }
+            CreateSpotlightOverlay();
         }
     }
 
@@ -450,6 +463,26 @@ public class MapSceneBootstrapper : MonoBehaviour
 
             MapObject mo = objImg.gameObject.AddComponent<MapObject>();
             mo.objectName = data.name;
+
+            // Create text label below the icon for castles (skip Village and Gold Mine labels to avoid clutter)
+            if (data.name != "Village" && data.name != "Gold Mine")
+            {
+                Text nameLabel = CreateText(objImg.transform, "NameLabel", data.name, 15, TextAnchor.MiddleCenter);
+                nameLabel.fontStyle = FontStyle.Bold;
+                nameLabel.color = new Color(0.98f, 0.90f, 0.65f); // Rich warm gold
+
+                RectTransform labelRT = nameLabel.rectTransform;
+                labelRT.anchorMin = new Vector2(0.5f, 0f);
+                labelRT.anchorMax = new Vector2(0.5f, 0f);
+                labelRT.pivot = new Vector2(0.5f, 1f); // Pivot at top-center of text
+                labelRT.anchoredPosition = new Vector2(0f, -5f); // 5px below bottom of castle icon
+                labelRT.sizeDelta = new Vector2(160f, 25f);
+
+                // Add dark drop shadow/outline for visibility against the light map textures
+                Outline outline = nameLabel.gameObject.AddComponent<Outline>();
+                outline.effectColor = new Color(0.08f, 0.06f, 0.04f, 0.9f);
+                outline.effectDistance = new Vector2(1.5f, 1.5f);
+            }
         }
     }
 
@@ -781,9 +814,11 @@ public class MapSceneBootstrapper : MonoBehaviour
     {
         if (mapObjects == null) mapObjects = new List<MapObjectData>();
         mapObjects.Clear();
+        
+        // Thăng Long - Top-most castle, largest icon (100x100)
         mapObjects.Add(new MapObjectData {
-            name = "Thang Long", spriteName = "Castle", 
-            anchoredPos = new Vector2(50f, 250f), size = new Vector2(100f, 100f)        
+            name = "Thăng Long", spriteName = "Castle", 
+            anchoredPos = new Vector2(70f, 275f), size = new Vector2(100f, 100f)        
         });
         mapObjects.Add(new MapObjectData {
             name = "Village", spriteName = "VillageHouse",
@@ -794,18 +829,20 @@ public class MapSceneBootstrapper : MonoBehaviour
             anchoredPos = new Vector2(-150f, 370f), size = new Vector2(50f, 50f)            
         });
         
-        // 3 toà thành mới ở các chỗ giao nhau (có thể chỉnh toạ độ trong inspector)
+        // Thiên Trường - Next below Thăng Long (Y=100), size 80x80
         mapObjects.Add(new MapObjectData {
-            name = "Castle 1", spriteName = "Castle",
-            anchoredPos = new Vector2(-180f, 520f), size = new Vector2(80f, 80f)
+            name = "Thiên Trường", spriteName = "Castle",
+            anchoredPos = new Vector2(25f, 100f), size = new Vector2(80f, 80f)
         });
+        // Trại Yên - Second from bottom (Y=-170), size 80x80
         mapObjects.Add(new MapObjectData {
-            name = "Castle 2", spriteName = "Castle",
-            anchoredPos = new Vector2(250f, 580f), size = new Vector2(80f, 80f)
+            name = "Trại Yên", spriteName = "Castle",
+            anchoredPos = new Vector2(70f, -170f), size = new Vector2(80f, 80f)
         });
+        // Hoan Châu - Bottom-most castle (Y=-350), size 80x80
         mapObjects.Add(new MapObjectData {
-            name = "Castle 3", spriteName = "Castle",
-            anchoredPos = new Vector2(15f, 0f), size = new Vector2(80f, 80f)
+            name = "Hoan Châu", spriteName = "Castle",
+            anchoredPos = new Vector2(175f, -350f), size = new Vector2(80f, 80f)
         });
 
 #if UNITY_EDITOR
@@ -932,7 +969,121 @@ public class MapSceneBootstrapper : MonoBehaviour
         dialogueSys.rightPortrait = rightPortImg;
         dialogueSys.nameText = nameText;
         dialogueSys.dialogueText = dialogueText;
-        dialogueSys.dialogueData = openingDialogue;
+
+        // Tutorial Step check
+        int tutorialStep = PlayerPrefs.GetInt("TutorialStep", 0);
+        dialogueSys.disableFallback = true;
+
+        if (tutorialStep == 0)
+        {
+            dialogueSys.dialogueData = null;
+            dialogueSys.characterASprite = Resources.Load<Sprite>("CustomUI/QuangKhaiL"); // Trần Quang Khải on left
+            dialogueSys.characterBSprite = Resources.Load<Sprite>("CustomUI/TuongDich");   // Toa Đô on right
+
+            dialogueSys.dialogueNodes.Clear();
+            dialogueSys.dialogueNodes.Add(new DialogueNode {
+                speakerName = "Toa Đô",
+                text = "Trần Quang Khải! Quân Đại Nguyên từ Chiêm Thành đánh lên, Thái tử Thoát Hoan đánh xuống. Nước Nam các ngươi đã hết đường lui rồi. Khôn hồn thì mở ải xin hàng!",
+                isCharacterA = false
+            });
+            dialogueSys.dialogueNodes.Add(new DialogueNode {
+                speakerName = "Trần Quang Khải",
+                text = "Lão tướng Toa Đô, ngươi cậy sức mạnh vó ngựa nhưng không hiểu lòng người Nam. Đất Hoan Châu này sông sâu núi hiểm, sẽ là mồ chôn tàn quân của ngươi!",
+                isCharacterA = true
+            });
+            dialogueSys.dialogueNodes.Add(new DialogueNode {
+                speakerName = "Toa Đô",
+                text = "Khẩu khí lớn lắm! Trần Kiện đã đầu hàng, phòng tuyến của các ngươi đã thủng lỗ chỗ rồi. Bằng chút binh tàn này mà đòi cản ta sao?",
+                isCharacterA = false
+            });
+            dialogueSys.dialogueNodes.Add(new DialogueNode {
+                speakerName = "Trần Quang Khải",
+                text = "Kẻ phản thần như Trần Kiện đời đời bị nguyền rủa, không đại diện cho quân dân Đại Việt. Ta phụng mệnh giữ ải phía Nam, dù thịt nát xương tan cũng không lùi nửa bước!",
+                isCharacterA = true
+            });
+            dialogueSys.dialogueNodes.Add(new DialogueNode {
+                speakerName = "Toa Đô",
+                text = "Rượu mời không uống lại muốn uống rượu phạt. Để xem thanh gươm của ngươi có cứng hơn loan đao Mông Cổ không. Truyền lệnh, công thành!",
+                isCharacterA = false
+            });
+        }
+        else if (tutorialStep == 2)
+        {
+            dialogueSys.dialogueData = null;
+            dialogueSys.characterASprite = Resources.Load<Sprite>("CustomUI/TuongQuan"); // Trần Thánh Tông (left)
+            dialogueSys.characterBSprite = Resources.Load<Sprite>("CustomUI/QuangKhai");  // Trần Quang Khải (right)
+
+            dialogueSys.dialogueNodes.Clear();
+            dialogueSys.dialogueNodes.Add(new DialogueNode {
+                speakerName = "Trần Quang Khải",
+                text = "Bẩm tướng quân, tuy quân ta đã đánh lui quân địch nhưng quân ta vẫn còn yếu. thần nghĩ chúng ta phải cải thiện quân đội của chúng ta",
+                isCharacterA = false
+            });
+            dialogueSys.dialogueNodes.Add(new DialogueNode {
+                speakerName = "Trần Thánh Tông",
+                text = "Vậy theo ngươi chúng ta nên làm gì.",
+                isCharacterA = true
+            });
+            dialogueSys.dialogueNodes.Add(new DialogueNode {
+                speakerName = "Trần Quang Khải",
+                text = "Theo thần thì chúng ta nên nâng...",
+                isCharacterA = false
+            });
+            dialogueSys.dialogueNodes.Add(new DialogueNode {
+                speakerName = "Trần Thánh Tông",
+                text = "Trẫm tin vào phán đoán của ngươi, ngay lập tức cho quân triển khai!",
+                isCharacterA = true
+            });
+
+            dialogueSys.shouldPauseDialogueAtNode = (nodeIdx) => {
+                if (nodeIdx == 2)
+                {
+                    // Pause dialogue and show Skill Panel
+                    var skillManager = Object.FindAnyObjectByType<SkillManager>();
+                    if (skillManager != null)
+                    {
+                        skillManager.ToggleSkillPanel();
+                    }
+                    return true;
+                }
+                return false;
+            };
+
+            SkillManager.OnSkillUpgraded = (skillType) => {
+                if (DialogueSystem.Instance != null && DialogueSystem.Instance.isPausedForTutorial)
+                {
+                    string skillViet = "Doanh trại";
+                    if (skillType == "Barracks") skillViet = "Doanh trại";
+                    else if (skillType == "Troop") skillViet = "Quân chủng";
+                    else if (skillType == "Logistics") skillViet = "Hậu cần";
+                    else if (skillType == "Scouting") skillViet = "Trinh thám";
+
+                    if (DialogueSystem.Instance.dialogueNodes.Count > 2)
+                    {
+                        DialogueNode node = DialogueSystem.Instance.dialogueNodes[2];
+                        node.text = "Theo thần thì chúng ta nên nâng " + skillViet + ".";
+                        DialogueSystem.Instance.dialogueNodes[2] = node;
+                    }
+
+                    var skillManager = Object.FindAnyObjectByType<SkillManager>();
+                    if (skillManager != null)
+                    {
+                        skillManager.ToggleSkillPanel();
+                    }
+
+                    DialogueSystem.Instance.ResumeDialogue();
+                }
+            };
+        }
+        else if (tutorialStep == 1)
+        {
+            dialogueSys.dialogueData = null;
+            dialogueSys.dialogueNodes.Clear();
+        }
+        else
+        {
+            dialogueSys.dialogueData = openingDialogue;
+        }
 
         // Capture side panel state dynamically to hide and restore them
         bool savedQuestPanelVisible = false;
@@ -957,6 +1108,82 @@ public class MapSceneBootstrapper : MonoBehaviour
             if (hideMapButtonRT != null) hideMapButtonRT.gameObject.SetActive(true);
             if (leftPanelToggleRT != null) leftPanelToggleRT.gameObject.SetActive(true);
             if (topBarRT != null) topBarRT.gameObject.SetActive(true);
+
+            // Handle tutorial state advancement on post-battle dialogue end
+            int step = PlayerPrefs.GetInt("TutorialStep", 0);
+            if (step == 0)
+            {
+                if (mapCamera != null)
+                {
+                    mapCamera.FocusOnPosition(new Vector2(175f, -350f), 3.2f);
+                    mapCamera.lockMovement = true;
+                }
+                CreateSpotlightOverlay();
+            }
+            else if (step == 2)
+            {
+                PlayerPrefs.SetInt("TutorialStep", 3);
+                PlayerPrefs.Save();
+                Debug.Log("[MapSceneBootstrapper] Tutorial completed!");
+            }
         };
+    }
+
+    private GameObject spotlightOverlay;
+
+    void CreateSpotlightOverlay()
+    {
+        if (spotlightOverlay != null) return;
+
+        // Create a giant panel parented to mapContentRT so it moves and scales with the map!
+        spotlightOverlay = new GameObject("TutorialSpotlight");
+        spotlightOverlay.transform.SetParent(mapContentRT, false);
+
+        // Position it exactly at Hoan Châu's anchored position (175, -350)
+        RectTransform rt = spotlightOverlay.AddComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = new Vector2(175f, -350f);
+        rt.sizeDelta = new Vector2(5000f, 5000f); // Giant size to cover screen
+
+        Image img = spotlightOverlay.AddComponent<Image>();
+        
+        // Generate a procedural texture with a transparent circle in the center!
+        int texSize = 512;
+        Texture2D tex = new Texture2D(texSize, texSize, TextureFormat.RGBA32, false);
+        
+        Color darkColor = new Color(0f, 0f, 0f, 0.82f); // Slightly darker overlay
+        Color transparentColor = new Color(0f, 0f, 0f, 0f);
+
+        float center = texSize / 2f;
+        float innerRadius = texSize * 0.02f; // Size of spotlight circle (about 10px out of 512)
+        float outerRadius = texSize * 0.035f; // Fade edge
+
+        for (int y = 0; y < texSize; y++)
+        {
+            for (int x = 0; x < texSize; x++)
+            {
+                float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
+                if (dist <= innerRadius)
+                {
+                    tex.SetPixel(x, y, transparentColor);
+                }
+                else if (dist > innerRadius && dist <= outerRadius)
+                {
+                    float t = (dist - innerRadius) / (outerRadius - innerRadius);
+                    tex.SetPixel(x, y, Color.Lerp(transparentColor, darkColor, t));
+                }
+                else
+                {
+                    tex.SetPixel(x, y, darkColor);
+                }
+            }
+        }
+        tex.Apply();
+
+        Sprite sprite = Sprite.Create(tex, new Rect(0f, 0f, texSize, texSize), new Vector2(0.5f, 0.5f));
+        img.sprite = sprite;
+        img.raycastTarget = false; // Let clicks pass through!
     }
 }

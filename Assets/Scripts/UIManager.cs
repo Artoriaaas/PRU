@@ -182,6 +182,14 @@ public class UIManager : MonoBehaviour
                     _switchViewText = switchBtnTrans.Find("Text")?.GetComponent<Text>();
                     _switchViewBtn.onClick.RemoveAllListeners();
                     _switchViewBtn.onClick.AddListener(() => { ToggleView(); });
+
+                    // Force button to be fully clickable across its entire RectTransform (bypass transparency culling)
+                    Image btnImg = _switchViewBtn.GetComponent<Image>();
+                    if (btnImg != null)
+                    {
+                        btnImg.color = new Color(0f, 0f, 0f, 0.005f); 
+                        btnImg.raycastTarget = true;
+                    }
                 }
                 
                 Transform toggleBtnTrans = _bottomPanel?.transform.Find("PanelContent/TogglePanelButton")
@@ -213,6 +221,13 @@ public class UIManager : MonoBehaviour
                     {
                         _togglePanelBtn.onClick.RemoveAllListeners();
                         _togglePanelBtn.onClick.AddListener(() => { TogglePanelCollapse(toggleText); });
+
+                        Image toggleImg = _togglePanelBtn.GetComponent<Image>();
+                        if (toggleImg != null)
+                        {
+                            toggleImg.color = new Color(0f, 0f, 0f, 0.005f);
+                            toggleImg.raycastTarget = true;
+                        }
                     }
                 }
                 else
@@ -374,6 +389,13 @@ public class UIManager : MonoBehaviour
         {
             _switchViewBtn.onClick.RemoveAllListeners();
             _switchViewBtn.onClick.AddListener(() => { ToggleView(); });
+
+            Image btnImg = _switchViewBtn.GetComponent<Image>();
+            if (btnImg != null)
+            {
+                btnImg.color = new Color(0f, 0f, 0f, 0.005f); 
+                btnImg.raycastTarget = true;
+            }
         }
         if (_showArrowBtn != null)
         {
@@ -389,6 +411,13 @@ public class UIManager : MonoBehaviour
             Text toggleText = _togglePanelBtn.transform.Find("Text")?.GetComponent<Text>();
             _togglePanelBtn.onClick.RemoveAllListeners();
             _togglePanelBtn.onClick.AddListener(() => { TogglePanelCollapse(toggleText); });
+
+            Image toggleImg = _togglePanelBtn.GetComponent<Image>();
+            if (toggleImg != null)
+            {
+                toggleImg.color = new Color(0f, 0f, 0f, 0.005f);
+                toggleImg.raycastTarget = true;
+            }
         }
         if (_editorToggleBtn != null)
         {
@@ -1042,10 +1071,17 @@ public class UIManager : MonoBehaviour
             isPlayer = false;
         }
 
-        // Dynamically calculate max units based on barracks level
-        if (GameManager.Instance != null && skillManager != null)
+        // Dynamically calculate max units based on barracks level (forced to 6 in Hoan Châu tutorial)
+        if (GameManager.Instance != null)
         {
-            GameManager.Instance.maxPlayerUnits = 6 + skillManager.barracksLevel;
+            if (GameManager.activeCastleName == "Hoan Châu")
+            {
+                GameManager.Instance.maxPlayerUnits = 6;
+            }
+            else if (skillManager != null)
+            {
+                GameManager.Instance.maxPlayerUnits = 6 + skillManager.barracksLevel;
+            }
         }
 
         int remaining = isPlayer ? 
@@ -1121,13 +1157,20 @@ public class UIManager : MonoBehaviour
                 }
             }
             
-            // Toggle visibility of unit cards based on whether it is player setup or editor mode
+            // Toggle visibility of unit cards based on whether it is player setup or editor mode (only show infantry card for Hoan Châu)
             bool showCards = isPlayer || isEditor;
             foreach (Transform child in cardParent)
             {
                 if (child.name.StartsWith("UnitCard"))
                 {
-                    child.gameObject.SetActive(showCards);
+                    if (GameManager.activeCastleName == "Hoan Châu" && !isEditor)
+                    {
+                        child.gameObject.SetActive(showCards && child.name == "UnitCard_0");
+                    }
+                    else
+                    {
+                        child.gameObject.SetActive(showCards);
+                    }
                 }
             }
         }
