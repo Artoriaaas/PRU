@@ -6,6 +6,7 @@ public struct EnemyPlacement
 {
     public int row;
     public int column;
+    public int unitTypeIndex;
 }
 
 [CreateAssetMenu(fileName = "NewLevelData", menuName = "PRU/Level Data", order = 1)]

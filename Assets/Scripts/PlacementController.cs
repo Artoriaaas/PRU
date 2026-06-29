@@ -80,7 +80,12 @@ public class PlacementController : MonoBehaviour
         GameObject bestPad = null;
         float bestDist = float.MaxValue;
 
-        string prefix = "PlayerPad_";
+        bool isPlayer = true;
+        if (CameraController.Instance != null && CameraController.Instance.GetCurrentView() == CameraView.EnemySetup)
+        {
+            isPlayer = false;
+        }
+        string prefix = isPlayer ? "PlayerPad_" : "EnemyPad_";
 
         foreach (var hit in hits)
         {
@@ -170,7 +175,7 @@ public class PlacementController : MonoBehaviour
             isPlayer = false;
         }
 
-        if (!isPlayer)
+        if (!isPlayer && !(GameManager.Instance != null && GameManager.Instance.isLevelEditorMode))
         {
             if (_clickPreviewCapsule != null)
             {
@@ -300,7 +305,7 @@ public class PlacementController : MonoBehaviour
                 foreach (var hit in hits)
                 {
                     Unit u = hit.collider.GetComponentInParent<Unit>();
-                    if (u != null && u.isPlayer)
+                    if (u != null && (u.isPlayer || (GameManager.Instance != null && GameManager.Instance.isLevelEditorMode)))
                     {
                         // Pick the closest unit hit
                         if (hit.distance < closestDist)
@@ -335,7 +340,7 @@ public class PlacementController : MonoBehaviour
                     GameObject padHit = RaycastForPad(mousePos, _draggedUnit != null ? _draggedUnit.unitTypeIndex : -1);
                     if (padHit != null)
                     {
-                        if (!IsTileOccupied(padHit.transform.position, true, _draggedUnit))
+                        if (!IsTileOccupied(padHit.transform.position, _draggedUnit.isPlayer, _draggedUnit))
                         {
                             _draggedUnit.transform.position = padHit.transform.position;
                         }
@@ -357,8 +362,16 @@ public class PlacementController : MonoBehaviour
                 if (IsPointerOverBottomPanel(mousePos))
                 {
                     Debug.Log("Unit dragged to card panel. Removing unit: " + _draggedUnit.name);
-                    GameManager.Instance.playerUnits.Remove(_draggedUnit);
-                    GameManager.Instance.placedPlayerUnits = Mathf.Max(0, GameManager.Instance.placedPlayerUnits - 1);
+                    if (_draggedUnit.isPlayer)
+                    {
+                        GameManager.Instance.playerUnits.Remove(_draggedUnit);
+                        GameManager.Instance.placedPlayerUnits = Mathf.Max(0, GameManager.Instance.placedPlayerUnits - 1);
+                    }
+                    else
+                    {
+                        GameManager.Instance.enemyUnits.Remove(_draggedUnit);
+                        GameManager.Instance.placedEnemyUnits = Mathf.Max(0, GameManager.Instance.placedEnemyUnits - 1);
+                    }
 
                     Destroy(_draggedUnit.gameObject);
                     _draggedUnit = null;
@@ -371,7 +384,7 @@ public class PlacementController : MonoBehaviour
                 else
                 {
                     GameObject padHit = RaycastForPad(mousePos, _draggedUnit != null ? _draggedUnit.unitTypeIndex : -1);
-                    if (padHit != null && !IsTileOccupied(padHit.transform.position, true, _draggedUnit))
+                    if (padHit != null && !IsTileOccupied(padHit.transform.position, _draggedUnit.isPlayer, _draggedUnit))
                     {
                         _draggedUnit.transform.position = padHit.transform.position;
                         Debug.Log("Successfully moved unit to: " + padHit.name);
@@ -393,7 +406,7 @@ public class PlacementController : MonoBehaviour
         if (GameManager.Instance == null || GameManager.Instance.currentState != GameState.Placement)
             return;
 
-        if (tileObj == null || tileObj.name.StartsWith("EnemyPad"))
+        if (tileObj == null || (tileObj.name.StartsWith("EnemyPad") && !(GameManager.Instance != null && GameManager.Instance.isLevelEditorMode)))
         {
             Debug.LogWarning("PlacementController: Placement on EnemyPad is not allowed at runtime!");
             return;
@@ -406,7 +419,7 @@ public class PlacementController : MonoBehaviour
         }
 
         // Do not allow placing units on enemy side at runtime (only via Level Editor)
-        if (!isPlayer) return;
+        if (!isPlayer && !(GameManager.Instance != null && GameManager.Instance.isLevelEditorMode)) return;
 
         int maxUnits = isPlayer ? GameManager.Instance.maxPlayerUnits : GameManager.Instance.maxEnemyUnits;
         int placedUnits = isPlayer ? GameManager.Instance.placedPlayerUnits : GameManager.Instance.placedEnemyUnits;
@@ -419,17 +432,20 @@ public class PlacementController : MonoBehaviour
         if (tileObj.name.StartsWith(prefix) || tileObj.name.StartsWith("Tile_"))
         {
 
-            // "Big pad" = first pad (row3, col2) reserved for Tuong Quan (General)
-            bool isBigPad = tileObj.name == "PlayerPad_3_2 (1)";
-            if (unitTypeIndex == 4 && !isBigPad)
+            // "Big pad" = first pad (row3, col2) reserved for Tuong Quan (General) (only enforced for player units)
+            if (isPlayer)
             {
-                if (UIManager.Instance != null) UIManager.Instance.ShowErrorBanner("Tướng Quân chỉ có thể đặt ở vị trí hình tròn to bên trái!");
-                return;
-            }
-            if (unitTypeIndex != 4 && isBigPad)
-            {
-                if (UIManager.Instance != null) UIManager.Instance.ShowErrorBanner("Vị trí này chỉ dành cho Tướng Quân!");
-                return;
+                bool isBigPad = tileObj.name == "PlayerPad_3_2 (1)";
+                if (unitTypeIndex == 4 && !isBigPad)
+                {
+                    if (UIManager.Instance != null) UIManager.Instance.ShowErrorBanner("Tướng Quân chỉ có thể đặt ở vị trí hình tròn to!");
+                    return;
+                }
+                if (unitTypeIndex != 4 && isBigPad)
+                {
+                    if (UIManager.Instance != null) UIManager.Instance.ShowErrorBanner("Vị trí này chỉ dành cho Tướng Quân!");
+                    return;
+                }
             }
 
             // Check if tile is empty

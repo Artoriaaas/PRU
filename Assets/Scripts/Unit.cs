@@ -608,10 +608,15 @@ public class Unit : MonoBehaviour
 
             float minSafeDistance = myRadius + otherRadius;
 
-            if (state == UnitState.Attacking && otherUnit.state == UnitState.Attacking)
+            if (state == UnitState.Attacking)
             {
                 float baseR1 = _baseColliderRadius > 0 ? _baseColliderRadius : 0.4f;
                 float baseR2 = otherUnit._baseColliderRadius > 0 ? otherUnit._baseColliderRadius : 0.4f;
+
+                // Scale up safe distance for archers to accommodate their wide bows and bodies
+                if (unitTypeIndex == 1) baseR1 *= 2.2f;
+                if (otherUnit.unitTypeIndex == 1) baseR2 *= 2.2f;
+
                 minSafeDistance = (baseR1 + baseR2) * 1.05f;
             }
 
@@ -703,6 +708,10 @@ public class Unit : MonoBehaviour
 
     private void UpdateBowAlignment()
     {
+        // Bypassed: The new archer model has the bow integrated as a SkinnedMeshRenderer on the skeleton.
+        // It is animated natively by the clips (Generic rig), so manual rotation/positioning is not needed.
+        return;
+        
         Debug.Log($"[BowDebug] UpdateBowAlignment running on {name}. state={state}, target={(_target != null ? _target.name : "null")}, offsetIdle={bowRotOffsetIdle}");
         if (_leftHand == null)
         {
@@ -785,6 +794,19 @@ public class Unit : MonoBehaviour
         }
 
         Debug.Log($"[ArrowDebug] SpawnArrowAfterDelay yield finished on {name}. target={(target != null ? target.name : "null")}");
+
+        if (_leftHand == null)
+        {
+            Transform[] childTransforms = GetComponentsInChildren<Transform>(true);
+            foreach (var t in childTransforms)
+            {
+                if (t.name == "mixamorig:LeftHand")
+                {
+                    _leftHand = t;
+                    break;
+                }
+            }
+        }
 
         Vector3 spawnPos = transform.position + Vector3.up * 1.5f;
         if (_leftHand != null)

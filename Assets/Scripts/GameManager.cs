@@ -7,8 +7,10 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
     public static string levelToLoadName = "";
+    public static string activeCastleName = "";
 
     public GameState currentState = GameState.Setup;
+    [HideInInspector] public bool isLevelEditorMode = false;
     
     public List<Unit> playerUnits = new List<Unit>();
     public List<Unit> enemyUnits = new List<Unit>();
@@ -76,6 +78,8 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+        BGMManager.Instance.PlayMusic("Audio/PrepareTheme", true);
+
         if (SkillManager.Instance != null)
         {
             maxPlayerUnits = 6 + SkillManager.Instance.barracksLevel;
@@ -254,7 +258,7 @@ public class GameManager : MonoBehaviour
             Transform pad = enemyGrid.transform.Find(padName);
             if (pad != null)
             {
-                SpawnUnit(false, pad.position);
+                SpawnUnit(false, pad.position, placement.unitTypeIndex);
                 placedEnemyUnits++;
             }
             else
@@ -300,7 +304,7 @@ public class GameManager : MonoBehaviour
                 }
                 else if (unitTypeIndex == 1)
                 {
-                    loadedModel = archerModelPrefab != null ? archerModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
+                    loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/model_quan_cung/animation_ban_cung_quan_dich.fbx");
                 }
             }
         }
@@ -375,6 +379,9 @@ public class GameManager : MonoBehaviour
                 animator.Update(0f);
             }
 
+            // The new archer model has the bow and arrow fully integrated into the FBX's skeletal hierarchy (under mixamorig:LeftHand/Bow_root and mixamorig:RightHand/Bone).
+            // The bow itself is a SkinnedMeshRenderer, so runtime manual parenting is no longer necessary.
+            /*
             if (unitTypeIndex == 1)
             {
                 Transform bowArmature = null;
@@ -420,6 +427,7 @@ public class GameManager : MonoBehaviour
                     bowArmature.localScale = Vector3.one;
                 }
             }
+            */
 
             // Setup textures dynamically to fix white character model issue
             Texture2D textureToApply = null;
@@ -787,6 +795,7 @@ public class GameManager : MonoBehaviour
         if (enemyGrid != null) enemyGrid.SetActive(false);
 
         currentState = GameState.Battle;
+        BGMManager.Instance.PlayMusic("Audio/BattleTheme", true);
 
         // Initialize RVO simulation
         if (RVOSimulatorManager.Instance != null)
@@ -844,11 +853,45 @@ public class GameManager : MonoBehaviour
         if (playerUnits.Count == 0)
         {
             currentState = GameState.GameOver;
+            BGMManager.Instance.PlayMusic("Audio/Defeat", false);
             if (UIManager.Instance != null) UIManager.Instance.ShowGameOver(false);
         }
         else if (enemyUnits.Count == 0)
         {
             currentState = GameState.GameOver;
+            BGMManager.Instance.PlayMusic("Audio/Victory", false);
+            
+            // Handle tutorial completion step and award 3 skill points
+            if (activeCastleName == "Hoan Châu")
+            {
+                if (PlayerPrefs.GetInt("TutorialStep", 0) < 2)
+                {
+                    PlayerPrefs.SetInt("TutorialStep", 2);
+                    PlayerPrefs.Save();
+                    SkillManager.SkillPointsStatic += 3;
+                    Debug.Log($"[GameManager] Tutorial battle won! Awarded 3 skill points. Current points={SkillManager.SkillPointsStatic}");
+                }
+            }
+
+            int mapProgress = PlayerPrefs.GetInt("MapProgress", 0);
+            if (activeCastleName == "Hoan Châu" && mapProgress == 0)
+            {
+                PlayerPrefs.SetInt("MapProgress", 1);
+            }
+            else if (activeCastleName == "Trại Yên" && mapProgress == 1)
+            {
+                PlayerPrefs.SetInt("MapProgress", 2);
+            }
+            else if (activeCastleName == "Thiên Trường" && mapProgress == 2)
+            {
+                PlayerPrefs.SetInt("MapProgress", 3);
+            }
+            else if (activeCastleName == "Thăng Long" && mapProgress == 3)
+            {
+                PlayerPrefs.SetInt("MapProgress", 4);
+            }
+            PlayerPrefs.Save();
+
             if (UIManager.Instance != null) UIManager.Instance.ShowGameOver(true);
         }
     }

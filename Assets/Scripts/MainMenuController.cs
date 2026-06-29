@@ -180,6 +180,8 @@ public class MainMenuController : MonoBehaviour
     public void OnStartClicked()
     {
         if (!menuReady) return;
+        PlayerPrefs.DeleteKey("TutorialStep");
+        PlayerPrefs.Save();
         StartCoroutine(StartGameRoutine());
     }
 

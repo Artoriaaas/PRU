@@ -14,18 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
   enemyPlacements:
   - row: 2
-    column: 0
-  - row: 2
-    column: 1
-  - row: 2
     column: 2
-  - row: 2
-    column: 3
-  - row: 1
-    column: 0
-  - row: 1
-    column: 1
+    unitTypeIndex: 1
   - row: 1
     column: 2
-  - row: 1
-    column: 3
+    unitTypeIndex: 0
