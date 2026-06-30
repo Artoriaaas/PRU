@@ -42,6 +42,16 @@ public class GameManager : MonoBehaviour
         if (arrowSpeed < 300f) arrowSpeed = 400f;
         if (arrowArcHeight < 1f) arrowArcHeight = 15f;
 
+        // Force general model scale (+20%) and position offset corrections to center it
+        if (kingScale == 60.0f)
+        {
+            kingScale = 72.0f;
+        }
+        if (kingPositionOffset == Vector3.zero)
+        {
+            kingPositionOffset = new Vector3(-0.5f, 0f, 0f);
+        }
+
 #if UNITY_EDITOR
         if (arrowPrefab == null)
         {
@@ -212,8 +222,8 @@ public class GameManager : MonoBehaviour
     [Tooltip("Drag your King FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx in Editor.")]
     public GameObject kingModelPrefab;
     public Vector3 kingRotationOffset = new Vector3(0f, 90f, 0f);
-    public Vector3 kingPositionOffset = new Vector3(0f, 0f, 0f);
-    public float kingScale = 60.0f;
+    public Vector3 kingPositionOffset = new Vector3(-0.5f, 0f, 0f);
+    public float kingScale = 72.0f;
     [Tooltip("Assign your Animator Controller for the King here.")]
     public RuntimeAnimatorController kingAnimatorController;
 
@@ -861,13 +871,41 @@ public class GameManager : MonoBehaviour
             currentState = GameState.GameOver;
             BGMManager.Instance.PlayMusic("Audio/Victory", false);
             
-            // Handle tutorial completion step and award 3 skill points
+            // Handle level completion step and award skill points
             if (activeCastleName == "Hoan Châu")
             {
-                PlayerPrefs.SetInt("TutorialStep", 2);
+                int tutStep = PlayerPrefs.GetInt("TutorialStep", 0);
+                if (tutStep < 2)
+                {
+                    PlayerPrefs.SetInt("TutorialStep", 2);
+                    PlayerPrefs.Save();
+                    SkillManager.SkillPointsStatic += 1;
+                    Debug.Log($"[GameManager] Hoan Châu (Tutorial) won! Awarded 1 skill point. Current points={SkillManager.SkillPointsStatic}");
+                }
+            }
+            else
+            {
+                int currentProg = PlayerPrefs.GetInt("MapProgression", 0);
+                if (activeCastleName == "Trại Yên" && currentProg == 1)
+                {
+                    PlayerPrefs.SetInt("MapProgression", 2);
+                    PlayerPrefs.SetInt("DialogueAfter_Trại Yên_Pending", 1);
+                    SkillManager.SkillPointsStatic += 1;
+                    Debug.Log($"[GameManager] Trại Yên won! Awarded 1 skill point. Current points={SkillManager.SkillPointsStatic}");
+                }
+                else if (activeCastleName == "Thiên Trường" && currentProg == 2)
+                {
+                    PlayerPrefs.SetInt("MapProgression", 3);
+                    PlayerPrefs.SetInt("DialogueAfter_Thiên Trường_Pending", 1);
+                    SkillManager.SkillPointsStatic += 2;
+                    Debug.Log($"[GameManager] Thiên Trường won! Awarded 2 skill points. Current points={SkillManager.SkillPointsStatic}");
+                }
+                else if (activeCastleName == "Thăng Long" && currentProg == 3)
+                {
+                    PlayerPrefs.SetInt("MapProgression", 4);
+                    PlayerPrefs.SetInt("DialogueAfter_Thăng Long_Pending", 1);
+                }
                 PlayerPrefs.Save();
-                SkillManager.SkillPointsStatic += 3;
-                Debug.Log($"[GameManager] Tutorial battle won! Awarded 3 skill points. Current points={SkillManager.SkillPointsStatic}");
             }
 
             if (UIManager.Instance != null) UIManager.Instance.ShowGameOver(true);

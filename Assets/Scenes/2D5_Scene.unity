@@ -1009,6 +1009,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
   currentState: 0
+  isLevelEditorMode: 0
   playerUnits: []
   enemyUnits: []
   maxPlayerUnits: 10
@@ -7713,6 +7714,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
   currentState: 0
+  isLevelEditorMode: 0
   playerUnits: []
   enemyUnits: []
   maxPlayerUnits: 10

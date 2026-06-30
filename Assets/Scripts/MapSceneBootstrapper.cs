@@ -54,6 +54,8 @@ public class MapSceneBootstrapper : MonoBehaviour
     private bool questPanelVisible = true;
 
     private Text questPanelTitleText;
+    private Text dateText;
+    private Text questDescriptionText;
     private RectTransform settingsPanelRT;
     private RectTransform hideMapButtonRT;
     private Slider volumeSlider;
@@ -99,6 +101,28 @@ public class MapSceneBootstrapper : MonoBehaviour
                 mapCamera.lockMovement = true;
             }
             CreateSpotlightOverlay();
+        }
+
+        UpdateQuestAndDateText();
+
+        // Check for pending non-tutorial post-battle victory dialogues
+        if (tutorialStep >= 3)
+        {
+            string[] castles = { "Trại Yên", "Thiên Trường", "Thăng Long" };
+            string pendingCastle = null;
+            foreach (var c in castles)
+            {
+                if (PlayerPrefs.GetInt("DialogueAfter_" + c + "_Pending", 0) == 1)
+                {
+                    pendingCastle = c;
+                    break;
+                }
+            }
+
+            if (pendingCastle != null)
+            {
+                TriggerDialogue(pendingCastle, false);
+            }
         }
     }
 
@@ -173,7 +197,7 @@ public class MapSceneBootstrapper : MonoBehaviour
         bg.raycastTarget = false;
 
 
-        Text dateText = CreateText(bar.transform, "DateText", "Năm 1285", 22, TextAnchor.MiddleCenter);
+        dateText = CreateText(bar.transform, "DateText", "Năm 1285", 22, TextAnchor.MiddleCenter);
         RectTransform dtRT = dateText.rectTransform;
         dtRT.anchorMin = new Vector2(1f, 0.5f);
         dtRT.anchorMax = new Vector2(1f, 0.5f);
@@ -236,32 +260,13 @@ public class MapSceneBootstrapper : MonoBehaviour
         bg.color = new Color(0f, 0f, 0f, 0f);
         bg.raycastTarget = false;
 
-        GameObject eventPanel = CreatePanel("EventPanel", bar.transform);
-        RectTransform epRT = eventPanel.GetComponent<RectTransform>();
-        epRT.anchorMin = new Vector2(0.5f, 0f);
-        epRT.anchorMax = new Vector2(0.5f, 0f);
-        epRT.pivot = new Vector2(0.5f, 0f);
-        epRT.sizeDelta = new Vector2(300f, 70f);
-        epRT.anchoredPosition = new Vector2(-160f, 10f);
-        Image epBg = eventPanel.GetComponent<Image>();
-        ApplySprite(epBg, "ConfirmButton", true);
-        epBg.color = Color.white;
-        Button eventBtn = eventPanel.AddComponent<Button>();
-        eventBtn.onClick.AddListener(() => OnBottomMenuClicked(true));
-
-        Text epTitle = CreateText(eventPanel.transform, "Title", "SỰ KIỆN", 16, TextAnchor.MiddleCenter);
-        epTitle.rectTransform.anchorMin = Vector2.zero;
-        epTitle.rectTransform.anchorMax = Vector2.one;
-        epTitle.rectTransform.sizeDelta = Vector2.zero;
-        epTitle.color = new Color(1f, 0.84f, 0.4f);
-
         GameObject questPanel = CreatePanel("QuestBottomPanel", bar.transform);
         RectTransform qpRT = questPanel.GetComponent<RectTransform>();
         qpRT.anchorMin = new Vector2(0.5f, 0f);
         qpRT.anchorMax = new Vector2(0.5f, 0f);
         qpRT.pivot = new Vector2(0.5f, 0f);
         qpRT.sizeDelta = new Vector2(300f, 70f);
-        qpRT.anchoredPosition = new Vector2(160f, 10f);
+        qpRT.anchoredPosition = new Vector2(0f, 10f);
         Image qpBg = questPanel.GetComponent<Image>();
         ApplySprite(qpBg, "ConfirmButton", true);
         qpBg.color = Color.white;
@@ -310,11 +315,19 @@ public class MapSceneBootstrapper : MonoBehaviour
             img.type = Image.Type.Simple;
         }
 
-        questPanelTitleText = CreateText(panel.transform, "Title", "SỰ KIỆN", 24, TextAnchor.MiddleCenter);
+        questPanelTitleText = CreateText(panel.transform, "Title", "NHIỆM VỤ CHÍNH TUYẾN", 24, TextAnchor.MiddleCenter);
         questPanelTitleText.rectTransform.anchorMin = new Vector2(0f, 0.85f);
         questPanelTitleText.rectTransform.anchorMax = new Vector2(1f, 1f);
         questPanelTitleText.rectTransform.sizeDelta = Vector2.zero;
         questPanelTitleText.color = new Color(1f, 0.84f, 0.4f);
+
+        questDescriptionText = CreateText(panel.transform, "Description", "", 18, TextAnchor.UpperLeft);
+        RectTransform descRT = questDescriptionText.rectTransform;
+        descRT.anchorMin = new Vector2(0.08f, 0.1f);
+        descRT.anchorMax = new Vector2(0.92f, 0.82f);
+        descRT.offsetMin = Vector2.zero;
+        descRT.offsetMax = Vector2.zero;
+        questDescriptionText.color = new Color(0.95f, 0.95f, 0.95f);
 
         BuildQuestPanelToggle();
     }
@@ -553,7 +566,7 @@ public class MapSceneBootstrapper : MonoBehaviour
     {
         if (questPanelTitleText != null)
         {
-            questPanelTitleText.text = isEvent ? "SỰ KIỆN" : "NHIỆM VỤ CHÍNH TUYẾN";
+            questPanelTitleText.text = "NHIỆM VỤ CHÍNH TUYẾN";
         }
     }
 
@@ -978,7 +991,7 @@ public class MapSceneBootstrapper : MonoBehaviour
         {
             dialogueSys.dialogueData = null;
             dialogueSys.characterASprite = Resources.Load<Sprite>("CustomUI/QuangKhaiL"); // Trần Quang Khải on left
-            dialogueSys.characterBSprite = Resources.Load<Sprite>("CustomUI/TuongDich");   // Toa Đô on right
+            dialogueSys.characterBSprite = Resources.Load<Sprite>("CustomUI/ToaDo");   // Toa Đô on right
 
             dialogueSys.dialogueNodes.Clear();
             dialogueSys.dialogueNodes.Add(new DialogueNode {
@@ -1075,7 +1088,7 @@ public class MapSceneBootstrapper : MonoBehaviour
                 }
             };
         }
-        else if (tutorialStep == 1)
+        else if (tutorialStep == 1 || tutorialStep >= 3)
         {
             dialogueSys.dialogueData = null;
             dialogueSys.dialogueNodes.Clear();
@@ -1123,7 +1136,9 @@ public class MapSceneBootstrapper : MonoBehaviour
             else if (step == 2)
             {
                 PlayerPrefs.SetInt("TutorialStep", 3);
+                PlayerPrefs.SetInt("MapProgression", 1);
                 PlayerPrefs.Save();
+                UpdateQuestAndDateText();
                 Debug.Log("[MapSceneBootstrapper] Tutorial completed!");
             }
         };
@@ -1185,5 +1200,318 @@ public class MapSceneBootstrapper : MonoBehaviour
         Sprite sprite = Sprite.Create(tex, new Rect(0f, 0f, texSize, texSize), new Vector2(0.5f, 0.5f));
         img.sprite = sprite;
         img.raycastTarget = false; // Let clicks pass through!
+    }
+
+    public void UpdateQuestAndDateText()
+    {
+        int progression = PlayerPrefs.GetInt("MapProgression", 0);
+
+        string questTitle = "NHIỆM VỤ CHÍNH TUYẾN";
+        string dateStr = "Năm 1285";
+        string descStr = "";
+
+        switch (progression)
+        {
+            case 0:
+                dateStr = "Tháng 3 - 4 / 1285";
+                descStr = "1. Mặt trận Hoan Châu (Nghệ An)\n- Đánh chặn gọng kìm Toa Đô.\n\nThời gian:\nKhoảng tháng 3 đến tháng 4 năm 1285 (tức tháng 2 – tháng 3 Âm lịch).\n\nMục tiêu:\nTiêu diệt toàn bộ quân Nguyên do Toa Đô chỉ huy tại Hoan Châu.";
+                break;
+            case 1:
+                dateStr = "Giữa tháng 4 - 5 / 1285";
+                descStr = "2. Căn cứ Thanh Hóa (Trại Yên)\n- Rút lui chiến lược và chuẩn bị phản công.\n\nThời gian:\nKhoảng giữa tháng 4 đến giữa tháng 5 năm 1285 (tức tháng 3 – tháng 4 Âm lịch).\n\nMục tiêu:\nTổ chức phòng thủ tại Trại Yên để bảo vệ lực lượng rút lui.";
+                break;
+            case 2:
+                dateStr = "Cuối tháng 5 - 6 / 1285";
+                descStr = "3. Vùng Duyên hải, sông Hồng (Thiên Trường / Hàm Tử / Tây Kết)\n- Bẻ gãy đường thủy.\n\nThời gian:\nCuối tháng 5 đến tháng 6 năm 1285 (tức tháng 4 – tháng 5 Âm lịch).\n\nMục tiêu:\nTập kích đường thủy của quân Nguyên tại Thiên Trường.";
+                break;
+            case 3:
+                dateStr = "Tháng 6 / 1285";
+                descStr = "4. Giải phóng Thăng Long\n- Khúc khải hoàn.\n\nThời gian:\nKhoảng từ ngày 9 tháng 6 đến 14 tháng 6 năm 1285 (tức mùng 6 đến 11 tháng 5 Âm lịch).\n\nMục tiêu:\nTổng phản công giải phóng kinh thành Thăng Long.";
+                break;
+            default:
+                dateStr = "Năm 1285 (Hòa bình)";
+                descStr = "Chúc mừng!\nChiến dịch chống quân Nguyên-Mông lần thứ 2 đã thắng lợi hoàn toàn.\nĐất nước thanh bình!";
+                break;
+        }
+
+        if (questPanelTitleText != null)
+        {
+            questPanelTitleText.text = questTitle;
+        }
+
+        if (dateText != null)
+        {
+            dateText.text = dateStr;
+        }
+
+        if (questDescriptionText != null)
+        {
+            questDescriptionText.text = descStr;
+        }
+    }
+
+    public void RestoreLayoutAfterDialogue()
+    {
+        if (leftPanelRT != null) leftPanelRT.gameObject.SetActive(questPanelVisible);
+        if (rightMiniMapRT != null) rightMiniMapRT.gameObject.SetActive(miniMapVisible);
+        if (hideMapButtonRT != null) hideMapButtonRT.gameObject.SetActive(true);
+        if (leftPanelToggleRT != null) leftPanelToggleRT.gameObject.SetActive(true);
+        if (topBarRT != null) topBarRT.gameObject.SetActive(true);
+    }
+
+    public void TriggerDialogue(string castleName, bool isBeforeBattle)
+    {
+        DialogueSystem dialogueSys = Object.FindAnyObjectByType<DialogueSystem>(FindObjectsInactive.Include);
+        if (dialogueSys == null) return;
+
+        dialogueSys.dialogueNodes.Clear();
+        dialogueSys.disableFallback = true;
+        dialogueSys.shouldPauseDialogueAtNode = null;
+        SkillManager.OnSkillUpgraded = null;
+
+        if (castleName == "Trại Yên")
+        {
+            if (isBeforeBattle)
+            {
+                dialogueSys.characterASprite = Resources.Load<Sprite>("CustomUI/ThanhTongL");
+                dialogueSys.characterBSprite = Resources.Load<Sprite>("CustomUI/QuocTuan");
+
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Thánh Tông",
+                    text = "Quốc công Tiết chế, ta lui về Thanh Hóa bảo toàn lực lượng đã nhiều ngày. Khí thế quân địch rốt cuộc đã chững lại chưa?",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quốc Tuấn",
+                    text = "Tâu Thượng hoàng, đúng như dự liệu. Mùa hạ nắng nóng, lam sơn chướng khí, bệnh dịch hoành hành, thế giặc đã suy yếu rõ rệt.",
+                    isCharacterA = false
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Thánh Tông",
+                    text = "Vậy thời cơ tổng phản công mà khanh từng nói... phải chăng đã đến?",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quốc Tuấn",
+                    text = "Dạ phải! Thần đã mật lệnh cho các lộ quân chuẩn bị. Nay ta sẽ dốc toàn lực đánh thốc ra Bắc, giành lại thế chủ động.",
+                    isCharacterA = false
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Thánh Tông",
+                    text = "Trẫm giao toàn quyền điều binh cho khanh. Trận này, nhất định phải giương cao ngọn cờ 'Sát Thát'!",
+                    isCharacterA = true
+                });
+            }
+            else
+            {
+                dialogueSys.characterASprite = Resources.Load<Sprite>("CustomUI/QuangKhaiL");
+                dialogueSys.characterBSprite = Resources.Load<Sprite>("CustomUI/QuocTuan");
+
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quang Khải",
+                    text = "Bẩm Tiết chế, thủy quân ta đã đánh tan các đồn lẻ ở ngoại vi. Đường tiến quân thủy bộ ra Bắc đã được mở toang!",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quốc Tuấn",
+                    text = "Làm tốt lắm. Đạo binh của Toa Đô từ Nghệ An rút ra có động tĩnh gì không?",
+                    isCharacterA = false
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quang Khải",
+                    text = "Chúng đang lênh đênh dọc bờ biển tìm cách hội quân với Thoát Hoan, nhuệ khí rệu rã vô cùng.",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quốc Tuấn",
+                    text = "Tuyệt đối không để chúng hợp quân. Thái sư hãy đi tiên phong, chuẩn bị đón đánh Toa Đô tại cửa biển Hàm Tử, Tây Kết.",
+                    isCharacterA = false
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quang Khải",
+                    text = "Lĩnh mệnh! Lần này tiến quân, thần quyết lấy đầu Toa Đô để tế vong linh dũng sĩ Đại Việt!",
+                    isCharacterA = true
+                });
+            }
+        }
+        else if (castleName == "Thiên Trường")
+        {
+            if (isBeforeBattle)
+            {
+                dialogueSys.characterASprite = Resources.Load<Sprite>("CustomUI/QuangKhaiL");
+                dialogueSys.characterBSprite = Resources.Load<Sprite>("CustomUI/QuocTuan");
+
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quốc Tuấn",
+                    text = "Thái sư, phủ Thiên Trường và vùng duyên hải hiện là yết hầu thủy quân giặc. Ngài định phá chúng bằng cách nào?",
+                    isCharacterA = false
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quang Khải",
+                    text = "Thủy trại chúng kiên cố nhưng cồng kềnh. Thần sẽ mai phục ở hai bên bãi lau sậy, đợi thủy triều rút xuống.",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quốc Tuấn",
+                    text = "Dùng hỏa công khi thuyền giặc mắc cạn sao? Kế này rất hiểm, nhưng phải chớp đúng thời cơ mới thành.",
+                    isCharacterA = false
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quang Khải",
+                    text = "Đúng vậy. Khi thuyền giặc không thể xoay trở, thần sẽ đích thân dẫn quân cảm tử xông lên thiêu rụi chúng.",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quốc Tuấn",
+                    text = "Ta đặt trọn niềm tin vào ngài. Quét sạch vùng duyên hải, đường về Thăng Long sẽ rộng mở!",
+                    isCharacterA = false
+                });
+            }
+            else
+            {
+                dialogueSys.characterASprite = Resources.Load<Sprite>("CustomUI/ToaDo");
+                dialogueSys.characterBSprite = Resources.Load<Sprite>("CustomUI/QuangKhai");
+
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Toa Đô",
+                    text = "Trần Quang Khải! Không ngờ đường đường là Thái sư Đại Việt lại dùng quỷ kế hỏa công hèn hạ này!",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quang Khải",
+                    text = "Binh bất yếm trá! Ngươi tàn sát bá tánh ta, cớ sao ta phải dùng nhân nghĩa với bọn cướp nước?",
+                    isCharacterA = false
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Toa Đô",
+                    text = "Ta tung hoành thiên hạ, đánh Nam dẹp Bắc, nay lại kẹt giữa biển lửa này sao... Thoát Hoan, cứu ta!",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quang Khải",
+                    text = "Thoát Hoan của ngươi đang lo giữ mạng ở kinh thành rồi. Toa Đô, hôm nay là ngày tàn của ngươi!",
+                    isCharacterA = false
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Toa Đô",
+                    text = "Đại Nguyên muôn năm! Ta có chết làm ma cũng không buông tha các ngươi!",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quang Khải",
+                    text = "Chặt đầu hắn mang về dâng lên Thượng Hoàng! Gọng kìm phía Nam đã hoàn toàn bị bẻ gãy!",
+                    isCharacterA = false
+                });
+            }
+        }
+        else if (castleName.Contains("Thăng Long") || castleName.Contains("Thang Long"))
+        {
+            if (isBeforeBattle)
+            {
+                dialogueSys.characterASprite = Resources.Load<Sprite>("CustomUI/ThanhTongL");
+                dialogueSys.characterBSprite = Resources.Load<Sprite>("CustomUI/QuocTuan");
+
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Thánh Tông",
+                    text = "Tiết chế, Toa Đô đã đền tội, các thủy trại giặc đều chìm trong biển lửa. Giờ là lúc vây hãm Thăng Long?",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quốc Tuấn",
+                    text = "Tâu Thượng hoàng, đại quân ta đã khép chặt vòng vây. Thoát Hoan hiện như cá nằm trên thớt, hoảng loạn tột độ.",
+                    isCharacterA = false
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Thánh Tông",
+                    text = "Bọn chúng vẫn ngoan cố bám trụ. Khanh có định dốc toàn lực công thành, phá cổng không?",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quốc Tuấn",
+                    text = "Không cần đổ máu vô ích. Lương cạn, lính ốm, giặc đã rệu rã. Ta cứ pháo kích liên tục, Thoát Hoan tất hoảng sợ tháo chạy.",
+                    isCharacterA = false
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Thánh Tông",
+                    text = "Tuyệt diệu! Hãy chừa một đường máu cho chúng chạy về Lạng Sơn, ta sẽ cho quân phục kích tiêu diệt tàn dư!",
+                    isCharacterA = true
+                });
+            }
+            else
+            {
+                dialogueSys.characterASprite = Resources.Load<Sprite>("CustomUI/ThanhTongL");
+                dialogueSys.characterBSprite = Resources.Load<Sprite>("CustomUI/QuangKhai");
+
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quang Khải",
+                    text = "Khải tâu Thượng hoàng! Thoát Hoan sợ hãi phải chui vào ống đồng để trốn chạy. Thăng Long đã hoàn toàn sạch bóng quân thù!",
+                    isCharacterA = false
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Thánh Tông",
+                    text = "Trận này oanh liệt lắm! Mấy tháng trước trẫm bỏ ngỏ kinh thành lòng đau như cắt, nay giang sơn lại thu về một mối.",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quang Khải",
+                    text = "Uy danh bách chiến của Mông Cổ đã bị vùi lấp tại Đại Việt. Thần xin mạn phép ngâm câu: 'Đoạt giáo Chương Dương độ, Cầm Hồ Hàm Tử quan'.",
+                    isCharacterA = false
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Thánh Tông",
+                    text = "Hay! Thái sư quả là văn võ song toàn. Lòng dân đồng tâm, tướng sĩ dốc sức, Đại Việt ta hào khí ngút trời.",
+                    isCharacterA = true
+                });
+                dialogueSys.dialogueNodes.Add(new DialogueNode {
+                    speakerName = "Trần Quang Khải",
+                    text = "'Thái bình tu trí lực, Vạn cổ thử giang san'. Nay xin rước Thượng Hoàng và Hoàng đế về lại kinh kỳ, khôi phục bá nghiệp!",
+                    isCharacterA = false
+                });
+            }
+        }
+
+        // Apply loaded sprites to portrait images
+        if (dialogueSys.leftPortrait != null) dialogueSys.leftPortrait.sprite = dialogueSys.characterASprite;
+        if (dialogueSys.rightPortrait != null) dialogueSys.rightPortrait.sprite = dialogueSys.characterBSprite;
+
+        // Dynamic hide map layout
+        dialogueSys.onDialogueStart = () =>
+        {
+            if (leftPanelRT != null) leftPanelRT.gameObject.SetActive(false);
+            if (rightMiniMapRT != null) rightMiniMapRT.gameObject.SetActive(false);
+            if (hideMapButtonRT != null) hideMapButtonRT.gameObject.SetActive(false);
+            if (leftPanelToggleRT != null) leftPanelToggleRT.gameObject.SetActive(false);
+            if (topBarRT != null) topBarRT.gameObject.SetActive(false);
+        };
+
+        if (isBeforeBattle)
+        {
+            dialogueSys.onDialogueEnd = () =>
+            {
+                RestoreLayoutAfterDialogue();
+                PlayerPrefs.SetInt("DialogueBefore_" + castleName, 1);
+                PlayerPrefs.Save();
+
+                GameManager.activeCastleName = castleName;
+                if (castleName == "Hoan Châu") GameManager.levelToLoadName = "Level1";
+                else if (castleName == "Trại Yên") GameManager.levelToLoadName = "Level2";
+                else if (castleName == "Thiên Trường") GameManager.levelToLoadName = "Level3";
+                else if (castleName.Contains("Thăng Long") || castleName.Contains("Thang Long")) GameManager.levelToLoadName = "Level4";
+                
+                UnityEngine.SceneManagement.SceneManager.LoadScene("2D5_Scene");
+            };
+        }
+        else
+        {
+            dialogueSys.onDialogueEnd = () =>
+            {
+                RestoreLayoutAfterDialogue();
+                PlayerPrefs.SetInt("DialogueAfter_" + castleName + "_Pending", 0);
+                PlayerPrefs.Save();
+                UpdateQuestAndDateText();
+            };
+        }
+
+        dialogueSys.StartDialogue();
     }
 }

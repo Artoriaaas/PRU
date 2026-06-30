@@ -181,7 +181,17 @@ public class MainMenuController : MonoBehaviour
     {
         if (!menuReady) return;
         PlayerPrefs.DeleteKey("TutorialStep");
+        PlayerPrefs.DeleteKey("MapProgression");
+        
+        string[] castles = { "Trại Yên", "Thiên Trường", "Thăng Long" };
+        foreach (var c in castles)
+        {
+            PlayerPrefs.DeleteKey("DialogueBefore_" + c);
+            PlayerPrefs.DeleteKey("DialogueAfter_" + c + "_Pending");
+        }
+        
         PlayerPrefs.Save();
+        SkillManager.ResetSkillsStatic();
         StartCoroutine(StartGameRoutine());
     }
 

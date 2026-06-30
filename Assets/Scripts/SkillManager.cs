@@ -30,7 +30,7 @@ public class SkillManager : MonoBehaviour
     public static System.Action<string> OnSkillUpgraded;
 
     [Header("Skill Point State")]
-    private static int _skillPoints = 5;
+    private static int _skillPoints = 0;
     public static int SkillPointsStatic
     {
         get => _skillPoints;
@@ -69,6 +69,15 @@ public class SkillManager : MonoBehaviour
     {
         get => _logisticsLevel;
         set => _logisticsLevel = value;
+    }
+
+    public static void ResetSkillsStatic()
+    {
+        _skillPoints = 0;
+        _barracksLevel = 0;
+        _troopLevel = 0;
+        _scoutingLevel = 3;
+        _logisticsLevel = 0;
     }
 
     [Header("UI References")]
@@ -111,12 +120,7 @@ public class SkillManager : MonoBehaviour
 
     public void ResetSkills()
     {
-        skillPoints = 5;
-        barracksLevel = 0;
-        troopLevel = 0;
-        scoutingLevel = 0;
-        logisticsLevel = 0;
-        
+        ResetSkillsStatic();
         UpdateUI();
         if (UIManager.Instance != null)
         {
@@ -290,10 +294,10 @@ public class SkillManager : MonoBehaviour
     private void CreateSkillUI()
     {
         Debug.Log("SkillManager: CreateSkillUI called");
-        GameObject canvasObj = GameObject.Find("UICanvas");
+        GameObject canvasObj = GameObject.Find("Canvas");
         if (canvasObj == null)
         {
-            canvasObj = GameObject.Find("Canvas");
+            canvasObj = GameObject.Find("UICanvas");
         }
         if (canvasObj == null)
         {

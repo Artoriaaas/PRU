@@ -98,24 +98,41 @@ public class MapObject : MonoBehaviour, IPointerClickHandler, IPointerEnterHandl
             objectName.ToLower().Contains("castle")
         ))
         {
-            // Tutorial locks: Step < 2 forces Hoan Châu selection
-            int tutorialStep = PlayerPrefs.GetInt("TutorialStep", 0);
-            if (tutorialStep < 2)
+            int progression = PlayerPrefs.GetInt("MapProgression", 0);
+            int targetIndex = -1;
+            if (objectName == "Hoan Châu") targetIndex = 0;
+            else if (objectName == "Trại Yên") targetIndex = 1;
+            else if (objectName == "Thiên Trường") targetIndex = 2;
+            else if (objectName == "Thăng Long" || objectName.Contains("Thang Long")) targetIndex = 3;
+
+            if (targetIndex != -1)
             {
-                if (objectName != "Hoan Châu")
+                // Enforce strict bottom-to-top sequence: cannot play a stage ahead of current progression
+                if (targetIndex > progression)
                 {
-                    Debug.Log($"[MapObject] Click blocked. Only 'Hoan Châu' is unlocked during the tutorial. Current step={tutorialStep}");
+                    Debug.Log($"[MapObject] Click blocked. '{objectName}' requires progression {targetIndex}, current is {progression}");
                     return;
                 }
-                
-                // Set step to 1 (entering Hoan Châu battle)
-                PlayerPrefs.SetInt("TutorialStep", 1);
-                PlayerPrefs.Save();
-            }
 
-            GameManager.activeCastleName = objectName;
-            GameManager.levelToLoadName = "Level3";
-            UnityEngine.SceneManagement.SceneManager.LoadScene("2D5_Scene");
+                // Tutorial locks: Step < 2 forces Hoan Châu selection
+                int tutorialStep = PlayerPrefs.GetInt("TutorialStep", 0);
+                if (targetIndex == 0 && tutorialStep < 2)
+                {
+                    // Set step to 1 (entering Hoan Châu battle)
+                    PlayerPrefs.SetInt("TutorialStep", 1);
+                    PlayerPrefs.Save();
+                }
+
+                GameManager.activeCastleName = objectName;
+
+                // Load corresponding LevelData ScriptableObject
+                if (objectName == "Hoan Châu") GameManager.levelToLoadName = "Level1";
+                else if (objectName == "Trại Yên") GameManager.levelToLoadName = "Level2";
+                else if (objectName == "Thiên Trường") GameManager.levelToLoadName = "Level3";
+                else if (objectName.Contains("Thăng Long") || objectName.Contains("Thang Long")) GameManager.levelToLoadName = "Level4";
+
+                UnityEngine.SceneManagement.SceneManager.LoadScene("2D5_Scene");
+            }
         }
     }
 }

@@ -93,14 +93,12 @@ public class DialogueSystem : MonoBehaviour
             characterBSprite = Resources.Load<Sprite>("CustomUI/QuangKhai");   // Trần Quang Khải on right
         }
 
-        float width = 600f;
+        float width = 800f;
         float height = 700f;
 
         // Load dialogue content from ScriptableObject if assigned
         if (dialogueData != null)
         {
-            width = dialogueData.portraitWidth;
-            height = dialogueData.portraitHeight;
             if (dialogueData.characterASprite != null) characterASprite = dialogueData.characterASprite;
             if (dialogueData.characterBSprite != null) characterBSprite = dialogueData.characterBSprite;
             

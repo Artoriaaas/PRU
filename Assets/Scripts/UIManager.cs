@@ -31,6 +31,7 @@ public class UIManager : MonoBehaviour
     
     private GameObject _bottomPanel;
     public GameObject bottomPanel => _bottomPanel;
+    private GameObject _backToMapBtn;
     private GameObject _panelContent; // child container holding buttons + cards (can be hidden)
     private Button _switchViewBtn;
     private Text _switchViewText;
@@ -141,6 +142,31 @@ public class UIManager : MonoBehaviour
                 _unitsText = _canvasObj.transform.Find("UnitsText")?.GetComponent<Text>();
                 _placementHint = _canvasObj.transform.Find("PlacementHint")?.GetComponent<Text>();
                 _scoutingReportText = _canvasObj.transform.Find("ScoutingReportText")?.GetComponent<Text>();
+                _backToMapBtn = _canvasObj.transform.Find("BackToMapButton")?.gameObject;
+                if (_backToMapBtn == null)
+                {
+                    Font arial = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    if (arial == null) arial = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                    if (arial == null) arial = Font.CreateDynamicFontFromOSFont("Arial", 24);
+                    CreateBackToMapButton(arial);
+                }
+                else
+                {
+                    Button backBtn = _backToMapBtn.GetComponent<Button>();
+                    if (backBtn != null)
+                    {
+                        backBtn.onClick.RemoveAllListeners();
+                        backBtn.onClick.AddListener(() => {
+                            Time.timeScale = 1f;
+                            UnityEngine.SceneManagement.SceneManager.LoadScene("MapScene");
+                        });
+                    }
+                    RectTransform rtBack = _backToMapBtn.GetComponent<RectTransform>();
+                    if (rtBack != null)
+                    {
+                        rtBack.anchoredPosition = new Vector2(20f, -135f);
+                    }
+                }
                 
                 Transform startBtnTrans = _bottomPanel?.transform.Find("StartButton") ?? _canvasObj.transform.Find("StartButton");
                 if (startBtnTrans != null)
@@ -227,6 +253,27 @@ public class UIManager : MonoBehaviour
                         {
                             toggleImg.color = new Color(0f, 0f, 0f, 0.005f);
                             toggleImg.raycastTarget = true;
+                        }
+
+                        // Force correct scale and layout to prevent misalignment at start
+                        RectTransform rtToggle = _togglePanelBtn.GetComponent<RectTransform>();
+                        rtToggle.anchorMin = new Vector2(0f, 1f);
+                        rtToggle.anchorMax = new Vector2(0.5f, 1f);
+                        rtToggle.pivot = new Vector2(0f, 1f);
+                        rtToggle.anchoredPosition = new Vector2(10f, 0f);
+                        rtToggle.sizeDelta = new Vector2(-10f, 55f);
+                        rtToggle.localScale = Vector3.one;
+
+                        if (toggleText != null)
+                        {
+                            RectTransform rtTxt = toggleText.rectTransform;
+                            rtTxt.anchorMin = Vector2.zero;
+                            rtTxt.anchorMax = Vector2.one;
+                            rtTxt.pivot = new Vector2(0.5f, 0.5f);
+                            rtTxt.anchoredPosition = Vector2.zero;
+                            rtTxt.sizeDelta = Vector2.zero;
+                            rtTxt.localScale = Vector3.one;
+                            toggleText.alignment = TextAnchor.MiddleCenter;
                         }
                     }
                 }
@@ -417,6 +464,27 @@ public class UIManager : MonoBehaviour
             {
                 toggleImg.color = new Color(0f, 0f, 0f, 0.005f);
                 toggleImg.raycastTarget = true;
+            }
+
+            // Force correct scale and layout to prevent misalignment
+            RectTransform rtToggle = _togglePanelBtn.GetComponent<RectTransform>();
+            rtToggle.anchorMin = new Vector2(0f, 1f);
+            rtToggle.anchorMax = new Vector2(0.5f, 1f);
+            rtToggle.pivot = new Vector2(0f, 1f);
+            rtToggle.anchoredPosition = new Vector2(10f, 0f);
+            rtToggle.sizeDelta = new Vector2(-10f, 55f);
+            rtToggle.localScale = Vector3.one;
+
+            if (toggleText != null)
+            {
+                RectTransform rtTxt = toggleText.rectTransform;
+                rtTxt.anchorMin = Vector2.zero;
+                rtTxt.anchorMax = Vector2.one;
+                rtTxt.pivot = new Vector2(0.5f, 0.5f);
+                rtTxt.anchoredPosition = Vector2.zero;
+                rtTxt.sizeDelta = Vector2.zero;
+                rtTxt.localScale = Vector3.one;
+                toggleText.alignment = TextAnchor.MiddleCenter;
             }
         }
         if (_editorToggleBtn != null)
@@ -615,6 +683,9 @@ public class UIManager : MonoBehaviour
         rtReport.pivot = new Vector2(1, 1);
         rtReport.anchoredPosition = new Vector2(-20, -80); // Placed higher since the skill panel is in the map scene
         rtReport.sizeDelta = new Vector2(360, 100);
+
+        // Back To Map Button - top-left, below UnitsText
+        CreateBackToMapButton(arial);
         
         // Bottom Panel
         _bottomPanel = new GameObject("BottomPanel");
@@ -878,6 +949,47 @@ public class UIManager : MonoBehaviour
             ColliderVisualizer.ShowColliders = !ColliderVisualizer.ShowColliders;
             hbText.text = ColliderVisualizer.ShowColliders ? "Hitbox: ON" : "Hitbox: OFF";
             hbImg.color = ColliderVisualizer.ShowColliders ? new Color(0.1f, 0.5f, 0.1f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.9f);
+        });
+    }
+
+    private void CreateBackToMapButton(Font font)
+    {
+        if (_canvasObj == null) return;
+
+        _backToMapBtn = new GameObject("BackToMapButton");
+        _backToMapBtn.transform.SetParent(_canvasObj.transform, false);
+        Image backImg = _backToMapBtn.AddComponent<Image>();
+        backImg.color = new Color(0.4f, 0.15f, 0.0f, 0.95f);
+        Button backBtn = _backToMapBtn.AddComponent<Button>();
+
+        Outline backOutline = _backToMapBtn.AddComponent<Outline>();
+        backOutline.effectColor = new Color(0.85f, 0.65f, 0.1f, 1f);
+        backOutline.effectDistance = new Vector2(2f, 2f);
+
+        GameObject backTextObj = new GameObject("Text");
+        backTextObj.transform.SetParent(_backToMapBtn.transform, false);
+        Text backText = backTextObj.AddComponent<Text>();
+        backText.font = font;
+        backText.text = "Trở về Bản đồ";
+        backText.fontSize = 20;
+        backText.fontStyle = FontStyle.Bold;
+        backText.color = Color.white;
+        backText.alignment = TextAnchor.MiddleCenter;
+        RectTransform rtBackTxt = backText.rectTransform;
+        rtBackTxt.anchorMin = Vector2.zero;
+        rtBackTxt.anchorMax = Vector2.one;
+        rtBackTxt.sizeDelta = Vector2.zero;
+
+        RectTransform rtBack = _backToMapBtn.GetComponent<RectTransform>();
+        rtBack.anchorMin = new Vector2(0f, 1f);
+        rtBack.anchorMax = new Vector2(0f, 1f);
+        rtBack.pivot = new Vector2(0f, 1f);
+        rtBack.anchoredPosition = new Vector2(20f, -135f);
+        rtBack.sizeDelta = new Vector2(180f, 50f);
+
+        backBtn.onClick.AddListener(() => {
+            Time.timeScale = 1f;
+            UnityEngine.SceneManagement.SceneManager.LoadScene("MapScene");
         });
     }
 
@@ -1157,7 +1269,7 @@ public class UIManager : MonoBehaviour
                 }
             }
             
-            // Toggle visibility of unit cards based on whether it is player setup or editor mode (only show infantry card for Hoan Châu)
+            // Toggle visibility of unit cards based on whether it is player setup or editor mode and the troopLevel
             bool showCards = isPlayer || isEditor;
             foreach (Transform child in cardParent)
             {
@@ -1167,9 +1279,30 @@ public class UIManager : MonoBehaviour
                     {
                         child.gameObject.SetActive(showCards && child.name == "UnitCard_0");
                     }
-                    else
+                    else if (isEditor)
                     {
                         child.gameObject.SetActive(showCards);
+                    }
+                    else if (skillManager != null)
+                    {
+                        int troopLvl = skillManager.troopLevel;
+                        if (child.name == "UnitCard_0")
+                        {
+                            child.gameObject.SetActive(showCards); // Infantry always available
+                        }
+                        else if (child.name == "UnitCard_1")
+                        {
+                            child.gameObject.SetActive(showCards && troopLvl >= 1); // Archer needs Troop Level 1
+                        }
+                        else if (child.name == "UnitCard_2")
+                        {
+                            child.gameObject.SetActive(showCards && troopLvl >= 2); // General needs Troop Level 2
+                        }
+                    }
+                    else
+                    {
+                        // Fallback: only infantry
+                        child.gameObject.SetActive(showCards && child.name == "UnitCard_0");
                     }
                 }
             }
@@ -1224,6 +1357,11 @@ public class UIManager : MonoBehaviour
         if (_saveLevelBtn != null)
         {
             _saveLevelBtn.gameObject.SetActive(isEditor);
+        }
+
+        if (_backToMapBtn != null)
+        {
+            _backToMapBtn.SetActive(isPlayer || isEditor);
         }
     }
 
@@ -1416,6 +1554,7 @@ public class UIManager : MonoBehaviour
         if (_switchViewBtn != null) _switchViewBtn.gameObject.SetActive(false);
         if (_togglePanelBtn != null) _togglePanelBtn.gameObject.SetActive(false);
         if (_scoutingReportText != null) _scoutingReportText.gameObject.SetActive(false);
+        if (_backToMapBtn != null) _backToMapBtn.SetActive(false);
         
         GameObject skillPanel = GameObject.Find("UICanvas/SkillPanel");
         if (skillPanel != null) skillPanel.SetActive(false);
@@ -1444,6 +1583,22 @@ public class UIManager : MonoBehaviour
         Texture2D tex = Resources.Load<Texture2D>("UI/" + name);
         if (tex != null) return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
         return null;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+        if (_canvasObj != null)
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(_canvasObj);
+            }
+            else
+            {
+                DestroyImmediate(_canvasObj);
+            }
+        }
     }
 }
 

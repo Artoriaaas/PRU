@@ -22,7 +22,7 @@ public class DialogueData : ScriptableObject
 
     [Header("Portrait Sizes")]
     [Tooltip("Width of the character portrait on screen.")]
-    public float portraitWidth = 600f;
+    public float portraitWidth = 800f;
     [Tooltip("Height of the character portrait on screen.")]
     public float portraitHeight = 700f;
 
