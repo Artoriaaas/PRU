@@ -874,6 +874,7 @@ public class GameManager : MonoBehaviour
             // Handle level completion step and award skill points
             if (activeCastleName == "Hoan Châu")
             {
+
                 int tutStep = PlayerPrefs.GetInt("TutorialStep", 0);
                 if (tutStep < 2)
                 {
@@ -906,7 +907,27 @@ public class GameManager : MonoBehaviour
                     PlayerPrefs.SetInt("DialogueAfter_Thăng Long_Pending", 1);
                 }
                 PlayerPrefs.Save();
+
             }
+
+            int mapProgress = PlayerPrefs.GetInt("MapProgress", 0);
+            if (activeCastleName == "Hoan Châu" && mapProgress == 0)
+            {
+                PlayerPrefs.SetInt("MapProgress", 1);
+            }
+            else if (activeCastleName == "Trại Yên" && mapProgress == 1)
+            {
+                PlayerPrefs.SetInt("MapProgress", 2);
+            }
+            else if (activeCastleName == "Thiên Trường" && mapProgress == 2)
+            {
+                PlayerPrefs.SetInt("MapProgress", 3);
+            }
+            else if (activeCastleName == "Thăng Long" && mapProgress == 3)
+            {
+                PlayerPrefs.SetInt("MapProgress", 4);
+            }
+            PlayerPrefs.Save();
 
             if (UIManager.Instance != null) UIManager.Instance.ShowGameOver(true);
         }

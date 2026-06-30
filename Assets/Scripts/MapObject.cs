@@ -98,6 +98,7 @@ public class MapObject : MonoBehaviour, IPointerClickHandler, IPointerEnterHandl
             objectName.ToLower().Contains("castle")
         ))
         {
+
             int progression = PlayerPrefs.GetInt("MapProgression", 0);
             int targetIndex = -1;
             if (objectName == "Hoan Châu") targetIndex = 0;
@@ -106,6 +107,7 @@ public class MapObject : MonoBehaviour, IPointerClickHandler, IPointerEnterHandl
             else if (objectName == "Thăng Long" || objectName.Contains("Thang Long")) targetIndex = 3;
 
             if (targetIndex != -1)
+
             {
                 // Enforce strict bottom-to-top sequence: cannot play a stage ahead of current progression
                 if (targetIndex > progression)

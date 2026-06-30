@@ -62,6 +62,9 @@ public class MapSceneBootstrapper : MonoBehaviour
     private Text musicStatusText;
     private const string VolumeKey = "GameVolume";
 
+    private Text dateTextUI;
+    private Text questPanelContentText;
+
     void Awake()
     {
         rightMiniMapWidth = 360f; // Force override for MiniMap size
@@ -91,6 +94,8 @@ public class MapSceneBootstrapper : MonoBehaviour
         {
             gameObject.AddComponent<SkillManager>();
         }
+
+        UpdateQuestAndDateInfo();
 
         int tutorialStep = PlayerPrefs.GetInt("TutorialStep", 0);
         if (tutorialStep == 1)
@@ -124,6 +129,40 @@ public class MapSceneBootstrapper : MonoBehaviour
                 TriggerDialogue(pendingCastle, false);
             }
         }
+    }
+
+    void UpdateQuestAndDateInfo()
+    {
+        int mapProgress = PlayerPrefs.GetInt("MapProgress", 0);
+        string dateStr = "Năm 1285";
+        string questStr = "Chưa có nhiệm vụ.";
+
+        switch (mapProgress)
+        {
+            case 0:
+                dateStr = "Tháng 3 - Tháng 4 năm 1285";
+                questStr = "Nhiệm vụ: Đánh chặn gọng kìm Toa Đô tại Hoan Châu.";
+                break;
+            case 1:
+                dateStr = "Giữa tháng 4 - giữa tháng 5 năm 1285";
+                questStr = "Nhiệm vụ: Rút lui chiến lược và chuẩn bị phản công tại Trại Yên.";
+                break;
+            case 2:
+                dateStr = "Cuối tháng 5 - tháng 6 năm 1285";
+                questStr = "Nhiệm vụ: Bẻ gãy đường thủy tại Thiên Trường / Hàm Tử / Tây Kết.";
+                break;
+            case 3:
+                dateStr = "9/6 - 14/6 năm 1285";
+                questStr = "Nhiệm vụ: Giải phóng Thăng Long - Khúc khải hoàn.";
+                break;
+            default:
+                dateStr = "Năm 1285 - Đại Thắng";
+                questStr = "Hoàn thành mọi nhiệm vụ!";
+                break;
+        }
+
+        if (dateTextUI != null) dateTextUI.text = dateStr;
+        if (questPanelContentText != null) questPanelContentText.text = questStr;
     }
 
     void BuildCanvas()
@@ -197,12 +236,15 @@ public class MapSceneBootstrapper : MonoBehaviour
         bg.raycastTarget = false;
 
 
-        dateText = CreateText(bar.transform, "DateText", "Năm 1285", 22, TextAnchor.MiddleCenter);
+
+        Text dateText = CreateText(bar.transform, "DateText", "Năm 1285", 22, TextAnchor.MiddleCenter);
+        dateTextUI = dateText;
+
         RectTransform dtRT = dateText.rectTransform;
         dtRT.anchorMin = new Vector2(1f, 0.5f);
         dtRT.anchorMax = new Vector2(1f, 0.5f);
         dtRT.pivot = new Vector2(1f, 0.5f);
-        dtRT.sizeDelta = new Vector2(200f, 50f);
+        dtRT.sizeDelta = new Vector2(300f, 50f);
         dtRT.anchoredPosition = new Vector2(-350f, 0f);
 
         Image settingBtn = CreateImage(bar.transform, "SettingButton", "SettingButton", new Vector2(60f, 60f));
@@ -266,13 +308,13 @@ public class MapSceneBootstrapper : MonoBehaviour
         qpRT.anchorMax = new Vector2(0.5f, 0f);
         qpRT.pivot = new Vector2(0.5f, 0f);
         qpRT.sizeDelta = new Vector2(300f, 70f);
+
         qpRT.anchoredPosition = new Vector2(0f, 10f);
+
         Image qpBg = questPanel.GetComponent<Image>();
         ApplySprite(qpBg, "ConfirmButton", true);
         qpBg.color = Color.white;
-        Button questBtn = questPanel.AddComponent<Button>();
-        questBtn.onClick.AddListener(() => OnBottomMenuClicked(false));
-
+        
         Text qpTitle = CreateText(questPanel.transform, "Title", "NHIỆM VỤ", 16, TextAnchor.MiddleCenter);
         qpTitle.rectTransform.anchorMin = Vector2.zero;
         qpTitle.rectTransform.anchorMax = Vector2.one;
@@ -315,11 +357,14 @@ public class MapSceneBootstrapper : MonoBehaviour
             img.type = Image.Type.Simple;
         }
 
+
         questPanelTitleText = CreateText(panel.transform, "Title", "NHIỆM VỤ CHÍNH TUYẾN", 24, TextAnchor.MiddleCenter);
+
         questPanelTitleText.rectTransform.anchorMin = new Vector2(0f, 0.85f);
         questPanelTitleText.rectTransform.anchorMax = new Vector2(1f, 1f);
         questPanelTitleText.rectTransform.sizeDelta = Vector2.zero;
         questPanelTitleText.color = new Color(1f, 0.84f, 0.4f);
+
 
         questDescriptionText = CreateText(panel.transform, "Description", "", 18, TextAnchor.UpperLeft);
         RectTransform descRT = questDescriptionText.rectTransform;
@@ -328,6 +373,7 @@ public class MapSceneBootstrapper : MonoBehaviour
         descRT.offsetMin = Vector2.zero;
         descRT.offsetMax = Vector2.zero;
         questDescriptionText.color = new Color(0.95f, 0.95f, 0.95f);
+
 
         BuildQuestPanelToggle();
     }
