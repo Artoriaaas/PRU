@@ -227,6 +227,15 @@ public class GameManager : MonoBehaviour
     [Tooltip("Assign your Animator Controller for the King here.")]
     public RuntimeAnimatorController kingAnimatorController;
 
+    [Header("Enemy King/General Model Settings")]
+    [Tooltip("Drag your Enemy General FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx in Editor.")]
+    public GameObject enemyKingModelPrefab;
+    public Vector3 enemyKingRotationOffset = new Vector3(0f, -90f, 0f); // Symmetrical to player king (facing opposite direction)
+    public Vector3 enemyKingPositionOffset = new Vector3(0.5f, 0f, 0f); // Symmetrical to player king
+    public float enemyKingScale = 72.0f;
+    [Tooltip("Assign your Animator Controller for the Enemy General here.")]
+    public RuntimeAnimatorController enemyKingAnimatorController;
+
     [Header("Unit Templates")]
     public float archerAttackCooldown = 2.5f;
 
@@ -266,6 +275,10 @@ public class GameManager : MonoBehaviour
         {
             string padName = $"EnemyPad_{placement.row}_{placement.column}";
             Transform pad = enemyGrid.transform.Find(padName);
+            if (pad == null && padName == "EnemyPad_3_2")
+            {
+                pad = enemyGrid.transform.Find("EnemyPad_3_2 (1)");
+            }
             if (pad != null)
             {
                 SpawnUnit(false, pad.position, placement.unitTypeIndex);
@@ -316,13 +329,17 @@ public class GameManager : MonoBehaviour
                 {
                     loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/model_quan_cung/animation_ban_cung_quan_dich.fbx");
                 }
+                else if (unitTypeIndex == 4)
+                {
+                    loadedModel = enemyKingModelPrefab != null ? enemyKingModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx");
+                }
             }
         }
 #endif
         if (loadedModel == null)
         {
             if (unitTypeIndex == 1) loadedModel = archerModelPrefab;
-            else if (unitTypeIndex == 4) loadedModel = kingModelPrefab;
+            else if (unitTypeIndex == 4) loadedModel = isPlayer ? kingModelPrefab : enemyKingModelPrefab;
             else loadedModel = unitModelPrefab;
         }
 
@@ -348,10 +365,26 @@ public class GameManager : MonoBehaviour
             }
             else if (unitTypeIndex == 4)
             {
-                rotationOffset = kingRotationOffset;
-                positionOffset = kingPositionOffset;
-                scaleVal = kingScale;
-                animController = kingAnimatorController;
+                if (isPlayer)
+                {
+                    rotationOffset = kingRotationOffset;
+                    positionOffset = kingPositionOffset;
+                    scaleVal = kingScale;
+                    animController = kingAnimatorController;
+                }
+                else
+                {
+                    rotationOffset = enemyKingRotationOffset;
+                    positionOffset = enemyKingPositionOffset;
+                    scaleVal = enemyKingScale;
+                    animController = enemyKingAnimatorController != null ? enemyKingAnimatorController : kingAnimatorController;
+#if UNITY_EDITOR
+                    if (animController == null)
+                    {
+                        animController = UnityEditor.AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Art/Animations/QuanVuaAnimatorController.controller");
+                    }
+#endif
+                }
             }
 
             // Override prefab's local rotation with our offset to fix orientation

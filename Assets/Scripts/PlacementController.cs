@@ -25,8 +25,8 @@ public class PlacementController : MonoBehaviour
     private bool IsPlacementAllowed(GameObject pad, int unitTypeIndex)
     {
         if (pad == null) return false;
-        bool isBigPad = pad.name == "PlayerPad_3_2 (1)";
-        if (unitTypeIndex == 4) // King
+        bool isBigPad = pad.name == "PlayerPad_3_2 (1)" || pad.name == "EnemyPad_3_2 (1)";
+        if (unitTypeIndex == 4) // King/General
         {
             return isBigPad;
         }
@@ -54,6 +54,19 @@ public class PlacementController : MonoBehaviour
         if (_cam == null)
         {
             _cam = Object.FindAnyObjectByType<Camera>();
+        }
+
+        // Symmetrically scale up and rename the enemy general pad at runtime
+        GameObject enemyGrid = GameObject.Find("EnemyGrid");
+        if (enemyGrid != null)
+        {
+            Transform enemyGenPad = enemyGrid.transform.Find("EnemyPad_3_2");
+            if (enemyGenPad != null)
+            {
+                enemyGenPad.gameObject.name = "EnemyPad_3_2 (1)";
+                enemyGenPad.localScale = new Vector3(100f, 100f, 1f);
+                Debug.Log("[PlacementController] EnemyPad_3_2 successfully scaled up and renamed to EnemyPad_3_2 (1).");
+            }
         }
     }
 
@@ -432,20 +445,17 @@ public class PlacementController : MonoBehaviour
         if (tileObj.name.StartsWith(prefix) || tileObj.name.StartsWith("Tile_"))
         {
 
-            // "Big pad" = first pad (row3, col2) reserved for Tuong Quan (General) (only enforced for player units)
-            if (isPlayer)
+            // "Big pad" reserved for General
+            bool isBigPad = tileObj.name == "PlayerPad_3_2 (1)" || tileObj.name == "EnemyPad_3_2 (1)";
+            if (unitTypeIndex == 4 && !isBigPad)
             {
-                bool isBigPad = tileObj.name == "PlayerPad_3_2 (1)";
-                if (unitTypeIndex == 4 && !isBigPad)
-                {
-                    if (UIManager.Instance != null) UIManager.Instance.ShowErrorBanner("Tướng Quân chỉ có thể đặt ở vị trí hình tròn to!");
-                    return;
-                }
-                if (unitTypeIndex != 4 && isBigPad)
-                {
-                    if (UIManager.Instance != null) UIManager.Instance.ShowErrorBanner("Vị trí này chỉ dành cho Tướng Quân!");
-                    return;
-                }
+                if (UIManager.Instance != null) UIManager.Instance.ShowErrorBanner("Tướng Quân chỉ có thể đặt ở vị trí hình tròn to!");
+                return;
+            }
+            if (unitTypeIndex != 4 && isBigPad)
+            {
+                if (UIManager.Instance != null) UIManager.Instance.ShowErrorBanner("Vị trí này chỉ dành cho Tướng Quân!");
+                return;
             }
 
             // Check if tile is empty
