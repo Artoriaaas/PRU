@@ -1288,8 +1288,8 @@ public class UIManager : MonoBehaviour
                 }
             }
             
-            // Toggle visibility of unit cards based on whether it is player setup or editor mode and the troopLevel
-            bool showCards = isPlayer || isEditor;
+            // Always show unit cards in setup scene
+            bool showCards = true;
             foreach (Transform child in cardParent)
             {
                 if (child.name.StartsWith("UnitCard"))
