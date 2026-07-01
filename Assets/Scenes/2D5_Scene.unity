@@ -1106,8 +1106,8 @@ MonoBehaviour:
   maxEnemyUnits: 10
   placedEnemyUnits: 0
   activeLevel: {fileID: 11400000, guid: e6404c161b61bc947a3830026aacff4b, type: 2}
-  unitModelPrefab: {fileID: 0}
-  hoBonQuanPrefab: {fileID: 0}
+  unitModelPrefab: {fileID: 919132149155446097, guid: b229741ce2c870147a011ced623f3221, type: 3}
+  hoBonQuanPrefab: {fileID: 919132149155446097, guid: 360e1221c148eba439f67310718114a8, type: 3}
   modelRotationOffset: {x: 0, y: 0, z: 0}
   modelPositionOffset: {x: 0, y: 0, z: 0}
   modelScale: 50
@@ -1122,7 +1122,7 @@ MonoBehaviour:
   archerAnimatorController: {fileID: 9100000, guid: 6331f0870bbd1bc4998fe26ee3fce92e, type: 2}
   enemyUnitModelPrefab: {fileID: 919132149155446097, guid: eb07a8475d949a24d82b9088c024f54f, type: 3}
   enemyArcherModelPrefab: {fileID: 919132149155446097, guid: c3be3923a4c03ff42baaca0117dc24ff, type: 3}
-  arrowPrefab: {fileID: 0}
+  arrowPrefab: {fileID: 100000, guid: cff4c024d20095a458a66e6e0d47bf1b, type: 3}
   arrowSpeed: 400
   arrowArcHeight: 15
   kingModelPrefab: {fileID: 919132149155446097, guid: 460c06e2da4f2bc4fb31b60cb8fa3851, type: 3}
@@ -1131,15 +1131,13 @@ MonoBehaviour:
   kingScale: 72
   kingAnimatorController: {fileID: 9100000, guid: acfc515454275e84a81dd0a8b172946b, type: 2}
   enemyKingModelPrefab: {fileID: 919132149155446097, guid: 3723326f869bbb24d9a9548ee47cdcea, type: 3}
-
   enemyKingRotationOffset: {x: 0, y: 90, z: 0}
-
   enemyKingPositionOffset: {x: 0.5, y: 0, z: 0}
   enemyKingScale: 72
   enemyKingAnimatorController: {fileID: 9100000, guid: 732743b866d1f564cb72a6f610a065a4, type: 2}
   archerAttackCooldown: 2.5
-  playerUnitTemplate: {fileID: 438376235}
-  enemyUnitTemplate: {fileID: 1654916983}
+  playerUnitTemplate: {fileID: 0}
+  enemyUnitTemplate: {fileID: 0}
   unitAnimatorController: {fileID: 9100000, guid: 58e6296d8ec719141a998dc8a13b55dd, type: 2}
   forceCapsuleForTesting: 0
 --- !u!4 &153215031
@@ -4330,7 +4328,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -1, z: 0, w: -0.00000004371139}
   m_LocalPosition: {x: 0, y: 118, z: -157.5}
-  m_LocalScale: {x: 590.3, y: 241.7, z: 29.6}
+  m_LocalScale: {x: 634.65796, y: 241.7, z: 29.6}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 712350855}
@@ -8191,9 +8189,7 @@ MonoBehaviour:
   kingScale: 72
   kingAnimatorController: {fileID: 9100000, guid: acfc515454275e84a81dd0a8b172946b, type: 2}
   enemyKingModelPrefab: {fileID: 919132149155446097, guid: 3723326f869bbb24d9a9548ee47cdcea, type: 3}
-
   enemyKingRotationOffset: {x: 0, y: 90, z: 0}
-
   enemyKingPositionOffset: {x: 0.5, y: 0, z: 0}
   enemyKingScale: 72
   enemyKingAnimatorController: {fileID: 9100000, guid: 732743b866d1f564cb72a6f610a065a4, type: 2}
@@ -8231,7 +8227,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PadHoverManager
   hoverColor: {r: 1, g: 1, b: 0.5, a: 1}
   glowIntensity: 2
-  hoverTexture: {fileID: 0}
+  hoverTexture: {fileID: 2800000, guid: 8901a8225002ee744bc3079b94ec22bc, type: 3}
 --- !u!114 &1753165088
 MonoBehaviour:
   m_ObjectHideFlags: 0

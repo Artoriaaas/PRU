@@ -350,6 +350,34 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
+#else
+        // Build path: use serialized prefab references directly
+        if (!isCapsule)
+        {
+            if (isPlayer)
+            {
+                if (unitTypeIndex == 0)
+                {
+                    if (SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
+                        loadedModel = hoBonQuanPrefab;
+                    else
+                        loadedModel = unitModelPrefab;
+                }
+                else if (unitTypeIndex == 1)
+                    loadedModel = archerModelPrefab;
+                else if (unitTypeIndex == 4)
+                    loadedModel = kingModelPrefab;
+            }
+            else
+            {
+                if (unitTypeIndex == 0)
+                    loadedModel = enemyUnitModelPrefab;
+                else if (unitTypeIndex == 1)
+                    loadedModel = enemyArcherModelPrefab;
+                else if (unitTypeIndex == 4)
+                    loadedModel = enemyKingModelPrefab;
+            }
+        }
 #endif
         if (loadedModel == null)
         {
@@ -392,13 +420,17 @@ public class GameManager : MonoBehaviour
                     rotationOffset = enemyKingRotationOffset;
                     positionOffset = enemyKingPositionOffset;
                     scaleVal = enemyKingScale;
-                    animController = enemyKingAnimatorController != null ? enemyKingAnimatorController : kingAnimatorController;
+                    animController = enemyKingAnimatorController;
 #if UNITY_EDITOR
                     if (animController == null)
                     {
-                        animController = UnityEditor.AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Art/Animations/QuanVuaAnimatorController.controller");
+                        animController = UnityEditor.AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Art/Animations/QuanTuongDichAnimatorController.controller");
                     }
 #endif
+                    if (animController == null)
+                    {
+                        animController = kingAnimatorController;
+                    }
                 }
             }
 
@@ -426,7 +458,7 @@ public class GameManager : MonoBehaviour
                 animator.runtimeAnimatorController = animController;
             }
 
-            if (unitTypeIndex == 1 && animator.runtimeAnimatorController != null)
+            if ((unitTypeIndex == 1 || unitTypeIndex == 4) && animator.runtimeAnimatorController != null)
             {
                 animator.ResetTrigger("Attack");
                 animator.ResetTrigger("Die");
@@ -771,6 +803,7 @@ public class GameManager : MonoBehaviour
         // Enforce base stats for each unit type as specified by the user
         if (unitTypeIndex == 0) // Bộ
         {
+            unit.speed = 64f;
             if (isPlayer && SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
             {
                 unit.hp = 120f;
@@ -788,6 +821,7 @@ public class GameManager : MonoBehaviour
         }
         else if (unitTypeIndex == 1) // Cung
         {
+            unit.speed = 64f;
             unit.hp = 80f;
             unit.maxHp = 80f;
             unit.atk = 15f;
@@ -795,6 +829,7 @@ public class GameManager : MonoBehaviour
         }
         else if (unitTypeIndex == 4) // Tướng
         {
+            unit.speed = 64f;
             unit.hp = 200f;
             unit.maxHp = 200f;
             unit.atk = 13f;

@@ -126,7 +126,6 @@ public class AnimatorSetupTool
                 manager.archerScale = 60f;
                 manager.archerRotationOffset = Vector3.zero;
                 manager.forceCapsuleForTesting = false;
-                manager.unitModelPrefab = null;
                 manager.unitBaseColorTexture = null;
                 EditorUtility.SetDirty(manager);
                 UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(manager.gameObject.scene);
