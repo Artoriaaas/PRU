@@ -1131,7 +1131,9 @@ MonoBehaviour:
   kingScale: 72
   kingAnimatorController: {fileID: 9100000, guid: acfc515454275e84a81dd0a8b172946b, type: 2}
   enemyKingModelPrefab: {fileID: 919132149155446097, guid: 3723326f869bbb24d9a9548ee47cdcea, type: 3}
+
   enemyKingRotationOffset: {x: 0, y: 90, z: 0}
+
   enemyKingPositionOffset: {x: 0.5, y: 0, z: 0}
   enemyKingScale: 72
   enemyKingAnimatorController: {fileID: 9100000, guid: 732743b866d1f564cb72a6f610a065a4, type: 2}
@@ -8189,7 +8191,9 @@ MonoBehaviour:
   kingScale: 72
   kingAnimatorController: {fileID: 9100000, guid: acfc515454275e84a81dd0a8b172946b, type: 2}
   enemyKingModelPrefab: {fileID: 919132149155446097, guid: 3723326f869bbb24d9a9548ee47cdcea, type: 3}
+
   enemyKingRotationOffset: {x: 0, y: 90, z: 0}
+
   enemyKingPositionOffset: {x: 0.5, y: 0, z: 0}
   enemyKingScale: 72
   enemyKingAnimatorController: {fileID: 9100000, guid: 732743b866d1f564cb72a6f610a065a4, type: 2}

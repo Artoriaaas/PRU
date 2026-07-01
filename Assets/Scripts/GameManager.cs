@@ -555,11 +555,12 @@ public class GameManager : MonoBehaviour
                 }
             }
 
-            // Parent sword bone (Armature/Bone) to RightHand at runtime.
+            // For the Player King: parent sword bone (Armature/Bone) to RightHand at runtime.
             // All animation curves for Armature/Bone are stripped in AnimatorSetupTool,
             // so the sword won't fight between animation and parenting.
-            // This ensures the sword is permanently locked to the hand.
-            if (unitTypeIndex == 4 )
+            // For the Enemy General: the axe (meshes[0].001) is already parented to
+            // mixamorig:RightHand in the FBX hierarchy, so no extra parenting is needed.
+            if (unitTypeIndex == 4 && isPlayer)
             {
                 Transform bone = graphics.transform.Find("Armature/Bone");
                 Transform hand = null;

@@ -427,6 +427,8 @@ public class BattlefieldGridGenerator : MonoBehaviour
         {
 #if UNITY_EDITOR
             Undo.SetTransformParent(playerZone.gridParent.transform, this.transform, "Parent PlayerGrid");
+#else
+            playerZone.gridParent.transform.SetParent(this.transform, true);
 #endif
         }
         ConfigureGridParent(playerZone.gridParent, playerZone.gridLocalPosition);
@@ -445,6 +447,8 @@ public class BattlefieldGridGenerator : MonoBehaviour
         {
 #if UNITY_EDITOR
             Undo.SetTransformParent(enemyZone.gridParent.transform, this.transform, "Parent EnemyGrid");
+#else
+            enemyZone.gridParent.transform.SetParent(this.transform, true);
 #endif
         }
         ConfigureGridParent(enemyZone.gridParent, enemyZone.gridLocalPosition);
