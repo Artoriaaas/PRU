@@ -56,16 +56,18 @@ public class PlacementController : MonoBehaviour
             _cam = Object.FindAnyObjectByType<Camera>();
         }
 
-        // Symmetrically scale up and rename the enemy general pad at runtime
+        // Symmetrically instantiate the enemy general pad at runtime on the far left
         GameObject enemyGrid = GameObject.Find("EnemyGrid");
         if (enemyGrid != null)
         {
-            Transform enemyGenPad = enemyGrid.transform.Find("EnemyPad_3_2");
-            if (enemyGenPad != null)
+            Transform templatePad = enemyGrid.transform.Find("EnemyPad_3_2");
+            if (templatePad != null)
             {
-                enemyGenPad.gameObject.name = "EnemyPad_3_2 (1)";
-                enemyGenPad.localScale = new Vector3(100f, 100f, 1f);
-                Debug.Log("[PlacementController] EnemyPad_3_2 successfully scaled up and renamed to EnemyPad_3_2 (1).");
+                GameObject newBigPadObj = Instantiate(templatePad.gameObject, enemyGrid.transform);
+                newBigPadObj.name = "EnemyPad_3_2 (1)";
+                newBigPadObj.transform.localPosition = new Vector3(-225f, 0.03f, 35f);
+                newBigPadObj.transform.localScale = new Vector3(100f, 100f, 1f);
+                Debug.Log("[PlacementController] Symmetrically instantiated EnemyPad_3_2 (1) on the far left.");
             }
         }
     }

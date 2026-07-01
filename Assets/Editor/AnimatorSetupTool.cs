@@ -38,6 +38,16 @@ public class AnimatorSetupTool
             kingIdleImporter.SaveAndReimport();
         }
 
+        // Force Enemy King/General models to Generic so their animations can be imported properly
+        string enemyKingModelPath = "Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx";
+        ModelImporter enemyKingImporter = AssetImporter.GetAtPath(enemyKingModelPath) as ModelImporter;
+        if (enemyKingImporter != null && enemyKingImporter.animationType != ModelImporterAnimationType.Generic)
+        {
+            enemyKingImporter.animationType = ModelImporterAnimationType.Generic;
+            enemyKingImporter.SaveAndReimport();
+            Debug.Log("Forced Enemy General Rig to Generic: " + enemyKingModelPath);
+        }
+
         // 0. Ensure rigs are Humanoid
         ConvertRigsToHumanoid();
 
@@ -73,9 +83,16 @@ public class AnimatorSetupTool
 
                 // Set King defaults in Inspector
                 manager.kingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx");
-                manager.kingScale = 60f;
+                manager.kingScale = 72f;
                 manager.kingRotationOffset = new Vector3(0f, 90f, 0f);
-                manager.kingPositionOffset = new Vector3(0f, 0f, 0f);
+                manager.kingPositionOffset = new Vector3(-0.5f, 0f, 0f);
+
+                // Set Enemy King defaults in Inspector
+                manager.enemyKingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx");
+                manager.enemyKingScale = 72f;
+                manager.enemyKingRotationOffset = new Vector3(0f, -90f, 0f);
+                manager.enemyKingPositionOffset = new Vector3(0.5f, 0f, 0f);
+                manager.enemyKingAnimatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Art/Animations/QuanTuongDichAnimatorController.controller");
 
                 manager.archerModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
                 manager.archerScale = 60f;
@@ -786,6 +803,8 @@ public class AnimatorSetupTool
             if (path.Replace('\\', '/').Contains("Model_cung_quan_ta")) continue;
             if (path.Contains("animation_cung_quan_ta")) continue;
             if (path.Replace('\\', '/').Contains("Model_vua")) continue;
+            if (path.Replace('\\', '/').Contains("model_tuong_quan_dich")) continue;
+            if (path.Contains("animation_tuong_quan_dich")) continue;
             
             Debug.Log($"[Rig Check] Found FBX: {path}");
 

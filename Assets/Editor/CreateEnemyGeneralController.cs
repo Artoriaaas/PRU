@@ -58,7 +58,7 @@ public class CreateEnemyGeneralController
         // Any State -> Attack
         transition = rootStateMachine.AddAnyStateTransition(attackState);
         transition.AddCondition(AnimatorConditionMode.If, 0, "IsAttacking");
-        transition.AddCondition(AnimatorConditionMode.Trigger, 0, "Attack");
+        transition.AddCondition(AnimatorConditionMode.If, 0, "Attack");
         transition.hasExitTime = false;
 
         // Attack -> Idle
@@ -69,7 +69,7 @@ public class CreateEnemyGeneralController
         // Any State -> Die
         transition = rootStateMachine.AddAnyStateTransition(dieState);
         transition.AddCondition(AnimatorConditionMode.If, 0, "IsDead");
-        transition.AddCondition(AnimatorConditionMode.Trigger, 0, "Die");
+        transition.AddCondition(AnimatorConditionMode.If, 0, "Die");
         transition.hasExitTime = false;
 
         AssetDatabase.SaveAssets();

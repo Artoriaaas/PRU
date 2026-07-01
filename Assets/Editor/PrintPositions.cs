@@ -26,6 +26,24 @@ public class PrintPositions
             Debug.Log("PlayerGrid not found in scene!");
         }
 
+        // Find all enemy pads
+        GameObject enemyGrid = GameObject.Find("EnemyGrid");
+        if (enemyGrid != null)
+        {
+            Debug.Log($"EnemyGrid position: {enemyGrid.transform.position}");
+            foreach (Transform pad in enemyGrid.transform)
+            {
+                if (pad.name.StartsWith("EnemyPad_"))
+                {
+                    Debug.Log($"Pad {pad.name}: WorldPos={pad.transform.position}, LocalPos={pad.transform.localPosition}");
+                }
+            }
+        }
+        else
+        {
+            Debug.Log("EnemyGrid not found in scene!");
+        }
+
         // Find all units
         Unit[] units = Object.FindObjectsByType<Unit>(FindObjectsSortMode.None);
         foreach (var unit in units)
@@ -42,6 +60,16 @@ public class PrintPositions
             if (graphics != null)
             {
                 Debug.Log($"  Graphics {graphics.name}: LocalPos={graphics.transform.localPosition}, WorldPos={graphics.transform.position}");
+            }
+        }
+        Debug.Log("--- Printing Enemy General Clips ---");
+        string fbxPath = "Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx";
+        Object[] assets = AssetDatabase.LoadAllAssetsAtPath(fbxPath);
+        foreach (var asset in assets)
+        {
+            if (asset is AnimationClip clip)
+            {
+                Debug.Log($"Clip Name: {clip.name}");
             }
         }
         Debug.Log("---------------------------");
