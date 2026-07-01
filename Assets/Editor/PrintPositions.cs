@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 
 public class PrintPositions
@@ -26,6 +27,24 @@ public class PrintPositions
             Debug.Log("PlayerGrid not found in scene!");
         }
 
+        // Find all enemy pads
+        GameObject enemyGrid = GameObject.Find("EnemyGrid");
+        if (enemyGrid != null)
+        {
+            Debug.Log($"EnemyGrid position: {enemyGrid.transform.position}");
+            foreach (Transform pad in enemyGrid.transform)
+            {
+                if (pad.name.StartsWith("EnemyPad_"))
+                {
+                    Debug.Log($"Pad {pad.name}: WorldPos={pad.transform.position}, LocalPos={pad.transform.localPosition}");
+                }
+            }
+        }
+        else
+        {
+            Debug.Log("EnemyGrid not found in scene!");
+        }
+
         // Find all units
         Unit[] units = Object.FindObjectsByType<Unit>(FindObjectsSortMode.None);
         foreach (var unit in units)
@@ -43,6 +62,23 @@ public class PrintPositions
             {
                 Debug.Log($"  Graphics {graphics.name}: LocalPos={graphics.transform.localPosition}, WorldPos={graphics.transform.position}");
             }
+        }
+        Debug.Log("--- Inspecting Animator Controller ---");
+        RuntimeAnimatorController rac = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Art/Animations/QuanTuongDichAnimatorController.controller");
+        if (rac is AnimatorController ac)
+        {
+            foreach (var layer in ac.layers)
+            {
+                Debug.Log($"Layer: {layer.name}");
+                foreach (var state in layer.stateMachine.states)
+                {
+                    Debug.Log($"  State: {state.state.name}, Motion: {(state.state.motion != null ? state.state.motion.name : "NULL")} (Type: {(state.state.motion != null ? state.state.motion.GetType().Name : "N/A")})");
+                }
+            }
+        }
+        else
+        {
+            Debug.Log("Animator Controller is NULL or not AnimatorController!");
         }
         Debug.Log("---------------------------");
     }

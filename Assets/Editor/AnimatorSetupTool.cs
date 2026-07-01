@@ -38,6 +38,40 @@ public class AnimatorSetupTool
             kingIdleImporter.SaveAndReimport();
         }
 
+        // Force Enemy King/General models to Generic so their animations can be imported properly and extract textures
+        string enemyKingModelPath = "Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx";
+        ModelImporter enemyKingImporter = AssetImporter.GetAtPath(enemyKingModelPath) as ModelImporter;
+        if (enemyKingImporter != null)
+        {
+            bool needsReimport = false;
+            if (enemyKingImporter.animationType != ModelImporterAnimationType.Generic)
+            {
+                enemyKingImporter.animationType = ModelImporterAnimationType.Generic;
+                needsReimport = true;
+                Debug.Log("Forced Enemy General Rig to Generic: " + enemyKingModelPath);
+            }
+            if (enemyKingImporter.avatarSetup != ModelImporterAvatarSetup.NoAvatar)
+            {
+                enemyKingImporter.avatarSetup = ModelImporterAvatarSetup.NoAvatar;
+                needsReimport = true;
+                Debug.Log("Forced Enemy General Avatar Setup to NoAvatar: " + enemyKingModelPath);
+            }
+
+            // Extract embedded textures to avoid white untextured meshes (like the axe)
+            string extractPath = "Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich";
+            if (enemyKingImporter.ExtractTextures(extractPath))
+            {
+                needsReimport = true;
+                Debug.Log("Extracted textures for Enemy General to: " + extractPath);
+            }
+
+            if (needsReimport)
+            {
+                enemyKingImporter.SaveAndReimport();
+                AssetDatabase.ImportAsset(enemyKingModelPath, ImportAssetOptions.ForceUpdate);
+            }
+        }
+
         // 0. Ensure rigs are Humanoid
         ConvertRigsToHumanoid();
 
@@ -73,9 +107,20 @@ public class AnimatorSetupTool
 
                 // Set King defaults in Inspector
                 manager.kingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx");
-                manager.kingScale = 60f;
+                manager.kingScale = 72f;
                 manager.kingRotationOffset = new Vector3(0f, 90f, 0f);
-                manager.kingPositionOffset = new Vector3(0f, 0f, 0f);
+                manager.kingPositionOffset = new Vector3(-0.5f, 0f, 0f);
+
+                // Set Enemy King defaults in Inspector
+                manager.enemyKingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx");
+                manager.enemyKingScale = 72f;
+                manager.enemyKingRotationOffset = new Vector3(0f, 90f, 0f);
+                manager.enemyKingPositionOffset = new Vector3(0.5f, 0f, 0f);
+                manager.enemyKingAnimatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Art/Animations/QuanTuongDichAnimatorController.controller");
+
+                // Set Enemy Infantry & Archer prefabs
+                manager.enemyUnitModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/Trang_thai_cho_quan_dich.fbx");
+                manager.enemyArcherModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/model_quan_cung/animation_ban_cung_quan_dich.fbx");
 
                 manager.archerModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
                 manager.archerScale = 60f;
@@ -786,6 +831,8 @@ public class AnimatorSetupTool
             if (path.Replace('\\', '/').Contains("Model_cung_quan_ta")) continue;
             if (path.Contains("animation_cung_quan_ta")) continue;
             if (path.Replace('\\', '/').Contains("Model_vua")) continue;
+            if (path.Replace('\\', '/').Contains("model_tuong_quan_dich")) continue;
+            if (path.Contains("animation_tuong_quan_dich")) continue;
             
             Debug.Log($"[Rig Check] Found FBX: {path}");
 

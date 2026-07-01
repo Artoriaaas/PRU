@@ -195,6 +195,8 @@ public class GameManager : MonoBehaviour
     [Header("Model Settings")]
     [Tooltip("Drag your ModelQuanLinh FBX/Prefab here. If left empty, it will auto-load from Assets/Models/ModelQuanLinh.fbx in Editor.")]
     public GameObject unitModelPrefab;
+    [Tooltip("Drag your Ho Bon Quan FBX/Prefab here. If left empty, it will auto-load from Assets in Editor.")]
+    public GameObject hoBonQuanPrefab;
     public Vector3 modelRotationOffset = new Vector3(0f, 0f, 0f); // default to 0 for ModelQuanLinh, user can adjust
     public Vector3 modelPositionOffset = new Vector3(0f, 0f, 0f);
     public float modelScale = 15.0f;
@@ -213,6 +215,12 @@ public class GameManager : MonoBehaviour
     public Texture2D archerBaseColorTexture;
     [Tooltip("Assign your Animator Controller for the Archer here.")]
     public RuntimeAnimatorController archerAnimatorController;
+
+    [Header("Enemy Model Settings")]
+    [Tooltip("Drag your Enemy ModelQuanLinh FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân địch/Trang_thai_cho_quan_dich.fbx in Editor.")]
+    public GameObject enemyUnitModelPrefab;
+    [Tooltip("Drag your Enemy Archer FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân địch/model_quan_cung/animation_ban_cung_quan_dich.fbx in Editor.")]
+    public GameObject enemyArcherModelPrefab;
     [Tooltip("Drag your Arrow prefab here. If left empty, it will auto-load from Assets/Cartoon_Weapon_Pack/Prefab/Arrow.prefab in Editor.")]
     public GameObject arrowPrefab;
     public float arrowSpeed = 400f;
@@ -308,7 +316,14 @@ public class GameManager : MonoBehaviour
             {
                 if (unitTypeIndex == 0)
                 {
-                    loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_quan_ta.fbx");
+                    if (SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
+                    {
+                        loadedModel = hoBonQuanPrefab != null ? hoBonQuanPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/model_ho_bon_quan/animation_ho_bon_quan.fbx");
+                    }
+                    else
+                    {
+                        loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_quan_ta.fbx");
+                    }
                 }
                 else if (unitTypeIndex == 1)
                 {
@@ -338,9 +353,9 @@ public class GameManager : MonoBehaviour
 #endif
         if (loadedModel == null)
         {
-            if (unitTypeIndex == 1) loadedModel = archerModelPrefab;
+            if (unitTypeIndex == 1) loadedModel = isPlayer ? archerModelPrefab : enemyArcherModelPrefab;
             else if (unitTypeIndex == 4) loadedModel = isPlayer ? kingModelPrefab : enemyKingModelPrefab;
-            else loadedModel = unitModelPrefab;
+            else loadedModel = isPlayer ? unitModelPrefab : enemyUnitModelPrefab;
         }
 
         GameObject graphicsObj = null;
@@ -486,16 +501,28 @@ public class GameManager : MonoBehaviour
                 // King model has its own dedicated texture
                 textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta/Model_vua/Textures/model_vua_basecolor.jpg");
             }
+            else if (unitTypeIndex == 4 && !isPlayer)
+            {
+                // Enemy general uses automatically mapped extracted textures, do not overwrite!
+                textureToApply = null;
+            }
             else if (isPlayer)
             {
-                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta/model_quan_ta/tripo_convert_74080320-2742-4915-ab54-fe52dd1aaaa6.fbm/model_quan_ta_basecolor.JPEG");
+                if (unitTypeIndex == 0 && SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
+                {
+                    textureToApply = null; // Use embedded materials for Ho Bon Quan
+                }
+                else
+                {
+                    textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta/model_quan_ta/tripo_convert_74080320-2742-4915-ab54-fe52dd1aaaa6.fbm/model_quan_ta_basecolor.JPEG");
+                }
             }
             else
             {
                 textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân địch/medieval+knight+3d+model/tripo_convert_0e217662-40c2-483b-9f6e-5f6498668c72.fbm/medieval_knight_3d_model_basecolor.JPEG");
             }
 #endif
-            if (textureToApply == null && unitTypeIndex != 1)
+            if (textureToApply == null && unitTypeIndex != 1 && unitTypeIndex != 4)
             {
                 textureToApply = unitBaseColorTexture;
             }
@@ -522,7 +549,7 @@ public class GameManager : MonoBehaviour
             // All animation curves for Armature/Bone are stripped in AnimatorSetupTool,
             // so the sword won't fight between animation and parenting.
             // This ensures the sword is permanently locked to the hand.
-            if (unitTypeIndex == 4)
+            if (unitTypeIndex == 4 )
             {
                 Transform bone = graphics.transform.Find("Armature/Bone");
                 Transform hand = null;
@@ -539,6 +566,7 @@ public class GameManager : MonoBehaviour
                     bone.SetParent(hand, true);
                 }
             }
+
 
             // Tint the enemy archer red-ish to differentiate from player archers
             if (!isPlayer && unitTypeIndex == 1)
@@ -569,6 +597,11 @@ public class GameManager : MonoBehaviour
                         r.name.ToLower().Contains("shield") || 
                         r.name.ToLower().Contains("arrow")) continue;
                     validRenderers.Add(r);
+                }
+
+                if (validRenderers.Count == 0)
+                {
+                    validRenderers.AddRange(allRenderers);
                 }
 
                 if (validRenderers.Count > 0)
@@ -737,10 +770,20 @@ public class GameManager : MonoBehaviour
         // Enforce base stats for each unit type as specified by the user
         if (unitTypeIndex == 0) // Bộ
         {
-            unit.hp = 100f;
-            unit.maxHp = 100f;
-            unit.atk = 10f;
-            unit.def = 5f;
+            if (isPlayer && SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
+            {
+                unit.hp = 120f;
+                unit.maxHp = 120f;
+                unit.atk = 15f;
+                unit.def = 8f;
+            }
+            else
+            {
+                unit.hp = 100f;
+                unit.maxHp = 100f;
+                unit.atk = 10f;
+                unit.def = 5f;
+            }
         }
         else if (unitTypeIndex == 1) // Cung
         {

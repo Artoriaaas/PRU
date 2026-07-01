@@ -222,8 +222,8 @@ public class SkillManager : MonoBehaviour
             switch (level)
             {
                 case 1: return "Quân chủng Cấp 1:\nMở khóa việc chiêu mộ binh chủng Cung Thủ (Archer).";
-                case 2: return "Quân chủng Cấp 2:\nMở khóa việc chiêu mộ binh chủng Kỵ Binh (Cavalry).";
-                case 3: return "Quân chủng Cấp 3:\nMở khóa binh chủng cận chiến đặc biệt: Hổ Bôn Quân.";
+                case 2: return "Quân chủng Cấp 2:\nNâng cấp lính bộ binh thành lính Hổ Bôn Quân.";
+                case 3: return "Quân chủng Cấp 3:\nMở khóa thẻ Tướng Quân.";
             }
         }
         else if (skillType == "Scouting")

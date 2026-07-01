@@ -56,16 +56,18 @@ public class PlacementController : MonoBehaviour
             _cam = Object.FindAnyObjectByType<Camera>();
         }
 
-        // Symmetrically scale up and rename the enemy general pad at runtime
+        // Symmetrically instantiate the enemy general pad at runtime on the far left
         GameObject enemyGrid = GameObject.Find("EnemyGrid");
         if (enemyGrid != null)
         {
-            Transform enemyGenPad = enemyGrid.transform.Find("EnemyPad_3_2");
-            if (enemyGenPad != null)
+            Transform templatePad = enemyGrid.transform.Find("EnemyPad_3_2");
+            if (templatePad != null)
             {
-                enemyGenPad.gameObject.name = "EnemyPad_3_2 (1)";
-                enemyGenPad.localScale = new Vector3(100f, 100f, 1f);
-                Debug.Log("[PlacementController] EnemyPad_3_2 successfully scaled up and renamed to EnemyPad_3_2 (1).");
+                GameObject newBigPadObj = Instantiate(templatePad.gameObject, enemyGrid.transform);
+                newBigPadObj.name = "EnemyPad_3_2 (1)";
+                newBigPadObj.transform.localPosition = new Vector3(225f, 0.03f, 35f);
+                newBigPadObj.transform.localScale = new Vector3(100f, 100f, 1f);
+                Debug.Log("[PlacementController] Symmetrically instantiated EnemyPad_3_2 (1) on the far left.");
             }
         }
     }
@@ -318,7 +320,7 @@ public class PlacementController : MonoBehaviour
                 foreach (var hit in hits)
                 {
                     Unit u = hit.collider.GetComponentInParent<Unit>();
-                    if (u != null && (u.isPlayer || (GameManager.Instance != null && GameManager.Instance.isLevelEditorMode)))
+                    if (u != null)
                     {
                         // Pick the closest unit hit
                         if (hit.distance < closestDist)
@@ -419,9 +421,8 @@ public class PlacementController : MonoBehaviour
         if (GameManager.Instance == null || GameManager.Instance.currentState != GameState.Placement)
             return;
 
-        if (tileObj == null || (tileObj.name.StartsWith("EnemyPad") && !(GameManager.Instance != null && GameManager.Instance.isLevelEditorMode)))
+        if (tileObj == null)
         {
-            Debug.LogWarning("PlacementController: Placement on EnemyPad is not allowed at runtime!");
             return;
         }
 
@@ -430,9 +431,6 @@ public class PlacementController : MonoBehaviour
         {
             isPlayer = false;
         }
-
-        // Do not allow placing units on enemy side at runtime (only via Level Editor)
-        if (!isPlayer && !(GameManager.Instance != null && GameManager.Instance.isLevelEditorMode)) return;
 
         int maxUnits = isPlayer ? GameManager.Instance.maxPlayerUnits : GameManager.Instance.maxEnemyUnits;
         int placedUnits = isPlayer ? GameManager.Instance.placedPlayerUnits : GameManager.Instance.placedEnemyUnits;
