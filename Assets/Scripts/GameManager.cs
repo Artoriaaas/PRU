@@ -42,15 +42,15 @@ public class GameManager : MonoBehaviour
         if (arrowSpeed < 300f) arrowSpeed = 400f;
         if (arrowArcHeight < 1f) arrowArcHeight = 15f;
 
-        // Force general model scale (+20%) and position offset corrections to center it
-        if (kingScale == 60.0f)
-        {
-            kingScale = 72.0f;
-        }
-        if (kingPositionOffset == Vector3.zero)
-        {
-            kingPositionOffset = new Vector3(-0.5f, 0f, 0f);
-        }
+        // Force all unit Y to 0.03 (ground level) and correct offsets at runtime
+        // (scene serialized values may be stale if .unity was edited externally before reload).
+        modelPositionOffset.y = 0.03f;
+        archerPositionOffset.y = 0.03f;
+        kingPositionOffset = new Vector3(-20f, 0.03f, 3.4f);
+        kingScale = 72.0f;
+        enemyKingRotationOffset = new Vector3(0f, 0f, 0f);
+        enemyKingPositionOffset = new Vector3(175.6f, 0.03f, -60f);
+        enemyKingScale = 72.0f;
 
 #if UNITY_EDITOR
         if (arrowPrefab == null)
@@ -198,7 +198,7 @@ public class GameManager : MonoBehaviour
     [Tooltip("Drag your Ho Bon Quan FBX/Prefab here. If left empty, it will auto-load from Assets in Editor.")]
     public GameObject hoBonQuanPrefab;
     public Vector3 modelRotationOffset = new Vector3(0f, 0f, 0f); // default to 0 for ModelQuanLinh, user can adjust
-    public Vector3 modelPositionOffset = new Vector3(0f, 0f, 0f);
+    public Vector3 modelPositionOffset = new Vector3(0f, 0.03f, 0f);
     public float modelScale = 15.0f;
     public float capsuleScale = 15f; // Scale up the capsules to be clearly visible
     public bool autoAlignBottom = true;
@@ -209,7 +209,7 @@ public class GameManager : MonoBehaviour
     [Tooltip("Drag your Archer FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/animation_cung_quan_ta.fbx in Editor.")]
     public GameObject archerModelPrefab;
     public Vector3 archerRotationOffset = new Vector3(0f, 0f, 0f); // default to 0 for animation_ban_cung_quan_ta to face forward
-    public Vector3 archerPositionOffset = new Vector3(0f, 0f, 0f);
+    public Vector3 archerPositionOffset = new Vector3(0f, 0.03f, 0f);
     public float archerScale = 60.0f;
     [Tooltip("Drag the texture JPEG/PNG for Archer here. If left empty, it will auto-detect from .fbm folders in Editor.")]
     public Texture2D archerBaseColorTexture;
@@ -230,7 +230,7 @@ public class GameManager : MonoBehaviour
     [Tooltip("Drag your King FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx in Editor.")]
     public GameObject kingModelPrefab;
     public Vector3 kingRotationOffset = new Vector3(0f, 90f, 0f);
-    public Vector3 kingPositionOffset = new Vector3(-0.5f, 0f, 0f);
+    public Vector3 kingPositionOffset = new Vector3(-20f, 0.03f, 3.4f);
     public float kingScale = 72.0f;
     [Tooltip("Assign your Animator Controller for the King here.")]
     public RuntimeAnimatorController kingAnimatorController;
@@ -238,8 +238,8 @@ public class GameManager : MonoBehaviour
     [Header("Enemy King/General Model Settings")]
     [Tooltip("Drag your Enemy General FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx in Editor.")]
     public GameObject enemyKingModelPrefab;
-    public Vector3 enemyKingRotationOffset = new Vector3(0f, -90f, 0f); // Symmetrical to player king (facing opposite direction)
-    public Vector3 enemyKingPositionOffset = new Vector3(0.5f, 0f, 0f); // Symmetrical to player king
+    public Vector3 enemyKingRotationOffset = new Vector3(0f, 0f, 0f); // Facing X axis (toward player), same as other enemy units
+    public Vector3 enemyKingPositionOffset = new Vector3(175.6f, 0.03f, -60f); // Position model on center of EnemyPad_3_2
     public float enemyKingScale = 72.0f;
     [Tooltip("Assign your Animator Controller for the Enemy General here.")]
     public RuntimeAnimatorController enemyKingAnimatorController;
@@ -658,8 +658,8 @@ public class GameManager : MonoBehaviour
                 }
             }
             
-            // Apply manual offset for fine-tuning
-            graphics.transform.localPosition += positionOffset;
+            // Re-apply Y offset after auto-grounding (X/Z already applied at line 455)
+            graphics.transform.localPosition += new Vector3(0, positionOffset.y, 0);
         }
         else
         {
