@@ -383,7 +383,17 @@ public class GameManager : MonoBehaviour
         {
             if (unitTypeIndex == 1) loadedModel = isPlayer ? archerModelPrefab : enemyArcherModelPrefab;
             else if (unitTypeIndex == 4) loadedModel = isPlayer ? kingModelPrefab : enemyKingModelPrefab;
-            else loadedModel = isPlayer ? unitModelPrefab : enemyUnitModelPrefab;
+            else 
+            {
+                if (isPlayer && unitTypeIndex == 0 && SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2 && hoBonQuanPrefab != null)
+                {
+                    loadedModel = hoBonQuanPrefab;
+                }
+                else
+                {
+                    loadedModel = isPlayer ? unitModelPrefab : enemyUnitModelPrefab;
+                }
+            }
         }
 
         GameObject graphicsObj = null;
