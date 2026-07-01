@@ -400,7 +400,9 @@ public class BattlefieldGridGenerator : MonoBehaviour
 
     private void ConfigureGridParent(GameObject go, Vector3 localPosition)
     {
+#if UNITY_EDITOR
         Undo.RecordObject(go.transform, "Configure Grid Parent");
+#endif
         go.transform.localPosition = localPosition;
         go.transform.localRotation = Quaternion.identity;
         go.transform.localScale = Vector3.one;
@@ -423,7 +425,9 @@ public class BattlefieldGridGenerator : MonoBehaviour
         }
         if (playerZone.gridParent.transform.parent != this.transform)
         {
+#if UNITY_EDITOR
             Undo.SetTransformParent(playerZone.gridParent.transform, this.transform, "Parent PlayerGrid");
+#endif
         }
         ConfigureGridParent(playerZone.gridParent, playerZone.gridLocalPosition);
         GenerateSubGrid(playerZone.gridParent, rows, columns, "PlayerPad", materialPath, padColor, padTexture);
@@ -439,7 +443,9 @@ public class BattlefieldGridGenerator : MonoBehaviour
         }
         if (enemyZone.gridParent.transform.parent != this.transform)
         {
+#if UNITY_EDITOR
             Undo.SetTransformParent(enemyZone.gridParent.transform, this.transform, "Parent EnemyGrid");
+#endif
         }
         ConfigureGridParent(enemyZone.gridParent, enemyZone.gridLocalPosition);
         Color enemyColor = new Color(1f, 0.3f, 0.3f, 0.85f); // Semi-transparent Red
