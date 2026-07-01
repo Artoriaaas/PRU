@@ -65,11 +65,11 @@ public class AnimatorSetupTool
                 Debug.Log("Extracted textures for Enemy General to: " + extractPath);
             }
 
-            if (needsReimport)
-            {
-                enemyKingImporter.SaveAndReimport();
-                AssetDatabase.ImportAsset(enemyKingModelPath, ImportAssetOptions.ForceUpdate);
-            }
+            // Always reimport the enemy general model to ensure animation data is fresh.
+            // Generic rig animations can become stale/corrupted on initial import, requiring
+            // a forced reimport to properly bake the animation curves into the clip sub-assets.
+            enemyKingImporter.SaveAndReimport();
+            AssetDatabase.ImportAsset(enemyKingModelPath, ImportAssetOptions.ForceUpdate);
         }
 
         // 0. Ensure rigs are Humanoid
