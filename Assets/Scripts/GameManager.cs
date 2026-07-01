@@ -195,6 +195,8 @@ public class GameManager : MonoBehaviour
     [Header("Model Settings")]
     [Tooltip("Drag your ModelQuanLinh FBX/Prefab here. If left empty, it will auto-load from Assets/Models/ModelQuanLinh.fbx in Editor.")]
     public GameObject unitModelPrefab;
+    [Tooltip("Drag your Ho Bon Quan FBX/Prefab here. If left empty, it will auto-load from Assets in Editor.")]
+    public GameObject hoBonQuanPrefab;
     public Vector3 modelRotationOffset = new Vector3(0f, 0f, 0f); // default to 0 for ModelQuanLinh, user can adjust
     public Vector3 modelPositionOffset = new Vector3(0f, 0f, 0f);
     public float modelScale = 15.0f;
@@ -314,7 +316,14 @@ public class GameManager : MonoBehaviour
             {
                 if (unitTypeIndex == 0)
                 {
-                    loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_quan_ta.fbx");
+                    if (SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
+                    {
+                        loadedModel = hoBonQuanPrefab != null ? hoBonQuanPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/model_ho_bon_quan/animation_ho_bon_quan.fbx");
+                    }
+                    else
+                    {
+                        loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_quan_ta.fbx");
+                    }
                 }
                 else if (unitTypeIndex == 1)
                 {
@@ -499,7 +508,14 @@ public class GameManager : MonoBehaviour
             }
             else if (isPlayer)
             {
-                textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta/model_quan_ta/tripo_convert_74080320-2742-4915-ab54-fe52dd1aaaa6.fbm/model_quan_ta_basecolor.JPEG");
+                if (unitTypeIndex == 0 && SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
+                {
+                    textureToApply = null; // Use embedded materials for Ho Bon Quan
+                }
+                else
+                {
+                    textureToApply = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/NewModel/Model quân ta/model_quan_ta/tripo_convert_74080320-2742-4915-ab54-fe52dd1aaaa6.fbm/model_quan_ta_basecolor.JPEG");
+                }
             }
             else
             {
@@ -755,10 +771,20 @@ public class GameManager : MonoBehaviour
         // Enforce base stats for each unit type as specified by the user
         if (unitTypeIndex == 0) // Bộ
         {
-            unit.hp = 100f;
-            unit.maxHp = 100f;
-            unit.atk = 10f;
-            unit.def = 5f;
+            if (isPlayer && SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
+            {
+                unit.hp = 120f;
+                unit.maxHp = 120f;
+                unit.atk = 15f;
+                unit.def = 8f;
+            }
+            else
+            {
+                unit.hp = 100f;
+                unit.maxHp = 100f;
+                unit.atk = 10f;
+                unit.def = 5f;
+            }
         }
         else if (unitTypeIndex == 1) // Cung
         {

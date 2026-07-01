@@ -90,6 +90,7 @@ public class UIManager : MonoBehaviour
             "Assets/Resources/CustomUI/show.png",
             "Assets/Resources/CustomUI/TuongQuan.png",
             "Assets/Resources/CustomUI/TuongDich.png",
+            "Assets/Resources/CustomUI/HoBonQuan.png",
         };
         foreach (var spritePath in customSpritePaths)
         {
@@ -255,13 +256,8 @@ public class UIManager : MonoBehaviour
                             toggleImg.raycastTarget = true;
                         }
 
-                        // Force correct scale and layout to prevent misalignment at start
+                        // Only force scale to prevent misalignment; do NOT override position/size set in scene
                         RectTransform rtToggle = _togglePanelBtn.GetComponent<RectTransform>();
-                        rtToggle.anchorMin = new Vector2(0f, 1f);
-                        rtToggle.anchorMax = new Vector2(0.5f, 1f);
-                        rtToggle.pivot = new Vector2(0f, 1f);
-                        rtToggle.anchoredPosition = new Vector2(10f, 0f);
-                        rtToggle.sizeDelta = new Vector2(-10f, 55f);
                         rtToggle.localScale = Vector3.one;
 
                         if (toggleText != null)
@@ -366,6 +362,34 @@ public class UIManager : MonoBehaviour
                         rtMapBtn.anchoredPosition = new Vector2(220, -180);
                         rtMapBtn.sizeDelta = new Vector2(400, 100);
                     }
+                    else
+                    {
+                        // GameOverImage already exists — reconnect button listeners
+                        Transform returnBtnTrans = gameOverTrans.Find("ReturnToBattleButton");
+                        if (returnBtnTrans != null)
+                        {
+                            Button returnBtn = returnBtnTrans.GetComponent<Button>();
+                            if (returnBtn != null)
+                            {
+                                returnBtn.onClick.RemoveAllListeners();
+                                returnBtn.onClick.AddListener(() => {
+                                    UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+                                });
+                            }
+                        }
+                        Transform mapBtnTrans = gameOverTrans.Find("BackToMapButton");
+                        if (mapBtnTrans != null)
+                        {
+                            Button mapBtn = mapBtnTrans.GetComponent<Button>();
+                            if (mapBtn != null)
+                            {
+                                mapBtn.onClick.RemoveAllListeners();
+                                mapBtn.onClick.AddListener(() => {
+                                    UnityEngine.SceneManagement.SceneManager.LoadScene("MapScene");
+                                });
+                            }
+                        }
+                    }
                 }
                 
                 // Reconnect error banner
@@ -466,13 +490,8 @@ public class UIManager : MonoBehaviour
                 toggleImg.raycastTarget = true;
             }
 
-            // Force correct scale and layout to prevent misalignment
+            // Only force scale; do NOT override position/size set in scene
             RectTransform rtToggle = _togglePanelBtn.GetComponent<RectTransform>();
-            rtToggle.anchorMin = new Vector2(0f, 1f);
-            rtToggle.anchorMax = new Vector2(0.5f, 1f);
-            rtToggle.pivot = new Vector2(0f, 1f);
-            rtToggle.anchoredPosition = new Vector2(10f, 0f);
-            rtToggle.sizeDelta = new Vector2(-10f, 55f);
             rtToggle.localScale = Vector3.one;
 
             if (toggleText != null)
@@ -1289,6 +1308,13 @@ public class UIManager : MonoBehaviour
                         if (child.name == "UnitCard_0")
                         {
                             child.gameObject.SetActive(showCards); // Infantry always available
+                            Image img = child.GetComponent<Image>();
+                            if (img != null)
+                            {
+                                string sprName = troopLvl >= 2 ? "CustomUI/HoBonQuan" : "CustomUI/BoBinhCard";
+                                Sprite spr = Resources.Load<Sprite>(sprName);
+                                if (spr != null) img.sprite = spr;
+                            }
                         }
                         else if (child.name == "UnitCard_1")
                         {
@@ -1296,7 +1322,7 @@ public class UIManager : MonoBehaviour
                         }
                         else if (child.name == "UnitCard_2")
                         {
-                            child.gameObject.SetActive(showCards && troopLvl >= 2); // General needs Troop Level 2
+                            child.gameObject.SetActive(showCards && troopLvl >= 3); // General needs Troop Level 3
                         }
                     }
                     else
