@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 
 public class PrintPositions
@@ -62,15 +63,22 @@ public class PrintPositions
                 Debug.Log($"  Graphics {graphics.name}: LocalPos={graphics.transform.localPosition}, WorldPos={graphics.transform.position}");
             }
         }
-        Debug.Log("--- Printing Enemy General Clips ---");
-        string fbxPath = "Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx";
-        Object[] assets = AssetDatabase.LoadAllAssetsAtPath(fbxPath);
-        foreach (var asset in assets)
+        Debug.Log("--- Inspecting Animator Controller ---");
+        RuntimeAnimatorController rac = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Art/Animations/QuanTuongDichAnimatorController.controller");
+        if (rac is AnimatorController ac)
         {
-            if (asset is AnimationClip clip)
+            foreach (var layer in ac.layers)
             {
-                Debug.Log($"Clip Name: {clip.name}");
+                Debug.Log($"Layer: {layer.name}");
+                foreach (var state in layer.stateMachine.states)
+                {
+                    Debug.Log($"  State: {state.state.name}, Motion: {(state.state.motion != null ? state.state.motion.name : "NULL")} (Type: {(state.state.motion != null ? state.state.motion.GetType().Name : "N/A")})");
+                }
             }
+        }
+        else
+        {
+            Debug.Log("Animator Controller is NULL or not AnimatorController!");
         }
         Debug.Log("---------------------------");
     }
