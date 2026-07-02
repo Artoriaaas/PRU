@@ -46,10 +46,11 @@ public class GameManager : MonoBehaviour
         // (scene serialized values may be stale if .unity was edited externally before reload).
         modelPositionOffset.y = 0.03f;
         archerPositionOffset.y = 0.03f;
-        kingPositionOffset = new Vector3(-20f, 0.03f, 3.4f);
+        kingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
         kingScale = 72.0f;
-        enemyKingRotationOffset = new Vector3(0f, 0f, 0f);
-        enemyKingPositionOffset = new Vector3(175.6f, 0.03f, -60f);
+        kingRotationOffset = new Vector3(0f, 0f, 0f); // Model faces +X in bone space — no local offset needed
+        enemyKingRotationOffset = new Vector3(0f, 0f, 0f); // Same: model faces +X in bone space
+        enemyKingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
         enemyKingScale = 72.0f;
 
 #if UNITY_EDITOR
@@ -229,17 +230,21 @@ public class GameManager : MonoBehaviour
     [Header("King Model Settings")]
     [Tooltip("Drag your King FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx in Editor.")]
     public GameObject kingModelPrefab;
-    public Vector3 kingRotationOffset = new Vector3(0f, 90f, 0f);
-    public Vector3 kingPositionOffset = new Vector3(-20f, 0.03f, 3.4f);
+    public Vector3 kingRotationOffset = new Vector3(0f, 0f, 0f);
+    public Vector3 kingPositionOffset = new Vector3(0f, 0.03f, 0f);
     public float kingScale = 72.0f;
     [Tooltip("Assign your Animator Controller for the King here.")]
     public RuntimeAnimatorController kingAnimatorController;
+    [Tooltip("Local position of the king's weapon mesh (meshes[0].001) relative to mixamorig:RightHand. Tune in Inspector to fix sword offset.")]
+    public Vector3 kingWeaponPositionOffset = new Vector3(0f, 0f, 0f);
+    [Tooltip("Local rotation (euler) of the king's weapon mesh relative to mixamorig:RightHand. Tune in Inspector to fix sword offset.")]
+    public Vector3 kingWeaponRotationOffset = new Vector3(0f, 0f, 0f);
 
     [Header("Enemy King/General Model Settings")]
     [Tooltip("Drag your Enemy General FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx in Editor.")]
     public GameObject enemyKingModelPrefab;
-    public Vector3 enemyKingRotationOffset = new Vector3(0f, 0f, 0f); // Facing X axis (toward player), same as other enemy units
-    public Vector3 enemyKingPositionOffset = new Vector3(175.6f, 0.03f, -60f); // Position model on center of EnemyPad_3_2
+    public Vector3 enemyKingRotationOffset = new Vector3(0f, 0f, 0f);
+    public Vector3 enemyKingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
     public float enemyKingScale = 72.0f;
     [Tooltip("Assign your Animator Controller for the Enemy General here.")]
     public RuntimeAnimatorController enemyKingAnimatorController;
@@ -468,7 +473,10 @@ public class GameManager : MonoBehaviour
                 animator.runtimeAnimatorController = animController;
             }
 
-            if ((unitTypeIndex == 1 || unitTypeIndex == 4) && animator.runtimeAnimatorController != null)
+            // Force all units to start at neutral Idle frame 0 to prevent animation root curves
+            // from snapping the skeleton to a sunk Y position before the first rendered frame.
+            // (Previously only archer/king had this — now applied to all units to prevent sinking.)
+            if (animator.runtimeAnimatorController != null)
             {
                 animator.ResetTrigger("Attack");
                 animator.ResetTrigger("Die");
@@ -587,26 +595,27 @@ public class GameManager : MonoBehaviour
                 }
             }
 
-            // For the Player King: parent sword bone (Armature/Bone) to RightHand at runtime.
-            // All animation curves for Armature/Bone are stripped in AnimatorSetupTool,
-            // so the sword won't fight between animation and parenting.
-            // For the Enemy General: the axe (meshes[0].001) is already parented to
-            // mixamorig:RightHand in the FBX hierarchy, so no extra parenting is needed.
+            // Player King weapon: reparent the weapon mesh (meshes[0].001) directly to
+            // mixamorig:RightHand so it follows the hand during all animations.
+            // The old approach (reparenting Armature/Bone) kept Bone at the body-center world
+            // position, causing the sword to appear detached from the hand.
+            // For the Enemy General: meshes[0].001 is already parented to RightHand in FBX.            
             if (unitTypeIndex == 4 && isPlayer)
             {
-                Transform bone = graphics.transform.Find("Armature/Bone");
+                Transform weapon = null;
                 Transform hand = null;
                 foreach (var t in graphics.GetComponentsInChildren<Transform>(true))
                 {
-                    if (t.name == "mixamorig:RightHand")
-                    {
+                    if (t.name == "meshes[0].001")
+                        weapon = t;
+                    else if (t.name == "mixamorig:RightHand")
                         hand = t;
-                        break;
-                    }
                 }
-                if (bone != null && hand != null)
+                if (weapon != null && hand != null)
                 {
-                    bone.SetParent(hand, true);
+                    weapon.SetParent(hand, false);
+                    weapon.localPosition = kingWeaponPositionOffset;
+                    weapon.localRotation = Quaternion.Euler(kingWeaponRotationOffset);
                 }
             }
 
@@ -652,13 +661,17 @@ public class GameManager : MonoBehaviour
                     Bounds b = validRenderers[0].bounds;
                     for (int i = 1; i < validRenderers.Count; i++) b.Encapsulate(validRenderers[i].bounds);
 
+                    // Center Y (ground alignment) — must happen before root rotation
                     float lowestY = b.min.y;
                     float offsetY = rootObj.transform.position.y - lowestY;
                     graphics.transform.position += new Vector3(0, offsetY, 0);
+
+                    // X/Z centering is deferred to after root rotation (see below)
+                    // because rootObj.rotation changes graphics' world-space X/Z position
                 }
             }
             
-            // Re-apply Y offset after auto-grounding (X/Z already applied at line 455)
+            // Re-apply Y offset after auto-grounding
             graphics.transform.localPosition += new Vector3(0, positionOffset.y, 0);
         }
         else
@@ -701,7 +714,7 @@ public class GameManager : MonoBehaviour
         // Freeze all rotations and Y position to prevent capsule climbing/floating
         rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
         rb.mass = 1f;
-        rb.linearDamping = 1f;
+        rb.linearDamping = 2f;
         rb.isKinematic = true; // Kinematic during placement phase to prevent sliding/offsetting
         
         CapsuleCollider col = rootObj.AddComponent<CapsuleCollider>();
@@ -754,7 +767,7 @@ public class GameManager : MonoBehaviour
 
         col.height = colHeight;
         col.center = colCenter;
-        col.radius = colRadius;
+        col.radius = colRadius * 1.6f; // 1.6x from spawn to prevent overlap jitter during combat
         col.isTrigger = true; // Use triggers to prevent physics stutters and allow smooth bypassing
 
         Unit unit = rootObj.AddComponent<Unit>();
@@ -879,8 +892,9 @@ public class GameManager : MonoBehaviour
 
         unit.speed *= scale;
 
-        // Scale range but ensure it exceeds physical contact distance (colRadius * 2.2f)
-        float baseRange = Mathf.Max(unit.attackRange * scale, colRadius * 2.2f);
+        // Scale range but ensure it exceeds physical contact distance (col.radius * 2.2f)
+        // Use col.radius (which is 1.6x colRadius) to match the actual collider size
+        float baseRange = Mathf.Max(unit.attackRange * scale, col.radius * 2.2f);
 
         if (unitTypeIndex == 1) // Cung (scales from 133.3757 -> 210 final range under normal scale)
         {
@@ -895,17 +909,71 @@ public class GameManager : MonoBehaviour
             unit.attackRange = baseRange;
         }
 
+        // ── Per-unit-type spawn rotation ──
+        // Each unit type has a different bone-space forward direction.
+        // We choose root rotation so the model's head faces the enemy along ±X axis:
         if (isPlayer)
         {
             playerUnits.Add(unit);
-            // Rotate towards the enemy on the left (-X direction)
-            rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
+            switch (unitTypeIndex)
+            {
+                case 1: // Archer: spine faces +Z at identity → Q(270°) maps +Z → -X
+                    rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
+                    break;
+                case 4: // Player King: spine faces -X at identity → identity keeps -X
+                    rootObj.transform.rotation = Quaternion.Euler(0, 0, 0);
+                    break;
+                default: // Infantry: head faces +Z at identity → Q(270°) maps head → -X (toward enemy)
+                    rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
+                    break;
+            }
         }
         else
         {
             enemyUnits.Add(unit);
-            // Rotate towards the player on the right (+X direction)
-            rootObj.transform.rotation = Quaternion.Euler(0, 90, 0);
+            switch (unitTypeIndex)
+            {
+                case 1: // Archer: spine faces +Z at identity → Q(90°) maps +Z → +X
+                    rootObj.transform.rotation = Quaternion.Euler(0, 90, 0);
+                    break;
+                case 4: // Enemy King: head faces +Z at identity → Q(90°) maps head → +X
+                    rootObj.transform.rotation = Quaternion.Euler(0, 90, 0);
+                    break;
+                default: // Infantry: head faces +Z at identity → Q(90°) maps head → +X (toward player)
+                    rootObj.transform.rotation = Quaternion.Euler(0, 90, 0);
+                    break;
+            }
+        }
+
+        // X/Z centering in LOCAL space so it's rotation-independent.
+        // World-space offset would shift when LookRotation changes rootObj.rotation during movement.
+        // By computing the mesh's local-space bounds center and offsetting localPosition,
+        // the centering stays correct regardless of rootObj rotation.
+        if (!isCapsule && graphicsObj != null)
+        {
+            var postRenderers = graphicsObj.GetComponentsInChildren<Renderer>();
+            List<Renderer> postValid = new List<Renderer>();
+            foreach (var r in postRenderers)
+            {
+                string rn = r.name.ToLower();
+                if (rn.Contains("sword") || rn.Contains("bow") || rn.Contains("shield") || rn.Contains("arrow")) continue;
+                postValid.Add(r);
+            }
+            if (postValid.Count == 0) postValid.AddRange(postRenderers);
+
+            if (postValid.Count > 0)
+            {
+                Bounds pb = postValid[0].bounds;
+                for (int i = 1; i < postValid.Count; i++) pb.Encapsulate(postValid[i].bounds);
+
+                // Convert world-space bounds center to graphicsObj's local space
+                Vector3 localBoundsCenter = graphicsObj.transform.InverseTransformPoint(pb.center);
+                // Offset localPosition to negate the mesh's X/Z offset from origin
+                Vector3 lp = graphicsObj.transform.localPosition;
+                lp.x = -localBoundsCenter.x;
+                lp.z = -localBoundsCenter.z;
+                graphicsObj.transform.localPosition = lp;
+            }
         }
     }
 
@@ -1003,6 +1071,7 @@ public class GameManager : MonoBehaviour
                     PlayerPrefs.SetInt("TutorialStep", 2);
                     PlayerPrefs.Save();
                     SkillManager.SkillPointsStatic += 1;
+                    SkillManager.SaveSkillDataStatic();
                     Debug.Log($"[GameManager] Hoan Châu (Tutorial) won! Awarded 1 skill point. Current points={SkillManager.SkillPointsStatic}");
                 }
             }
@@ -1014,6 +1083,7 @@ public class GameManager : MonoBehaviour
                     PlayerPrefs.SetInt("MapProgression", 2);
                     PlayerPrefs.SetInt("DialogueAfter_Trại Yên_Pending", 1);
                     SkillManager.SkillPointsStatic += 1;
+                    SkillManager.SaveSkillDataStatic();
                     Debug.Log($"[GameManager] Trại Yên won! Awarded 1 skill point. Current points={SkillManager.SkillPointsStatic}");
                 }
                 else if (activeCastleName == "Thiên Trường" && currentProg == 2)
@@ -1021,6 +1091,7 @@ public class GameManager : MonoBehaviour
                     PlayerPrefs.SetInt("MapProgression", 3);
                     PlayerPrefs.SetInt("DialogueAfter_Thiên Trường_Pending", 1);
                     SkillManager.SkillPointsStatic += 2;
+                    SkillManager.SaveSkillDataStatic();
                     Debug.Log($"[GameManager] Thiên Trường won! Awarded 2 skill points. Current points={SkillManager.SkillPointsStatic}");
                 }
                 else if (activeCastleName == "Thăng Long" && currentProg == 3)
@@ -1049,6 +1120,7 @@ public class GameManager : MonoBehaviour
             {
                 PlayerPrefs.SetInt("MapProgress", 4);
             }
+            SkillManager.SaveSkillDataStatic();
             PlayerPrefs.Save();
 
             if (UIManager.Instance != null) UIManager.Instance.ShowGameOver(true);

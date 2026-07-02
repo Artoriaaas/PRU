@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d018669f3f177774b9ea54228bfcdfb1, type: 3}
+  m_Name: ThienTruong_AfterBattle
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  characterASprite: {fileID: 21300000, guid: b2ad4a0bb6adec747a73156da0ebbcd8, type: 3}
+  characterBSprite: {fileID: 21300000, guid: 6c5191d4e961a7a4cab6385fa7cbb90f, type: 3}
+  portraitWidth: 800
+  portraitHeight: 700
+  dialogueNodes:
+  - speakerName: "Toa \u0110\xF4"
+    text: "Tr\u1EA7n Quang Kh\u1EA3i! Kh\xF4ng ng\u1EDD \u0111\u01B0\u1EDDng \u0111\u01B0\u1EDDng
+      l\xE0 Th\xE1i s\u01B0 \u0110\u1EA1i Vi\u1EC7t l\u1EA1i d\xF9ng qu\u1EF7 k\u1EBF
+      h\u1ECFa c\xF4ng h\xE8n h\u1EA1 n\xE0y!"
+    isCharacterA: 1
+  - speakerName: "Tr\u1EA7n Quang Kh\u1EA3i"
+    text: "Binh b\u1EA5t y\u1EBFm tr\xE1! Ng\u01B0\u01A1i t\xE0n s\xE1t b\xE1 t\xE1nh
+      ta, c\u1EDB sao ta ph\u1EA3i d\xF9ng nh\xE2n ngh\u0129a v\u1EDBi b\u1ECDn c\u01B0\u1EDBp
+      n\u01B0\u1EDBc?"
+    isCharacterA: 0
+  - speakerName: "Toa \u0110\xF4"
+    text: "Ta tung ho\xE0nh thi\xEAn h\u1EA1, \u0111\xE1nh Nam d\u1EB9p B\u1EAFc,
+      nay l\u1EA1i k\u1EB9t gi\u1EEFa bi\u1EC3n l\u1EEDa n\xE0y sao... Tho\xE1t Hoan,
+      c\u1EE9u ta!"
+    isCharacterA: 1
+  - speakerName: "Tr\u1EA7n Quang Kh\u1EA3i"
+    text: "Tho\xE1t Hoan c\u1EE7a ng\u01B0\u01A1i \u0111ang lo gi\u1EEF m\u1EA1ng
+      \u1EDF kinh th\xE0nh r\u1ED3i. Toa \u0110\xF4, h\xF4m nay l\xE0 ng\xE0y t\xE0n
+      c\u1EE7a ng\u01B0\u01A1i!"
+    isCharacterA: 0
+  - speakerName: "Toa \u0110\xF4"
+    text: "\u0110\u1EA1i Nguy\xEAn mu\xF4n n\u0103m! Ta c\xF3 ch\u1EBFt l\xE0m ma
+      c\u0169ng kh\xF4ng bu\xF4ng tha c\xE1c ng\u01B0\u01A1i!"
+    isCharacterA: 1
+  - speakerName: "Tr\u1EA7n Quang Kh\u1EA3i"
+    text: "Ch\u1EB7t \u0111\u1EA7u h\u1EAFn mang v\u1EC1 d\xE2ng l\xEAn Th\u01B0\u1EE3ng
+      Ho\xE0ng! G\u1ECDng k\xECm ph\xEDa Nam \u0111\xE3 ho\xE0n to\xE0n b\u1ECB b\u1EBB
+      g\xE3y!"
+    isCharacterA: 0

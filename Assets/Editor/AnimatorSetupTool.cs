@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 
 [InitializeOnLoad]
 public class AnimatorSetupTool
@@ -75,6 +76,10 @@ public class AnimatorSetupTool
         // 0. Ensure rigs are Humanoid
         ConvertRigsToHumanoid();
 
+        // Fix keepOriginalPositionY=0 on all infantry animation FBX files to prevent
+        // root motion Y curves from sinking humanoid characters into the ground.
+        FixInfantryAnimationImportSettings();
+
         string folderPath = "Assets/Art/Animations";
         if (!Directory.Exists(folderPath))
         {
@@ -108,14 +113,14 @@ public class AnimatorSetupTool
                 // Set King defaults in Inspector
                 manager.kingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx");
                 manager.kingScale = 72f;
-                manager.kingRotationOffset = new Vector3(0f, 90f, 0f);
-                manager.kingPositionOffset = new Vector3(-0.5f, 0f, 0f);
+                manager.kingRotationOffset = new Vector3(0f, 0f, 0f);
+                manager.kingPositionOffset = new Vector3(0f, 0.03f, 0f);
 
                 // Set Enemy King defaults in Inspector
                 manager.enemyKingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx");
                 manager.enemyKingScale = 72f;
-                manager.enemyKingRotationOffset = new Vector3(0f, 90f, 0f);
-                manager.enemyKingPositionOffset = new Vector3(0.5f, 0f, 0f);
+                manager.enemyKingRotationOffset = new Vector3(0f, 0f, 0f);
+                manager.enemyKingPositionOffset = new Vector3(0f, 0.03f, 0f);
                 manager.enemyKingAnimatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Art/Animations/QuanTuongDichAnimatorController.controller");
 
                 // Set Enemy Infantry & Archer prefabs
@@ -995,5 +1000,81 @@ public class AnimatorSetupTool
             }
         }
         Debug.Log($"Added AnyState transition to {toState.name}");
+    }
+
+    /// <summary>
+    /// Sets keepOriginalPositionY=0 on all infantry animation FBX files to prevent
+    /// root motion Y curves from sinking humanoid characters into the ground.
+    /// This matches what archer/king already do at the clip level.
+    /// </summary>
+    private static void FixInfantryAnimationImportSettings()
+    {
+        Debug.Log("--- FIX INFANTRY ANIMATION IMPORT SETTINGS (keepOriginalPositionY=0) ---");
+
+        // List of FBX files used by infantry that may have keepOriginalPositionY=1 on clips
+        string[] fbxPaths = new string[]
+        {
+            "Assets/Models/NewModel/Model quân ta/model_ho_bon_quan/animation_ho_bon_quan.fbx",
+            "Assets/Models/NewModel/medieval knight 3d model@Sword And Shield Run.fbx",
+            "Assets/Models/NewModel/medieval knight 3d model@Sword And Shield Slash.fbx",
+            "Assets/Models/NewModel/medieval knight 3d model@Sword And Shield Death.fbx",
+            "Assets/Models/NewModel/Model quân địch/Trang_thai_cho_quan_dich.fbx",
+        };
+
+        foreach (string path in fbxPaths)
+        {
+            ModelImporter importer = AssetImporter.GetAtPath(path) as ModelImporter;
+            if (importer == null)
+            {
+                Debug.LogWarning($"  Cannot open ModelImporter for: {path}");
+                continue;
+            }
+
+            bool modified = false;
+            ModelImporterClipAnimation[] clips = importer.clipAnimations;
+
+            if (clips == null || clips.Length == 0)
+            {
+                // FBX has no explicit clip definitions (auto-generated clips).
+                // Add an explicit definition for the default take with keepOriginalPositionY=0.
+                ModelImporterClipAnimation defaultClip = new ModelImporterClipAnimation();
+                defaultClip.name = "Take 001";
+                defaultClip.takeName = "";
+                defaultClip.firstFrame = 0;
+                defaultClip.lastFrame = importer.defaultClipAnimations != null && importer.defaultClipAnimations.Length > 0
+                    ? importer.defaultClipAnimations[0].lastFrame : 100;
+                defaultClip.loopTime = true;
+                defaultClip.keepOriginalPositionY = false;
+                importer.clipAnimations = new ModelImporterClipAnimation[] { defaultClip };
+                modified = true;
+                Debug.Log($"  Added explicit clip def with keepOriginalPositionY=0 for: {path}");
+            }
+            else
+            {
+                // FBX has explicit clip definitions — set keepOriginalPositionY=0 on each
+                foreach (ModelImporterClipAnimation clip in clips)
+                {
+                    if (clip.keepOriginalPositionY)
+                    {
+                        clip.keepOriginalPositionY = false;
+                        modified = true;
+                        Debug.Log($"  Set keepOriginalPositionY=0 on clip '{clip.name}' in: {path}");
+                    }
+                }
+                importer.clipAnimations = clips;
+            }
+
+            if (modified)
+            {
+                importer.SaveAndReimport();
+                Debug.Log($"  Reimported: {path}");
+            }
+            else
+            {
+                Debug.Log($"  Already correct (keepOriginalPositionY=0): {path}");
+            }
+        }
+
+        Debug.Log("--- END FIX INFANTRY ANIMATION IMPORT SETTINGS ---");
     }
 }
