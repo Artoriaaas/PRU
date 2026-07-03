@@ -237,8 +237,8 @@ public class GameManager : MonoBehaviour
     public float kingScale = 72.0f;
     [Tooltip("Assign your Animator Controller for the King here.")]
     public RuntimeAnimatorController kingAnimatorController;
-    [Tooltip("Local position of the king's weapon mesh (meshes[0].001) relative to mixamorig:RightHand. Tune in Inspector to fix sword offset.")]
-    public Vector3 kingWeaponPositionOffset = new Vector3(0f, 0f, 0f);
+    [Tooltip("Local position of the king's weapon mesh (meshes[0].001) relative to mixamorig:RightHand. Tune in Inspector to fix sword offset. Z = negative to push sword back toward palm.")]
+    public Vector3 kingWeaponPositionOffset = new Vector3(0f, 0f, -0.0003f);
     [Tooltip("Local rotation (euler) of the king's weapon mesh relative to mixamorig:RightHand. Tune in Inspector to fix sword offset.")]
     public Vector3 kingWeaponRotationOffset = new Vector3(0f, 0f, 0f);
 
@@ -585,7 +585,7 @@ public class GameManager : MonoBehaviour
                 foreach (var r in rends)
                 {
                     // Skip weapon renderers (like the King's sword meshes[0].001) so they don't get overwritten with the body texture
-                    if (r.name.Contains("meshes[0].001") || r.name.ToLower().Contains("sword") || r.name.ToLower().Contains("weapon") || r.name.ToLower().Contains("bow") || r.name.ToLower().Contains("shield") || r.name.ToLower().Contains("arrow"))
+                    if (r.name.ToLower().Contains("sword") || r.name.ToLower().Contains("weapon") || r.name.ToLower().Contains("bow") || r.name.ToLower().Contains("shield") || r.name.ToLower().Contains("arrow"))
                     {
                         continue;
                     }
@@ -599,9 +599,10 @@ public class GameManager : MonoBehaviour
 
             // King/General weapon: "meshes[0].001" is a MeshRenderer child of "Bone".
             // "Bone" is a standalone bone (not connected to Mixamo skeleton).
-            // Strategy: snap "Bone" to mixamorig:RightHand every LateUpdate via WeaponAttacher.
-            // This moves the entire weapon sub-hierarchy (Bone → meshes[0].001 → Left_grip)
-            // to follow the hand, which is simpler and more reliable than moving the mesh directly.
+            // Strategy: parent "Bone" to mixamorig:RightHand via WeaponAttacher.
+            // Since AnimatorSetupTool strips all "Bone" animation curves, the Animator
+            // won't fight with the parenting — the sword follows the hand through all
+            // animations (idle, walk, attack, death) with zero drift.
             if (unitTypeIndex == 4)
             {
                 Transform boneToSnap = null; // "Bone" — parent of weapon mesh
@@ -633,6 +634,7 @@ public class GameManager : MonoBehaviour
                     attacher.weaponTransform = boneToSnap; // snap Bone (not the mesh)
                     attacher.handBone        = hand;
                     attacher.gripPivot       = null; // no grip pivot needed when snapping Bone directly
+                    attacher.debugLogInterval = 1f; // Log offsets every 1s for Inspector tuning
 
                     if (isPlayer)
                     {
@@ -857,10 +859,11 @@ public class GameManager : MonoBehaviour
             unit.speed = 64f;
             if (isPlayer && SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
             {
-                unit.hp = 120f;
-                unit.maxHp = 120f;
-                unit.atk = 15f;
-                unit.def = 8f;
+                // Hổ Bôn quân
+                unit.hp = 150f;
+                unit.maxHp = 150f;
+                unit.atk = 12f;
+                unit.def = 5f;
             }
             else
             {
@@ -881,10 +884,20 @@ public class GameManager : MonoBehaviour
         else if (unitTypeIndex == 4) // Tướng
         {
             unit.speed = 64f;
-            unit.hp = 200f;
-            unit.maxHp = 200f;
-            unit.atk = 13f;
-            unit.def = 6f;
+            if (isPlayer)
+            {
+                unit.hp = 300f;
+                unit.maxHp = 300f;
+                unit.atk = 15f;
+                unit.def = 6f;
+            }
+            else
+            {
+                unit.hp = 500f;
+                unit.maxHp = 500f;
+                unit.atk = 15f;
+                unit.def = 6f;
+            }
         }
 
         if (unitTypeIndex == 1) // Archer

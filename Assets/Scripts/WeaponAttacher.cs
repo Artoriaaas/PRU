@@ -1,19 +1,16 @@
 using UnityEngine;
 
 /// <summary>
-/// Attaches a weapon bone to a hand bone every LateUpdate.
+/// Attaches a weapon bone to a hand bone by parenting.
 ///
-/// Problem context:
-///   - The sword mesh (meshes[0].001) is parented to a standalone "Bone" in the FBX.
-///   - "Bone" is NOT part of the Mixamo skeleton, so the Animator never moves it.
-///   - WeaponAttacher snaps "Bone" to mixamorig:RightHand every LateUpdate.
+/// Strategy:
+///   Parent the weapon "Bone" to the hand bone. Since AnimatorSetupTool already
+///   stripped all "Bone" animation curves, the Animator won't fight the hierarchy —
+///   the sword follows the hand perfectly through ALL animations (idle, walk,
+///   attack, death) with zero drift.
 ///
-/// Rotation strategy — DELTA approach:
-///   At the first LateUpdate frame, we record the world-rotations of both Bone (weapon)
-///   and RightHand. Each subsequent frame, we compute how much the hand has rotated since
-///   that reference frame and apply the same delta to the sword's original orientation.
-///   This preserves the original sword orientation (as modelled in the FBX) while making
-///   it correctly rotate WITH the hand during all animations.
+///   The weapon's local origin is forced to the hand bone's origin (localPos=0),
+///   and positionOffset/rotationOffset fine-tune the grip alignment.
 ///
 /// Usage: Added automatically by GameManager.SpawnUnit() for the King/General unit.
 /// </summary>
@@ -31,45 +28,69 @@ public class WeaponAttacher : MonoBehaviour
     [Tooltip("Additional position offset relative to the hand bone (in hand-bone local space).")]
     public Vector3 positionOffset = Vector3.zero;
 
-    [Tooltip("Additional rotation offset (euler angles) applied on top of the delta-rotated sword orientation. " +
+    [Tooltip("Additional rotation offset (euler angles) applied on top of the weapon's local orientation. " +
              "Use this to fine-tune the sword grip angle in the Inspector.")]
     public Vector3 rotationOffset = Vector3.zero;
 
-    // Captured at the first LateUpdate frame (after Animator has run)
-    private Quaternion _initialBoneRot;
-    private Quaternion _initialHandRot;
+    [Header("Debug")]
+    [Tooltip("Log transform data every N seconds (0 = disabled).")]
+    public float debugLogInterval = 0f;
+
+    // Base local transform captured after parenting
+    private Quaternion _baseLocalRot;
     private bool       _initialized = false;
+    private float      _nextDebugLog = 0f;
 
     void LateUpdate()
     {
         if (weaponTransform == null || handBone == null) return;
 
-        // Capture reference rotations on the very first frame so we know the
-        // "natural" orientation of the sword relative to the hand at rest pose.
         if (!_initialized)
         {
-            _initialBoneRot = weaponTransform.rotation;
-            _initialHandRot = handBone.rotation;
-            _initialized    = true;
+            // Capture the weapon's world rotation before parenting so we can
+            // compute the correct local rotation that preserves its visual orientation.
+            Quaternion worldRot = weaponTransform.rotation;
+
+            // Parent the weapon to the hand bone.
+            // Since AnimatorSetupTool stripped all "Bone" animation curves,
+            // the Animator will never override this hierarchy.
+            weaponTransform.SetParent(handBone);
+
+            // Force the weapon to the hand bone's origin (localPos = zero).
+            // This matches the old behavior where position was always at the hand.
+            // positionOffset then fine-tunes the grip position from there.
+            weaponTransform.localPosition = Vector3.zero;
+
+            // Compute the correct local rotation: the weapon's visual orientation
+            // relative to the hand's current rotation. This preserves the FBX-designed
+            // sword angle while making it follow the hand's rotation changes.
+            _baseLocalRot = Quaternion.Inverse(handBone.rotation) * worldRot;
+            weaponTransform.localRotation = _baseLocalRot * Quaternion.Euler(rotationOffset);
+
+            _initialized = true;
+
+            Debug.Log($"[WeaponAttacher] Parented '{weaponTransform.name}' to '{handBone.name}'. " +
+                      $"baseLocalRot={_baseLocalRot.eulerAngles}, offset={positionOffset}, rotOffset={rotationOffset}");
         }
 
-        // Compute how much the hand has rotated since the reference frame.
-        Quaternion handDelta = handBone.rotation * Quaternion.Inverse(_initialHandRot);
+        // Keep position at hand origin + user offset every frame
+        // (in case something else moves the weapon)
+        weaponTransform.localPosition = positionOffset;
+        weaponTransform.localRotation = _baseLocalRot * Quaternion.Euler(rotationOffset);
 
-        // Apply the same delta to the sword's original world rotation,
-        // then add the user-tunable fine-tune offset on top.
-        Quaternion targetRotation = handDelta * _initialBoneRot * Quaternion.Euler(rotationOffset);
-
-        // Snap Bone's position to the hand bone (with optional local offset).
-        Vector3 targetPosition = handBone.TransformPoint(positionOffset);
-
-        weaponTransform.position = targetPosition;
-        weaponTransform.rotation = targetRotation;
+        // Optional debug logging
+        if (debugLogInterval > 0f && Time.time >= _nextDebugLog)
+        {
+            _nextDebugLog = Time.time + debugLogInterval;
+            Debug.Log($"[WeaponAttacher] '{weaponTransform.name}': " +
+                      $"localPos={weaponTransform.localPosition}, localRot={weaponTransform.localRotation.eulerAngles}, " +
+                      $"worldPos={weaponTransform.position}, handWorldPos={handBone.position}, " +
+                      $"dist={Vector3.Distance(weaponTransform.position, handBone.position):F3}");
+        }
     }
 
     /// <summary>
-    /// Forces re-capture of reference rotations on the next LateUpdate frame.
-    /// Call this after changing animation state if the sword drifts.
+    /// Forces re-parenting and re-capture on the next LateUpdate frame.
     /// </summary>
     public void ResetReference()
     {
