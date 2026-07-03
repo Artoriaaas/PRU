@@ -341,9 +341,8 @@ public class Unit : MonoBehaviour
                     if (direction != Vector3.zero)
                     {
                         Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
-                        // model_vua_after_update.fbx: model forward is -X at identity.
-                        // LookRotation maps +Z→dir; offset Euler(0,90,0) maps -X→+Z so model faces dir.
-                        if (unitTypeIndex == 4) toRotation *= Quaternion.Euler(0, 90, 0);
+                        // No extra offset needed: king graphics child already has localRotation Euler(0,90,0)
+                        // which compensates for the -X bind-pose forward. LookRotation maps +Z→dir directly.
                         transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
                     }
 
@@ -436,7 +435,8 @@ public class Unit : MonoBehaviour
                     if (faceDir != Vector3.zero)
                     {
                         Quaternion toRotation = Quaternion.LookRotation(faceDir, Vector3.up);
-                        if (unitTypeIndex == 4) toRotation *= Quaternion.Euler(0, 90, 0);
+                        // No extra offset needed: king graphics child already has localRotation Euler(0,90,0)
+                        // which compensates for the -X bind-pose forward.
                         transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 8f);
                     }
                 }
@@ -580,7 +580,8 @@ public class Unit : MonoBehaviour
                 if (faceDir != Vector3.zero)
                 {
                     Quaternion toRotation = Quaternion.LookRotation(faceDir, Vector3.up);
-                    if (unitTypeIndex == 4) toRotation *= Quaternion.Euler(0, 90, 0);
+                    // No extra offset needed: king graphics child already has localRotation Euler(0,90,0)
+                    // which compensates for the -X bind-pose forward.
                     transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
                 }
             }
