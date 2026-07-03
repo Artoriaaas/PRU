@@ -341,8 +341,8 @@ public class Unit : MonoBehaviour
                     if (direction != Vector3.zero)
                     {
                         Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
-                        // Both kings have head forward=-X at identity; Q90° maps -X→+Z so LookRotation aligns correctly
-                        if (unitTypeIndex == 4) toRotation *= Quaternion.Euler(0, 90, 0);
+                        // model_vua_after_update.fbx forward is +Z at identity (standard Mixamo),
+                        // so LookRotation aligns correctly without offset.
                         transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
                     }
 
@@ -435,7 +435,6 @@ public class Unit : MonoBehaviour
                     if (faceDir != Vector3.zero)
                     {
                         Quaternion toRotation = Quaternion.LookRotation(faceDir, Vector3.up);
-                        if (unitTypeIndex == 4) toRotation *= Quaternion.Euler(0, 90, 0);
                         transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 8f);
                     }
                 }
@@ -578,15 +577,14 @@ public class Unit : MonoBehaviour
                 faceDir.y = 0;
                 if (faceDir != Vector3.zero)
                 {
-                        Quaternion toRotation = Quaternion.LookRotation(faceDir, Vector3.up);
-                        if (unitTypeIndex == 4) toRotation *= Quaternion.Euler(0, 90, 0);
-                        transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
-                    }
+                    Quaternion toRotation = Quaternion.LookRotation(faceDir, Vector3.up);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
                 }
             }
-            else
-            {
-                transform.position += finalDirection * speed * Time.deltaTime;
+        }
+        else
+        {
+            transform.position += finalDirection * speed * Time.deltaTime;
         }
     }
 

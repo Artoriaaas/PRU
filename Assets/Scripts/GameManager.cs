@@ -927,9 +927,17 @@ public class GameManager : MonoBehaviour
         {
             unit.attackRange = 210f * scale;
         }
-        else // Bộ binh + Tướng: dùng attackRange gốc nhân scale, bỏ qua col.radius
+        else // Bộ binh + Tướng
         {
             unit.attackRange = scaledRange;
+            // Ensure attack range is at least 3x the collider radius so melee units can
+            // physically reach their slot positions (slot radius = col.radius * 2.5).
+            // Without this, units with large colliders can never get close enough to attack.
+            float minMeleeRange = col.radius * 3.0f;
+            if (unit.attackRange < minMeleeRange)
+            {
+                unit.attackRange = minMeleeRange;
+            }
         }
 
         // ── Per-unit-type spawn rotation ──
@@ -943,8 +951,8 @@ public class GameManager : MonoBehaviour
                 case 1: // Archer: spine faces +Z at identity → Q(270°) maps +Z → -X
                     rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
                     break;
-                case 4: // Player King: spine faces -X at identity → identity keeps -X
-                    rootObj.transform.rotation = Quaternion.Euler(0, 0, 0);
+                case 4: // Player King: head faces +Z at identity → Q(270°) maps head → -X (toward enemy)
+                    rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
                     break;
                 default: // Infantry: head faces +Z at identity → Q(270°) maps head → -X (toward enemy)
                     rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
@@ -959,7 +967,7 @@ public class GameManager : MonoBehaviour
                 case 1: // Archer: spine faces +Z at identity → Q(90°) maps +Z → +X
                     rootObj.transform.rotation = Quaternion.Euler(0, 90, 0);
                     break;
-                case 4: // Enemy King: head faces +Z at identity → Q(90°) maps head → +X
+                case 4: // Enemy King: head faces +Z at identity → Q(90°) maps head → +X (toward player)
                     rootObj.transform.rotation = Quaternion.Euler(0, 90, 0);
                     break;
                 default: // Infantry: head faces +Z at identity → Q(90°) maps head → +X (toward player)
