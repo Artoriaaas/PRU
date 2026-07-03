@@ -48,10 +48,10 @@ public class GameManager : MonoBehaviour
         archerPositionOffset.y = 0.03f;
         kingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
         kingScale = 72.0f;
-        kingRotationOffset = new Vector3(0f, 0f, 0f); // Model faces +X in bone space — no local offset needed
+        kingRotationOffset = new Vector3(0f, 90f, 0f); // Compensate for model bind pose: without offset model faces 90° LEFT
         // kingWeaponPositionOffset and kingWeaponRotationOffset are intentionally NOT force-reset here
         // so values tuned in the Inspector (Play Mode) are preserved between runs.
-        enemyKingRotationOffset = new Vector3(0f, 0f, 0f); // Same: model faces +X in bone space
+        enemyKingRotationOffset = new Vector3(0f, 90f, 0f); // Same bind pose compensation as player king
         enemyKingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
         enemyKingScale = 72.0f;
 
@@ -951,7 +951,7 @@ public class GameManager : MonoBehaviour
                 case 1: // Archer: spine faces +Z at identity → Q(270°) maps +Z → -X
                     rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
                     break;
-                case 4: // Player King: head faces +Z at identity → Q(270°) maps head → -X (toward enemy)
+                case 4: // Player King: model_vua has -X forward → Q(270°) maps -X → -Z, offset in combat corrects to face target
                     rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
                     break;
                 default: // Infantry: head faces +Z at identity → Q(270°) maps head → -X (toward enemy)
