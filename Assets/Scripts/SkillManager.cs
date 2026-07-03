@@ -412,7 +412,7 @@ public class SkillManager : MonoBehaviour
         Text titleText = titleObj.AddComponent<Text>();
         titleText.font = font;
         titleText.text = "BẢNG KỸ NĂNG";
-        titleText.fontSize = 20;
+        titleText.fontSize = 12;
         titleText.color = new Color(0.95f, 0.85f, 0.55f);
         titleText.alignment = TextAnchor.MiddleCenter;
         RectTransform rtTitle = titleText.rectTransform;
@@ -439,7 +439,7 @@ public class SkillManager : MonoBehaviour
         rtPoints.anchorMin = new Vector2(1f, 1f);
         rtPoints.anchorMax = new Vector2(1f, 1f);
         rtPoints.pivot = new Vector2(1f, 1f);
-        rtPoints.anchoredPosition = new Vector2(-15, -190);
+        rtPoints.anchoredPosition = new Vector2(-30, -190);
         rtPoints.sizeDelta = new Vector2(200, 25);
 
         GameObject resetBtnObj = new GameObject("ResetButton");
