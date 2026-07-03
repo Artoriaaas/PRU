@@ -1290,10 +1290,28 @@ public class UIManager : MonoBehaviour
             
             // Always show unit cards in setup scene
             bool showCards = true;
+            // Standard card dimensions - all cards must use the same size and scale
+            Vector2 standardCardSize = new Vector2(380f, 230f);
+            Vector3 standardCardScale = new Vector3(1.4f, 0.65f, 1f);
             foreach (Transform child in cardParent)
             {
                 if (child.name.StartsWith("UnitCard"))
                 {
+                    // Ensure all cards have consistent size and scale
+                    RectTransform rtCard = child.GetComponent<RectTransform>();
+                    if (rtCard != null)
+                    {
+                        rtCard.sizeDelta = standardCardSize;
+                    }
+                    child.localScale = standardCardScale;
+
+                    // Ensure preserveAspect is false so sprite fills the card uniformly
+                    Image cardImg = child.GetComponent<Image>();
+                    if (cardImg != null)
+                    {
+                        cardImg.preserveAspect = false;
+                    }
+
                     if (GameManager.activeCastleName == "Hoan Châu" && !isEditor)
                     {
                         child.gameObject.SetActive(showCards && child.name == "UnitCard_0");
@@ -1314,6 +1332,7 @@ public class UIManager : MonoBehaviour
                                 string sprName = troopLvl >= 2 ? "CustomUI/HoBonQuan" : "CustomUI/BoBinhCard";
                                 Sprite spr = Resources.Load<Sprite>(sprName);
                                 if (spr != null) img.sprite = spr;
+                                img.preserveAspect = false;
                             }
                         }
                         else if (child.name == "UnitCard_1")

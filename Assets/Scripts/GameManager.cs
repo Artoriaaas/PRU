@@ -49,6 +49,8 @@ public class GameManager : MonoBehaviour
         kingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
         kingScale = 72.0f;
         kingRotationOffset = new Vector3(0f, 0f, 0f); // Model faces +X in bone space — no local offset needed
+        // kingWeaponPositionOffset and kingWeaponRotationOffset are intentionally NOT force-reset here
+        // so values tuned in the Inspector (Play Mode) are preserved between runs.
         enemyKingRotationOffset = new Vector3(0f, 0f, 0f); // Same: model faces +X in bone space
         enemyKingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
         enemyKingScale = 72.0f;
@@ -595,29 +597,54 @@ public class GameManager : MonoBehaviour
                 }
             }
 
-            // Player King weapon: reparent the weapon mesh (meshes[0].001) directly to
-            // mixamorig:RightHand so it follows the hand during all animations.
-            // The old approach (reparenting Armature/Bone) kept Bone at the body-center world
-            // position, causing the sword to appear detached from the hand.
-            // For the Enemy General: meshes[0].001 is already parented to RightHand in FBX.            
-            if (unitTypeIndex == 4 && isPlayer)
+            // King/General weapon: "meshes[0].001" is a MeshRenderer child of "Bone".
+            // "Bone" is a standalone bone (not connected to Mixamo skeleton).
+            // Strategy: snap "Bone" to mixamorig:RightHand every LateUpdate via WeaponAttacher.
+            // This moves the entire weapon sub-hierarchy (Bone → meshes[0].001 → Left_grip)
+            // to follow the hand, which is simpler and more reliable than moving the mesh directly.
+            if (unitTypeIndex == 4)
             {
-                Transform weapon = null;
-                Transform hand = null;
+                Transform boneToSnap = null; // "Bone" — parent of weapon mesh
+                Transform hand       = null; // "mixamorig:RightHand"
+
+                string[] handCandidates = { "mixamorig:RightHand", "RightHand", "Bip001 R Hand" };
+
                 foreach (var t in graphics.GetComponentsInChildren<Transform>(true))
                 {
-                    if (t.name == "meshes[0].001")
-                        weapon = t;
-                    else if (t.name == "mixamorig:RightHand")
-                        hand = t;
+                    // "Bone" is the direct parent of "meshes[0].001" in the FBX
+                    if (t.name == "Bone" && boneToSnap == null) boneToSnap = t;
+                    foreach (var hn in handCandidates)
+                        if (t.name == hn && hand == null) { hand = t; break; }
                 }
-                if (weapon != null && hand != null)
+
+                if (boneToSnap == null || hand == null)
                 {
-                    weapon.SetParent(hand, false);
-                    weapon.localPosition = kingWeaponPositionOffset;
-                    weapon.localRotation = Quaternion.Euler(kingWeaponRotationOffset);
+                    var sb2 = new System.Text.StringBuilder();
+                    sb2.AppendLine($"[KingWeapon] Cannot find 'Bone' or hand for {(isPlayer ? "Player" : "Enemy")} General.");
+                    foreach (var t in graphics.GetComponentsInChildren<Transform>(true))
+                        sb2.AppendLine($"  '{t.name}'  parent='{t.parent?.name}'");
+                    Debug.LogWarning(sb2.ToString());
+                }
+                else
+                {
+                    Debug.Log($"[KingWeapon] Snapping '{boneToSnap.name}' → '{hand.name}' ({(isPlayer ? "Player" : "Enemy")} General)");
+
+                    WeaponAttacher attacher  = rootObj.AddComponent<WeaponAttacher>();
+                    attacher.weaponTransform = boneToSnap; // snap Bone (not the mesh)
+                    attacher.handBone        = hand;
+                    attacher.gripPivot       = null; // no grip pivot needed when snapping Bone directly
+
+                    if (isPlayer)
+                    {
+                        attacher.positionOffset = kingWeaponPositionOffset;
+                        attacher.rotationOffset = kingWeaponRotationOffset;
+                    }
                 }
             }
+
+
+
+
 
 
             // Tint the enemy archer red-ish to differentiate from player archers
@@ -647,7 +674,8 @@ public class GameManager : MonoBehaviour
                     if (r.name.ToLower().Contains("sword") || 
                         r.name.ToLower().Contains("bow") || 
                         r.name.ToLower().Contains("shield") || 
-                        r.name.ToLower().Contains("arrow")) continue;
+                        r.name.ToLower().Contains("arrow") ||
+                        r.name.Contains("meshes[0]")) continue;
                     validRenderers.Add(r);
                 }
 
@@ -892,21 +920,16 @@ public class GameManager : MonoBehaviour
 
         unit.speed *= scale;
 
-        // Scale range but ensure it exceeds physical contact distance (col.radius * 2.2f)
-        // Use col.radius (which is 1.6x colRadius) to match the actual collider size
-        float baseRange = Mathf.Max(unit.attackRange * scale, col.radius * 2.2f);
+        // Scale attackRange by spawn scale for all unit types
+        float scaledRange = unit.attackRange * scale;
 
-        if (unitTypeIndex == 1) // Cung (scales from 133.3757 -> 210 final range under normal scale)
+        if (unitTypeIndex == 1) // Cung
         {
             unit.attackRange = 210f * scale;
         }
-        else if (unitTypeIndex == 4) // Tướng (give slightly more range so he can easily reach and hit enemies)
+        else // Bộ binh + Tướng: dùng attackRange gốc nhân scale, bỏ qua col.radius
         {
-            unit.attackRange = baseRange * 1.25f;
-        }
-        else // Bộ
-        {
-            unit.attackRange = baseRange;
+            unit.attackRange = scaledRange;
         }
 
         // ── Per-unit-type spawn rotation ──

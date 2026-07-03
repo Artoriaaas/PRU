@@ -76,8 +76,8 @@ public class AnimatorSetupTool
         // 0. Ensure rigs are Humanoid
         ConvertRigsToHumanoid();
 
-        // Fix keepOriginalPositionY=0 on all infantry animation FBX files to prevent
-        // root motion Y curves from sinking humanoid characters into the ground.
+        // Set per-clip keepOriginalPositionY: idle FBX files use 1 (bind pose locked),
+        // Run FBX uses 0 (root Y lifts the run cycle naturally).
         FixInfantryAnimationImportSettings();
 
         string folderPath = "Assets/Art/Animations";
@@ -222,19 +222,21 @@ public class AnimatorSetupTool
         attackState.motion = null;
         dieState.motion = null;
 
-        string[] guids = AssetDatabase.FindAssets("t:AnimationClip");
-        foreach (string guid in guids)
+        // Priority FBX files: scan in this order so ho_bon_quan's own clips win.
+        // Model_quan_ta.fbx is a static mesh (no clips), so ho_bon_quan provides
+        // the complete animation set for all infantry via humanoid retargeting.
+        // ho_bon_quan has: animation_idle, animation_run, animation_attack_1/2, animation_dying.
+        string[] priorityFbxPaths = new string[]
         {
-            string path = AssetDatabase.GUIDToAssetPath(guid);
-            
-            // Only look inside the Assets/Models/NewModel folder
-            if (!path.Replace('\\', '/').Contains("Assets/Models/NewModel")) continue;
-            // Exclude archer and king files from infantry setup.
-            if (path.Replace('\\', '/').Contains("Model_cung_quan_ta")) continue;
-            if (path.Replace('\\', '/').Contains("animation_cung_quan_ta")) continue;
-            if (path.Replace('\\', '/').Contains("Model_vua")) continue;
+            "Assets/Models/NewModel/Model quân ta/model_ho_bon_quan/animation_ho_bon_quan.fbx",
+            "Assets/Models/NewModel/medieval knight 3d model@Sword And Shield Run.fbx",
+            "Assets/Models/NewModel/medieval knight 3d model@Sword And Shield Slash.fbx",
+            "Assets/Models/NewModel/medieval knight 3d model@Sword And Shield Death.fbx",
+        };
 
-            Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
+        void ScanFbx(string fbxPath, bool skipIfTaken)
+        {
+            Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(fbxPath);
             foreach (Object asset in allAssets)
             {
                 AnimationClip clip = asset as AnimationClip;
@@ -242,39 +244,73 @@ public class AnimatorSetupTool
                 if (clip.name.StartsWith("__preview__")) continue;
 
                 string clipName = clip.name.ToLower();
-                string pathName = path.ToLower().Replace('\\', '/');
+                string pathName = fbxPath.ToLower().Replace('\\', '/');
 
-                Debug.Log($"Found Clip: '{clip.name}' in path: '{path}'");
+                Debug.Log($"Found Clip: '{clip.name}' in path: '{fbxPath}'");
 
+                // Include "dying" for animation_dying from ho_bon_quan.fbx
                 bool isIdle = pathName.Contains("trang_thai_cho") || clipName.Contains("idle") || pathName.Contains("doi") || pathName.Contains("cho");
                 bool isRun = pathName.Contains("run") || clipName.Contains("run") || clipName.Contains("walk") || pathName.Contains("chay") || pathName.Contains("dibo");
                 bool isAttack = pathName.Contains("slash") || clipName.Contains("attack") || clipName.Contains("hit") || clipName.Contains("slash");
-                bool isDie = pathName.Contains("death") || clipName.Contains("die") || clipName.Contains("dead");
+                bool isDie = pathName.Contains("death") || clipName.Contains("die") || clipName.Contains("dead") || clipName.Contains("dying");
 
-                if (isIdle && idleState.motion == null)
+                if (isIdle && (idleState.motion == null || !skipIfTaken))
                 {
                     idleState.motion = clip;
                     EnableLoopTime(clip);
-                    Debug.Log(">> Assigned Idle clip from NewModel: " + clip.name + " (" + path + ")");
+                    Debug.Log(">> Assigned Idle clip: " + clip.name + " (" + fbxPath + ")");
                 }
-                else if (isRun && runState.motion == null)
+                else if (isRun && (runState.motion == null || !skipIfTaken))
                 {
                     runState.motion = clip;
                     EnableLoopTime(clip);
-                    Debug.Log(">> Assigned Run clip from NewModel: " + clip.name + " (" + path + ")");
+                    Debug.Log(">> Assigned Run clip: " + clip.name + " (" + fbxPath + ")");
                 }
-                else if (isAttack && attackState.motion == null)
+                else if (isAttack && (attackState.motion == null || !skipIfTaken))
                 {
                     attackState.motion = clip;
-                    Debug.Log(">> Assigned Attack clip from NewModel: " + clip.name + " (" + path + ")");
+                    Debug.Log(">> Assigned Attack clip: " + clip.name + " (" + fbxPath + ")");
                 }
-                else if (isDie && dieState.motion == null)
+                else if (isDie && (dieState.motion == null || !skipIfTaken))
                 {
                     dieState.motion = clip;
-                    Debug.Log(">> Assigned Die clip from NewModel: " + clip.name + " (" + path + ")");
+                    Debug.Log(">> Assigned Die clip: " + clip.name + " (" + fbxPath + ")");
                 }
             }
         }
+
+        // Pass 1: priority FBX files — skipIfTaken=false so later priority
+        // paths can override earlier ones (unused here since first match wins).
+        foreach (string path in priorityFbxPaths)
+        {
+            ScanFbx(path, true);
+        }
+
+        // Pass 2: scan remaining NewModel FBX files for any clips still missing
+        string[] guids = AssetDatabase.FindAssets("t:AnimationClip");
+        foreach (string guid in guids)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            if (!path.Replace('\\', '/').Contains("Assets/Models/NewModel")) continue;
+            if (path.Replace('\\', '/').Contains("Model_cung_quan_ta")) continue;
+            if (path.Replace('\\', '/').Contains("animation_cung_quan_ta")) continue;
+            if (path.Replace('\\', '/').Contains("Model_vua")) continue;
+
+            // Skip if already processed in priority pass
+            bool alreadyProcessed = false;
+            foreach (string pp in priorityFbxPaths)
+            {
+                if (string.Equals(path.Replace('\\', '/'), pp.Replace('\\', '/'), System.StringComparison.OrdinalIgnoreCase))
+                {
+                    alreadyProcessed = true;
+                    break;
+                }
+            }
+            if (alreadyProcessed) continue;
+
+            ScanFbx(path, true);
+        }
+
         Debug.Log("--- END ASSIGNING CLIPS FROM NEWMODEL FOLDER ---");
     }
 
@@ -1003,31 +1039,23 @@ public class AnimatorSetupTool
     }
 
     /// <summary>
-    /// Sets keepOriginalPositionY=0 on all infantry animation FBX files to prevent
-    /// root motion Y curves from sinking humanoid characters into the ground.
-    /// This matches what archer/king already do at the clip level.
+    /// Sets per-FBX keepOriginalPositionY on infantry animation files so that:
+    ///   - Idle/Attack/Die FBX files → keepOriginalPositionY=1 (root Y ignored, Hips stays at bind pose)
+    ///   - Run FBX file          → keepOriginalPositionY=0 (root Y active, Run clip lifts feet naturally)
+    /// This prevents Idle root Y curves from sinking the Hips during capture/playback,
+    /// while allowing the Run clip's root Y curve to keep the character at the correct height.
     /// </summary>
     private static void FixInfantryAnimationImportSettings()
     {
-        Debug.Log("--- FIX INFANTRY ANIMATION IMPORT SETTINGS (keepOriginalPositionY=0) ---");
+        Debug.Log("--- FIX INFANTRY ANIMATION IMPORT SETTINGS ---");
 
-        // List of FBX files used by infantry that may have keepOriginalPositionY=1 on clips
-        string[] fbxPaths = new string[]
-        {
-            "Assets/Models/NewModel/Model quân ta/model_ho_bon_quan/animation_ho_bon_quan.fbx",
-            "Assets/Models/NewModel/medieval knight 3d model@Sword And Shield Run.fbx",
-            "Assets/Models/NewModel/medieval knight 3d model@Sword And Shield Slash.fbx",
-            "Assets/Models/NewModel/medieval knight 3d model@Sword And Shield Death.fbx",
-            "Assets/Models/NewModel/Model quân địch/Trang_thai_cho_quan_dich.fbx",
-        };
-
-        foreach (string path in fbxPaths)
+        void SetKeepY(string path, bool targetKeepY)
         {
             ModelImporter importer = AssetImporter.GetAtPath(path) as ModelImporter;
             if (importer == null)
             {
                 Debug.LogWarning($"  Cannot open ModelImporter for: {path}");
-                continue;
+                return;
             }
 
             bool modified = false;
@@ -1036,7 +1064,6 @@ public class AnimatorSetupTool
             if (clips == null || clips.Length == 0)
             {
                 // FBX has no explicit clip definitions (auto-generated clips).
-                // Add an explicit definition for the default take with keepOriginalPositionY=0.
                 ModelImporterClipAnimation defaultClip = new ModelImporterClipAnimation();
                 defaultClip.name = "Take 001";
                 defaultClip.takeName = "";
@@ -1044,21 +1071,20 @@ public class AnimatorSetupTool
                 defaultClip.lastFrame = importer.defaultClipAnimations != null && importer.defaultClipAnimations.Length > 0
                     ? importer.defaultClipAnimations[0].lastFrame : 100;
                 defaultClip.loopTime = true;
-                defaultClip.keepOriginalPositionY = false;
+                defaultClip.keepOriginalPositionY = targetKeepY;
                 importer.clipAnimations = new ModelImporterClipAnimation[] { defaultClip };
                 modified = true;
-                Debug.Log($"  Added explicit clip def with keepOriginalPositionY=0 for: {path}");
+                Debug.Log($"  Set {path} → keepOriginalPositionY={(targetKeepY ? 1 : 0)} (explicit def)");
             }
             else
             {
-                // FBX has explicit clip definitions — set keepOriginalPositionY=0 on each
                 foreach (ModelImporterClipAnimation clip in clips)
                 {
-                    if (clip.keepOriginalPositionY)
+                    if (clip.keepOriginalPositionY != targetKeepY)
                     {
-                        clip.keepOriginalPositionY = false;
+                        clip.keepOriginalPositionY = targetKeepY;
                         modified = true;
-                        Debug.Log($"  Set keepOriginalPositionY=0 on clip '{clip.name}' in: {path}");
+                        Debug.Log($"  Clip '{clip.name}' in {path} → keepOriginalPositionY={(targetKeepY ? 1 : 0)}");
                     }
                 }
                 importer.clipAnimations = clips;
@@ -1071,9 +1097,22 @@ public class AnimatorSetupTool
             }
             else
             {
-                Debug.Log($"  Already correct (keepOriginalPositionY=0): {path}");
+                Debug.Log($"  Already correct: {path}");
             }
         }
+
+        // Idle clip source → keep Y at bind pose (ignore root curves)
+        SetKeepY("Assets/Models/NewModel/Model quân ta/model_ho_bon_quan/animation_ho_bon_quan.fbx", true);
+        SetKeepY("Assets/Models/NewModel/Model quân địch/Trang_thai_cho_quan_dich.fbx", true);
+
+        // Run clip source → allow root Y curve (keeps feet at correct height during run)
+        SetKeepY("Assets/Models/NewModel/medieval knight 3d model@Sword And Shield Run.fbx", false);
+
+        // Attack clip source → ignore root Y curves
+        SetKeepY("Assets/Models/NewModel/medieval knight 3d model@Sword And Shield Slash.fbx", true);
+
+        // Die clip source → ignore root Y curves
+        SetKeepY("Assets/Models/NewModel/medieval knight 3d model@Sword And Shield Death.fbx", true);
 
         Debug.Log("--- END FIX INFANTRY ANIMATION IMPORT SETTINGS ---");
     }

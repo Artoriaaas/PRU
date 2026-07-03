@@ -28,8 +28,8 @@ public class Unit : MonoBehaviour
     private Transform _leftHand;
     private Transform _graphicsTransform;
     private Quaternion _initialGraphicsRotation = Quaternion.identity;
-    private Transform _rootBone; // For king run animation root motion fix
-    private float _defaultRootBoneLocalY; // Neutral Hips Y captured before animation plays, to prevent root curves from sinking the character
+    private Transform _rootBone; // For king run animation root motion XZ fix
+    private float _defaultRootBoneLocalY; // Neutral Hips Y captured before animation plays
     private bool _rootBoneYCaptured; // Whether _defaultRootBoneLocalY has been set from the bind pose
 
     public UnitState state = UnitState.Idle;
@@ -227,8 +227,6 @@ public class Unit : MonoBehaviour
 
         // Cache the Hips bone immediately (before animation plays) so we can capture the
         // neutral localPosition.Y and prevent animation root curves from sinking the character.
-        // Note: unitTypeIndex is set by GameManager AFTER AddComponent<Unit>(), so it's
-        // still the default (0) here. We search regardless and let LateUpdate guard by type.
         if (_animator != null)
         {
             foreach (Transform t in _animator.GetComponentsInChildren<Transform>(true))
@@ -236,8 +234,6 @@ public class Unit : MonoBehaviour
                 if (t.name.ToLower().Contains("hips"))
                 {
                     _rootBone = t;
-                    // Capture the neutral Hips Y before any animation frame plays, so the
-                    // LateUpdate fix can lock the root bone to this correct height.
                     _defaultRootBoneLocalY = t.localPosition.y;
                     _rootBoneYCaptured = true;
                     break;
@@ -689,8 +685,7 @@ public class Unit : MonoBehaviour
         }
 
         // Fallback root bone find: if Awake didn't find it (e.g. graphics model parented after Awake),
-        // retry on the first LateUpdate here and capture Y immediately (may not be perfect if
-        // animation already played, but better than nothing).
+        // retry on the first LateUpdate here and capture Y immediately.
         if (_rootBone == null && _animator != null)
         {
             foreach (var t in _animator.GetComponentsInChildren<Transform>(true))
@@ -700,7 +695,6 @@ public class Unit : MonoBehaviour
                     _rootBone = t;
                     if (!_rootBoneYCaptured)
                     {
-                        // Try to reset to idle frame 0 first for a clean capture
                         _animator.Play("Idle", 0, 0f);
                         _animator.Update(0f);
                         _defaultRootBoneLocalY = t.localPosition.y;
@@ -711,21 +705,22 @@ public class Unit : MonoBehaviour
             }
         }
 
-        // Root bone position drift fix: reset Hips to neutral position to prevent animation
-        // root curves from sinking the character or causing sliding. Animation RootT curves
-        // displace the root bone even with applyRootMotion=false — the Y axis specifically
-        // causes the character to sink into the ground when clips have different root heights
-        // (e.g. idle from ho_bon_quan.fbx vs run/attack from medieval knight FBX).
-        // Capture the initial neutral Y on first frame, then reset to it in ALL states.
+        // Root bone position drift fix: reset Hips to neutral Y position to prevent animation
+        // root curves from sinking the character. Only reset Y during Idle to avoid fighting
+        // with attack/death animations that have intentional Y movement.
+        // Reset XZ during Moving for king only to prevent sliding.
         if (_rootBone != null)
         {
             Vector3 pos = _rootBone.localPosition;
-            if (state == UnitState.Moving)
+            if (state == UnitState.Moving && unitTypeIndex == 4)
             {
                 pos.x = 0;
                 pos.z = 0;
             }
-            pos.y = _defaultRootBoneLocalY;
+            if (state == UnitState.Idle)
+            {
+                pos.y = _defaultRootBoneLocalY;
+            }
             _rootBone.localPosition = pos;
         }
 

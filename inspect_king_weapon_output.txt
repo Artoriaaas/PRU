@@ -1,0 +1,130 @@
+
+=== Hierarchy: Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx ===
+model_vua_after_update
+  Armature
+    Bone
+      Bone_end
+      meshes[0].001 << WEAPON MESH
+        Left_grip
+    mixamorig:Hips
+      mixamorig:LeftUpLeg
+        mixamorig:LeftLeg
+          mixamorig:LeftFoot
+            mixamorig:LeftToeBase
+              mixamorig:LeftToe_End
+                mixamorig:LeftToe_End_end
+      mixamorig:RightUpLeg
+        mixamorig:RightLeg
+          mixamorig:RightFoot
+            mixamorig:RightToeBase
+              mixamorig:RightToe_End
+                mixamorig:RightToe_End_end
+      mixamorig:Spine
+        mixamorig:Spine1
+          mixamorig:Spine2
+            mixamorig:LeftShoulder
+              mixamorig:LeftArm
+                mixamorig:LeftForeArm
+                  mixamorig:LeftHand << HAND BONE
+                    mixamorig:LeftHandIndex1 << HAND BONE
+                      mixamorig:LeftHandIndex2 << HAND BONE
+                        mixamorig:LeftHandIndex3 << HAND BONE
+                          mixamorig:LeftHandIndex4 << HAND BONE
+                            mixamorig:LeftHandIndex4_end << HAND BONE
+            mixamorig:Neck
+              bone_sword << WEAPON MESH
+                mixamorig:HeadTop_End
+                  mixamorig:HeadTop_End_end
+            mixamorig:RightShoulder
+              mixamorig:RightArm
+                mixamorig:RightForeArm
+                  mixamorig:RightHand << HAND BONE
+                    mixamorig:RightHandIndex1 << HAND BONE
+                      mixamorig:RightHandIndex2 << HAND BONE
+                        mixamorig:RightHandIndex3 << HAND BONE
+                          mixamorig:RightHandIndex4 << HAND BONE
+                            mixamorig:RightHandIndex4_end << HAND BONE
+  meshes[0]
+
+--- Renderers in model_vua_after_update.fbx ---
+  Renderer: 'meshes[0].001'  Type=MeshRenderer  Parent='Bone'
+  Renderer: 'meshes[0]'  Type=SkinnedMeshRenderer  Parent='model_vua_after_update'
+
+--- Bones with 'hand' or 'wrist' in name ---
+  'mixamorig:LeftHand'  worldPos=(-0.19, 0.55, -0.02)  parent='mixamorig:LeftForeArm'
+  'mixamorig:LeftHandIndex1'  worldPos=(-0.22, 0.54, -0.05)  parent='mixamorig:LeftHand'
+  'mixamorig:LeftHandIndex2'  worldPos=(-0.23, 0.54, -0.04)  parent='mixamorig:LeftHandIndex1'
+  'mixamorig:LeftHandIndex3'  worldPos=(-0.23, 0.55, -0.03)  parent='mixamorig:LeftHandIndex2'
+  'mixamorig:LeftHandIndex4'  worldPos=(-0.21, 0.55, -0.03)  parent='mixamorig:LeftHandIndex3'
+  'mixamorig:LeftHandIndex4_end'  worldPos=(-0.20, 0.56, -0.03)  parent='mixamorig:LeftHandIndex4'
+  'mixamorig:RightHand'  worldPos=(-0.18, 0.51, 0.08)  parent='mixamorig:RightForeArm'
+  'mixamorig:RightHandIndex1'  worldPos=(-0.22, 0.49, 0.06)  parent='mixamorig:RightHand'
+  'mixamorig:RightHandIndex2'  worldPos=(-0.22, 0.49, 0.06)  parent='mixamorig:RightHandIndex1'
+  'mixamorig:RightHandIndex3'  worldPos=(-0.21, 0.50, 0.06)  parent='mixamorig:RightHandIndex2'
+  'mixamorig:RightHandIndex4'  worldPos=(-0.20, 0.50, 0.07)  parent='mixamorig:RightHandIndex3'
+  'mixamorig:RightHandIndex4_end'  worldPos=(-0.19, 0.50, 0.07)  parent='mixamorig:RightHandIndex4'
+
+=== Hierarchy: Assets/Models/NewModel/Model quân ta/Model_vua/animation_idle_vua.fbx ===
+animation_idle_vua
+  Armature
+    Bone
+      Bone_end
+      meshes[0].001 << WEAPON MESH
+        Left_grip
+    mixamorig:Hips
+      mixamorig:LeftUpLeg
+        mixamorig:LeftLeg
+          mixamorig:LeftFoot
+            mixamorig:LeftToeBase
+              mixamorig:LeftToe_End
+                mixamorig:LeftToe_End_end
+      mixamorig:RightUpLeg
+        mixamorig:RightLeg
+          mixamorig:RightFoot
+            mixamorig:RightToeBase
+              mixamorig:RightToe_End
+                mixamorig:RightToe_End_end
+      mixamorig:Spine
+        mixamorig:Spine1
+          mixamorig:Spine2
+            mixamorig:LeftShoulder
+              mixamorig:LeftArm
+                mixamorig:LeftForeArm
+                  mixamorig:LeftHand << HAND BONE
+                    mixamorig:LeftHandIndex1 << HAND BONE
+                      mixamorig:LeftHandIndex2 << HAND BONE
+                        mixamorig:LeftHandIndex3 << HAND BONE
+                          mixamorig:LeftHandIndex4 << HAND BONE
+                            mixamorig:LeftHandIndex4_end << HAND BONE
+            mixamorig:Neck
+              bone_sword << WEAPON MESH
+                mixamorig:HeadTop_End
+                  mixamorig:HeadTop_End_end
+            mixamorig:RightShoulder
+              mixamorig:RightArm
+                mixamorig:RightForeArm
+                  mixamorig:RightHand << HAND BONE
+                    mixamorig:RightHandIndex1 << HAND BONE
+                      mixamorig:RightHandIndex2 << HAND BONE
+                        mixamorig:RightHandIndex3 << HAND BONE
+                          mixamorig:RightHandIndex4 << HAND BONE
+                            mixamorig:RightHandIndex4_end << HAND BONE
+  meshes[0]
+
+--- Renderers in animation_idle_vua.fbx ---
+  Renderer: 'meshes[0].001'  Type=MeshRenderer  Parent='Bone'
+  Renderer: 'meshes[0]'  Type=SkinnedMeshRenderer  Parent='animation_idle_vua'
+
+--- Bones with 'hand' or 'wrist' in name ---
+  'mixamorig:LeftHand'  worldPos=(-0.10, 0.48, -0.09)  parent='mixamorig:LeftForeArm'
+  'mixamorig:LeftHandIndex1'  worldPos=(-0.09, 0.44, -0.11)  parent='mixamorig:LeftHand'
+  'mixamorig:LeftHandIndex2'  worldPos=(-0.09, 0.43, -0.11)  parent='mixamorig:LeftHandIndex1'
+  'mixamorig:LeftHandIndex3'  worldPos=(-0.08, 0.42, -0.11)  parent='mixamorig:LeftHandIndex2'
+  'mixamorig:LeftHandIndex4'  worldPos=(-0.08, 0.41, -0.11)  parent='mixamorig:LeftHandIndex3'
+  'mixamorig:LeftHandIndex4_end'  worldPos=(-0.08, 0.40, -0.11)  parent='mixamorig:LeftHandIndex4'
+  'mixamorig:RightHand'  worldPos=(0.09, 0.48, 0.11)  parent='mixamorig:RightForeArm'
+  'mixamorig:RightHandIndex1'  worldPos=(0.07, 0.44, 0.12)  parent='mixamorig:RightHand'
+  'mixamorig:RightHandIndex2'  worldPos=(0.07, 0.43, 0.12)  parent='mixamorig:RightHandIndex1'
+  'mixamorig:RightHandIndex3'  worldPos=(0.07, 0.42, 0.11)  parent='mixamorig:RightHandIndex2'
+  'mixamorig:RightHandIndex4'  worldPos=(0.06, 0.41, 0.11)  parent='mixamorig:RightHandIndex3'
+  'mixamorig:RightHandIndex4_end'  worldPos=(0.06, 0.41, 0.11)  parent='mixamorig:RightHandIndex4'
