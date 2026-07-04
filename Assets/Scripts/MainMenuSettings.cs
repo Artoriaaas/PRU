@@ -39,11 +39,11 @@ public class MainMenuSettings : MonoBehaviour
         {
             if (volume <= 0f)
             {
-                musicStatusText.text = "Music OFF";
+                musicStatusText.text = "Âm nhạc: TẮT";
             }
             else
             {
-                musicStatusText.text = $"Music: {Mathf.RoundToInt(volume * 100)}%";
+                musicStatusText.text = $"Âm nhạc: {Mathf.RoundToInt(volume * 100)}%";
             }
         }
     }

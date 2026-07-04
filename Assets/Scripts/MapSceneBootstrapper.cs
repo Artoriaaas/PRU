@@ -642,11 +642,11 @@ public class MapSceneBootstrapper : MonoBehaviour
         mbRT.sizeDelta = new Vector2(400f, 500f);
         mbRT.anchoredPosition = Vector2.zero;
         Image mbImg = menuBox.GetComponent<Image>();
-        ApplySprite(mbImg, "SettingPanel", true);
+        ApplySprite(mbImg, "CaiDat_Panel", true);
 
-        CreateSettingsButton(menuBox.transform, "SaveButton", "Save", 100f, () => Debug.Log("Save Clicked"));
-        CreateSettingsButton(menuBox.transform, "LoadButton", "Load", 30f, () => Debug.Log("Load Clicked"));
-        CreateSettingsButton(menuBox.transform, "QuitButton", "Back to menu", -40f, () => UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenuScene"));
+        CreateSettingsButton(menuBox.transform, "SaveButton", "Lưu", 100f, () => Debug.Log("Save Clicked"));
+        CreateSettingsButton(menuBox.transform, "LoadButton", "Tải", 30f, () => Debug.Log("Load Clicked"));
+        CreateSettingsButton(menuBox.transform, "QuitButton", "Về trình đơn", -40f, () => UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenuScene"));
 
         GameObject musicControl = new GameObject("MusicControl");
         RectTransform mcRT = musicControl.AddComponent<RectTransform>();
@@ -657,7 +657,7 @@ public class MapSceneBootstrapper : MonoBehaviour
         mcRT.sizeDelta = new Vector2(300f, 50f);
         mcRT.anchoredPosition = new Vector2(0f, -120f);
 
-        musicStatusText = CreateText(musicControl.transform, "MusicStatus", "Music: 100%", 20, TextAnchor.MiddleLeft);
+        musicStatusText = CreateText(musicControl.transform, "MusicStatus", "Âm nhạc: 100%", 20, TextAnchor.MiddleLeft);
         musicStatusText.rectTransform.anchorMin = new Vector2(0f, 0.5f);
         musicStatusText.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
         musicStatusText.rectTransform.pivot = new Vector2(0f, 0.5f);
@@ -786,7 +786,7 @@ public class MapSceneBootstrapper : MonoBehaviour
             }
             else
             {
-                musicStatusText.text = $"Music: {Mathf.RoundToInt(volume * 100)}%";
+                musicStatusText.text = $"Âm nhạc: {Mathf.RoundToInt(volume * 100)}%";
             }
         }
     }

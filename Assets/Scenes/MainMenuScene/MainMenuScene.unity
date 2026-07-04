@@ -226,7 +226,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: SETTINGS
+  m_Text: "B\u1EA2NG C\xC0I \u0110\u1EB6T"
 --- !u!222 &204659405
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -748,7 +748,6 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1616492840}
-  - {fileID: 1124919719}
   m_Father: {fileID: 2104171334}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -829,7 +828,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: ff58ba8aeea4c714a8bbc2e8d5ad8785, type: 3}
+  m_Sprite: {fileID: 21300000, guid: d30f718dd8bd42439e2c0e843c8b4173, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -872,50 +871,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainMenuCredits
   creditsText: {fileID: 2108206775}
-  creditsContent: 'DAI VIET RISING
-
-
-    Development Team
-
-    HuyPG
-
-    KietNT
-
-    VyMT
-
-
-    Design
-
-    HuyPG
-
-    KietNT
-
-    VyMT
-
-
-    Programming
-
-    HuyPG
-
-    KietNT
-
-    VyMT
-
-
-    Story
-    Writing
-
-    HuyPG
-
-    KietNT
-
-    VyMT
-
-
-    Special Thanks
-
-    For supporting
-    our project.'
+  creditsContent: "\u0110\u1EA0I VI\u1EC6T TR\u1ED6I D\u1EACY\nNh\xF3m ph\xE1t tri\u1EC3n\nHuyPG\nKietNT\nVyMT\nThi\u1EBFt
+    k\u1EBF\nHuyPG\nKietNT\nVyMT\nL\u1EADp tr\xECnh\nHuyPG\nKietNT\nVyMT\nVi\u1EBFt
+    c\u1ED1t truy\u1EC7n\nHuyPG\nKietNT\nVyMT\n\u0110\u1EB7c bi\u1EC7t c\u1EA3m \u01A1n\nC\u1EA3m
+    \u01A1n b\u1EA1n \u0111\xE3 \u1EE7ng h\u1ED9."
 --- !u!1 &558564538
 GameObject:
   m_ObjectHideFlags: 0
@@ -1213,7 +1172,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: Back
+  m_Text: "Quay l\u1EA1i"
 --- !u!222 &634868024
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1851,7 +1810,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: Back
+  m_Text: "Quay l\u1EA1i"
 --- !u!222 &1040884922
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -1859,81 +1818,6 @@ CanvasRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1040884919}
-  m_CullTransparentMesh: 1
---- !u!1 &1124919718
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1124919719}
-  - component: {fileID: 1124919721}
-  - component: {fileID: 1124919720}
-  m_Layer: 0
-  m_Name: GameSubTitle
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &1124919719
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1124919718}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1.5, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 424550211}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 1}
-  m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 405, y: -724.9994}
-  m_SizeDelta: {x: 700, y: 100}
-  m_Pivot: {x: 0.5, y: 1}
---- !u!114 &1124919720
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1124919718}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 6ddaba904418c0a42ad38c288b4da5cf, type: 3}
-  m_Type: 0
-  m_PreserveAspect: 1
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
---- !u!222 &1124919721
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1124919718}
   m_CullTransparentMesh: 1
 --- !u!1 &1271085788
 GameObject:
@@ -2313,7 +2197,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 7c7c8a2f4b5c4b3d9f1c39d7a4e6f31f, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 9044da5643654e1fa35ee38abfc5242c, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -3468,7 +3352,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 96df57ebc60fb29429c2e641e84620db, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a42669db438944be9e2cccb8e211c937, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
