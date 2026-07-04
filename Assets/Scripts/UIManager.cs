@@ -203,7 +203,7 @@ public class UIManager : MonoBehaviour
                     // Setup new visual for StartButton
                     Image startImg = startBtnTrans.GetComponent<Image>();
                     if (startImg != null) {
-                        Sprite startSprite = Resources.Load<Sprite>("StartBattle");
+                        Sprite startSprite = Resources.Load<Sprite>("ChienDau");
                         if (startSprite != null) {
                             startImg.sprite = startSprite;
                             startImg.color = Color.white;
@@ -366,7 +366,7 @@ public class UIManager : MonoBehaviour
                         RectTransform rtReturnBtn = returnBtnObj.GetComponent<RectTransform>();
                         rtReturnBtn.anchorMin = new Vector2(0.5f, 0.5f);
                         rtReturnBtn.anchorMax = new Vector2(0.5f, 0.5f);
-                        rtReturnBtn.anchoredPosition = new Vector2(-220, -180);
+                        rtReturnBtn.anchoredPosition = new Vector2(-220, -220);
                         rtReturnBtn.sizeDelta = new Vector2(400, 100);
 
                         // Recreate Back to Map Button
@@ -382,7 +382,7 @@ public class UIManager : MonoBehaviour
                         RectTransform rtMapBtn = mapBtnObj.GetComponent<RectTransform>();
                         rtMapBtn.anchorMin = new Vector2(0.5f, 0.5f);
                         rtMapBtn.anchorMax = new Vector2(0.5f, 0.5f);
-                        rtMapBtn.anchoredPosition = new Vector2(220, -180);
+                        rtMapBtn.anchoredPosition = new Vector2(220, -220);
                         rtMapBtn.sizeDelta = new Vector2(400, 100);
                     }
                     else
@@ -795,7 +795,7 @@ public class UIManager : MonoBehaviour
         GameObject btnObj = new GameObject("StartButton");
         btnObj.transform.SetParent(_bottomPanel.transform, false);
         Image btnImg = btnObj.AddComponent<Image>();
-        Sprite startSprite = Resources.Load<Sprite>("StartBattle");
+        Sprite startSprite = Resources.Load<Sprite>("ChienDau");
         if (startSprite != null) {
             btnImg.sprite = startSprite;
             btnImg.color = Color.white;
@@ -898,7 +898,7 @@ public class UIManager : MonoBehaviour
         RectTransform rtReturnBtn = returnBtnObj.GetComponent<RectTransform>();
         rtReturnBtn.anchorMin = new Vector2(0.5f, 0.5f);
         rtReturnBtn.anchorMax = new Vector2(0.5f, 0.5f);
-        rtReturnBtn.anchoredPosition = new Vector2(-220, -180);
+        rtReturnBtn.anchoredPosition = new Vector2(-220, -220);
         rtReturnBtn.sizeDelta = new Vector2(400, 100);
 
         // Back to Map Button
@@ -914,7 +914,7 @@ public class UIManager : MonoBehaviour
         RectTransform rtMapBtn = mapBtnObj.GetComponent<RectTransform>();
         rtMapBtn.anchorMin = new Vector2(0.5f, 0.5f);
         rtMapBtn.anchorMax = new Vector2(0.5f, 0.5f);
-        rtMapBtn.anchoredPosition = new Vector2(220, -180);
+        rtMapBtn.anchoredPosition = new Vector2(220, -220);
         rtMapBtn.sizeDelta = new Vector2(400, 100);
         
         _gameOverPanel.SetActive(false);

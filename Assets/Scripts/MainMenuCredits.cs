@@ -7,17 +7,17 @@ public class MainMenuCredits : MonoBehaviour
 
     [TextArea(8, 20)]
     public string creditsContent =
-        "DAI VIET RISING\n\n" +
-        "Development Team\n" +
+        "ĐẠI VIỆT TRỖI DẬY\n\n" +
+        "Nhóm phát triển\n" +
         "HuyPG\nKietNT\nVyMT\n\n" +
-        "Design\n" +
+        "Thiết kế\n" +
         "HuyPG\nKietNT\nVyMT\n\n" +
-        "Programming\n" +
+        "Lập trình\n" +
         "HuyPG\nKietNT\nVyMT\n\n" +
-        "Story Writing\n" +
+        "Viết cốt truyện\n" +
         "HuyPG\nKietNT\nVyMT\n\n" +
-        "Special Thanks\n" +
-        "For supporting our project.";
+        "Đặc biệt cảm ơn\n" +
+        "Cảm ơn bạn đã ủng hộ.";
 
     private void Awake()
     {
