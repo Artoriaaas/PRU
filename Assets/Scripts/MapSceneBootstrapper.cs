@@ -644,11 +644,6 @@ public class MapSceneBootstrapper : MonoBehaviour
         Image mbImg = menuBox.GetComponent<Image>();
         ApplySprite(mbImg, "SettingPanel", true);
 
-        Text titleText = CreateText(menuBox.transform, "Title", "SETTINGS", 32, TextAnchor.MiddleCenter);
-        titleText.rectTransform.anchorMin = new Vector2(0f, 0.8f);
-        titleText.rectTransform.anchorMax = new Vector2(1f, 1f);
-        titleText.rectTransform.sizeDelta = Vector2.zero;
-
         CreateSettingsButton(menuBox.transform, "SaveButton", "Save", 100f, () => Debug.Log("Save Clicked"));
         CreateSettingsButton(menuBox.transform, "LoadButton", "Load", 30f, () => Debug.Log("Load Clicked"));
         CreateSettingsButton(menuBox.transform, "QuitButton", "Back to menu", -40f, () => UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenuScene"));
