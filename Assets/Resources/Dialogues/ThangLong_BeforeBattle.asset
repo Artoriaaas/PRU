@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d018669f3f177774b9ea54228bfcdfb1, type: 3}
+  m_Name: ThangLong_BeforeBattle
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  characterASprite: {fileID: 21300000, guid: 5e95bcb6fc9bce142bff8c284a63cc80, type: 3}
+  characterBSprite: {fileID: 21300000, guid: e4ebb96b99b8a5842b6ec71f45b75da0, type: 3}
+  portraitWidth: 800
+  portraitHeight: 700
+  dialogueNodes:
+  - speakerName: "Tr\u1EA7n Th\xE1nh T\xF4ng"
+    text: "Ti\u1EBFt ch\u1EBF, Toa \u0110\xF4 \u0111\xE3 \u0111\u1EC1n t\u1ED9i,
+      c\xE1c th\u1EE7y tr\u1EA1i gi\u1EB7c \u0111\u1EC1u ch\xECm trong bi\u1EC3n
+      l\u1EEDa. Gi\u1EDD l\xE0 l\xFAc v\xE2y h\xE3m Th\u0103ng Long?"
+    isCharacterA: 1
+  - speakerName: "Tr\u1EA7n Qu\u1ED1c Tu\u1EA5n"
+    text: "T\xE2u Th\u01B0\u1EE3ng ho\xE0ng, \u0111\u1EA1i qu\xE2n ta \u0111\xE3
+      kh\xE9p ch\u1EB7t v\xF2ng v\xE2y. Tho\xE1t Hoan hi\u1EC7n nh\u01B0 c\xE1 n\u1EB1m
+      tr\xEAn th\u1EDBt, ho\u1EA3ng lo\u1EA1n t\u1ED9t \u0111\u1ED9."
+    isCharacterA: 0
+  - speakerName: "Tr\u1EA7n Th\xE1nh T\xF4ng"
+    text: "B\u1ECDn ch\xFAng v\u1EABn ngoan c\u1ED1 b\xE1m tr\u1EE5. Khanh c\xF3
+      \u0111\u1ECBnh d\u1ED1c to\xE0n l\u1EF1c c\xF4ng th\xE0nh, ph\xE1 c\u1ED5ng
+      kh\xF4ng?"
+    isCharacterA: 1
+  - speakerName: "Tr\u1EA7n Qu\u1ED1c Tu\u1EA5n"
+    text: "Kh\xF4ng c\u1EA7n \u0111\u1ED5 m\xE1u v\xF4 \xEDch. L\u01B0\u01A1ng c\u1EA1n,
+      l\xEDnh \u1ED1m, gi\u1EB7c \u0111\xE3 r\u1EC7u r\xE3. Ta c\u1EE9 ph\xE1o k\xEDch
+      li\xEAn t\u1EE5c, Tho\xE1t Hoan t\u1EA5t ho\u1EA3ng s\u1EE3 th\xE1o ch\u1EA1y."
+    isCharacterA: 0
+  - speakerName: "Tr\u1EA7n Th\xE1nh T\xF4ng"
+    text: "Tuy\u1EC7t di\u1EC7u! H\xE3y ch\u1EEBa m\u1ED9t \u0111\u01B0\u1EDDng m\xE1u
+      cho ch\xFAng ch\u1EA1y v\u1EC1 L\u1EA1ng S\u01A1n, ta s\u1EBD cho qu\xE2n ph\u1EE5c
+      k\xEDch ti\xEAu di\u1EC7t t\xE0n d\u01B0!"
+    isCharacterA: 1

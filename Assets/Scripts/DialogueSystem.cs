@@ -186,6 +186,25 @@ public class DialogueSystem : MonoBehaviour
     public System.Action onDialogueStart;
     public System.Action onDialogueEnd;
 
+    /// <summary>
+    /// Load dialogue content from a DialogueData ScriptableObject asset.
+    /// Overrides current dialogueNodes and sprites with the asset's data.
+    /// </summary>
+    public void LoadFromData(DialogueData data)
+    {
+        dialogueData = data;
+        if (data == null) return;
+
+        if (data.characterASprite != null) characterASprite = data.characterASprite;
+        if (data.characterBSprite != null) characterBSprite = data.characterBSprite;
+
+        dialogueNodes.Clear();
+        foreach (var node in data.dialogueNodes)
+        {
+            dialogueNodes.Add(node);
+        }
+    }
+
     public void StartDialogue()
     {
         if (dialogueOverlay != null)

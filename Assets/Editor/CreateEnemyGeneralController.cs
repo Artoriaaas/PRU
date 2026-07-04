@@ -46,8 +46,11 @@ public class CreateEnemyGeneralController
             {
                 var newBinding = NormalisePath(binding);
 
-                // Strip root rotation to prevent tilting
-                bool isRoot = newBinding.path == "" || newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
+                // Strip root rotation to prevent tilting.
+                // IMPORTANT: Only strip the Armature empty-parent transform, NOT mixamorig:Hips!
+                // mixamorig:Hips is the functional root bone of the skeleton — stripping its
+                // rotation keeps the entire skeleton at bind-pose (T-pose).
+                bool isRoot = newBinding.path == "" || newBinding.path == "Armature";
                 if (isRoot && newBinding.propertyName.Contains("m_LocalRotation")) continue;
 
                 // Strip X/Z root translation (root motion)
@@ -61,7 +64,7 @@ public class CreateEnemyGeneralController
             foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(sourceClip))
             {
                 var newBinding = NormalisePath(binding);
-                bool isRoot = newBinding.path == "" || newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
+                bool isRoot = newBinding.path == "" || newBinding.path == "Armature";
                 if (isRoot && newBinding.propertyName.Contains("m_LocalRotation")) continue;
                 if (isRoot && (newBinding.propertyName.Contains("m_LocalPosition.x") || newBinding.propertyName.Contains("m_LocalPosition.z"))) continue;
 

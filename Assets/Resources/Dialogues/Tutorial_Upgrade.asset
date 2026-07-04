@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d018669f3f177774b9ea54228bfcdfb1, type: 3}
+  m_Name: Tutorial_Upgrade
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  characterASprite: {fileID: 21300000, guid: 5e95bcb6fc9bce142bff8c284a63cc80, type: 3}
+  characterBSprite: {fileID: 21300000, guid: 6c5191d4e961a7a4cab6385fa7cbb90f, type: 3}
+  portraitWidth: 800
+  portraitHeight: 700
+  dialogueNodes:
+  - speakerName: "Tr\u1EA7n Quang Kh\u1EA3i"
+    text: "B\u1EA9m t\u01B0\u1EDBng qu\xE2n, tuy qu\xE2n ta \u0111\xE3 \u0111\xE1nh
+      lui qu\xE2n \u0111\u1ECBch nh\u01B0ng qu\xE2n ta v\u1EABn c\xF2n y\u1EBFu.
+      th\u1EA7n ngh\u0129 ch\xFAng ta ph\u1EA3i c\u1EA3i thi\u1EC7n qu\xE2n \u0111\u1ED9i
+      c\u1EE7a ch\xFAng ta"
+    isCharacterA: 0
+  - speakerName: "Tr\u1EA7n Th\xE1nh T\xF4ng"
+    text: "V\u1EADy theo ng\u01B0\u01A1i ch\xFAng ta n\xEAn l\xE0m g\xEC."
+    isCharacterA: 1
+  - speakerName: "Tr\u1EA7n Quang Kh\u1EA3i"
+    text: "Theo th\u1EA7n th\xEC ch\xFAng ta n\xEAn n\xE2ng..."
+    isCharacterA: 0
+  - speakerName: "Tr\u1EA7n Th\xE1nh T\xF4ng"
+    text: "Tr\u1EABm tin v\xE0o ph\xE1n \u0111o\xE1n c\u1EE7a ng\u01B0\u01A1i, ngay
+      l\u1EADp t\u1EE9c cho qu\xE2n tri\u1EC3n khai!"
+    isCharacterA: 1

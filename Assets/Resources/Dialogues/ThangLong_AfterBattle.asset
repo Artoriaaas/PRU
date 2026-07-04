@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d018669f3f177774b9ea54228bfcdfb1, type: 3}
+  m_Name: ThangLong_AfterBattle
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueData
+  characterASprite: {fileID: 21300000, guid: 5e95bcb6fc9bce142bff8c284a63cc80, type: 3}
+  characterBSprite: {fileID: 21300000, guid: 6c5191d4e961a7a4cab6385fa7cbb90f, type: 3}
+  portraitWidth: 800
+  portraitHeight: 700
+  dialogueNodes:
+  - speakerName: "Tr\u1EA7n Quang Kh\u1EA3i"
+    text: "Kh\u1EA3i t\xE2u Th\u01B0\u1EE3ng ho\xE0ng! Tho\xE1t Hoan s\u1EE3 h\xE3i
+      ph\u1EA3i chui v\xE0o \u1ED1ng \u0111\u1ED3ng \u0111\u1EC3 tr\u1ED1n ch\u1EA1y.
+      Th\u0103ng Long \u0111\xE3 ho\xE0n to\xE0n s\u1EA1ch b\xF3ng qu\xE2n th\xF9!"
+    isCharacterA: 0
+  - speakerName: "Tr\u1EA7n Th\xE1nh T\xF4ng"
+    text: "Tr\u1EADn n\xE0y oanh li\u1EC7t l\u1EAFm! M\u1EA5y th\xE1ng tr\u01B0\u1EDBc
+      tr\u1EABm b\u1ECF ng\u1ECF kinh th\xE0nh l\xF2ng \u0111au nh\u01B0 c\u1EAFt,
+      nay giang s\u01A1n l\u1EA1i thu v\u1EC1 m\u1ED9t m\u1ED1i."
+    isCharacterA: 1
+  - speakerName: "Tr\u1EA7n Quang Kh\u1EA3i"
+    text: "Uy danh b\xE1ch chi\u1EBFn c\u1EE7a M\xF4ng C\u1ED5 \u0111\xE3 b\u1ECB
+      v\xF9i l\u1EA5p t\u1EA1i \u0110\u1EA1i Vi\u1EC7t. Th\u1EA7n xin m\u1EA1n ph\xE9p
+      ng\xE2m c\xE2u: '\u0110o\u1EA1t gi\xE1o Ch\u01B0\u01A1ng D\u01B0\u01A1ng \u0111\u1ED9,
+      C\u1EA7m H\u1ED3 H\xE0m T\u1EED quan'."
+    isCharacterA: 0
+  - speakerName: "Tr\u1EA7n Th\xE1nh T\xF4ng"
+    text: "Hay! Th\xE1i s\u01B0 qu\u1EA3 l\xE0 v\u0103n v\xF5 song to\xE0n. L\xF2ng
+      d\xE2n \u0111\u1ED3ng t\xE2m, t\u01B0\u1EDBng s\u0129 d\u1ED1c s\u1EE9c, \u0110\u1EA1i
+      Vi\u1EC7t ta h\xE0o kh\xED ng\xFAt tr\u1EDDi."
+    isCharacterA: 1
+  - speakerName: "Tr\u1EA7n Quang Kh\u1EA3i"
+    text: "'Th\xE1i b\xECnh tu tr\xED l\u1EF1c, V\u1EA1n c\u1ED5 th\u1EED giang san'.
+      Nay xin r\u01B0\u1EDBc Th\u01B0\u1EE3ng Ho\xE0ng v\xE0 Ho\xE0ng \u0111\u1EBF
+      v\u1EC1 l\u1EA1i kinh k\u1EF3, kh\xF4i ph\u1EE5c b\xE1 nghi\u1EC7p!"
+    isCharacterA: 0

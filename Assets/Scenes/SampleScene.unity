@@ -12986,7 +12986,19 @@ MonoBehaviour:
   enemyViewRot: {x: 50, y: -89, z: 0}
   battleViewPos: {x: 18, y: 6.5, z: 0.4}
   battleViewRot: {x: 15, y: -90, z: 0}
+  useOrthographic: 0
+  orthographicSize: 135
+  fieldOfView: 50
   transitionSpeed: 4
+  battleFieldOfView: 60
+  baselineCameraHeight: 304.4
+  baselineXOffsetFromLayout: 40
+  baselineZOffsetToGrid: 280.895
+  baselineRotationX: 48.9
+  battleCameraHeight: 200
+  battleXOffset: 0
+  battleZOffset: 240
+  battlePitchAngle: 40
 --- !u!1 &333477531
 GameObject:
   m_ObjectHideFlags: 0

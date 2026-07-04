@@ -42,15 +42,18 @@ public class GameManager : MonoBehaviour
         if (arrowSpeed < 300f) arrowSpeed = 400f;
         if (arrowArcHeight < 1f) arrowArcHeight = 15f;
 
-        // Force general model scale (+20%) and position offset corrections to center it
-        if (kingScale == 60.0f)
-        {
-            kingScale = 72.0f;
-        }
-        if (kingPositionOffset == Vector3.zero)
-        {
-            kingPositionOffset = new Vector3(-0.5f, 0f, 0f);
-        }
+        // Force all unit Y to 0.03 (ground level) and correct offsets at runtime
+        // (scene serialized values may be stale if .unity was edited externally before reload).
+        modelPositionOffset.y = 0.03f;
+        archerPositionOffset.y = 0.03f;
+        kingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
+        kingScale = 72.0f;
+        kingRotationOffset = new Vector3(0f, 90f, 0f); // Compensate for model bind pose: without offset model faces 90° LEFT
+        // kingWeaponPositionOffset and kingWeaponRotationOffset are intentionally NOT force-reset here
+        // so values tuned in the Inspector (Play Mode) are preserved between runs.
+        enemyKingRotationOffset = new Vector3(0f, 90f, 0f); // Same bind pose compensation as player king
+        enemyKingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
+        enemyKingScale = 72.0f;
 
 #if UNITY_EDITOR
         if (arrowPrefab == null)
@@ -198,7 +201,7 @@ public class GameManager : MonoBehaviour
     [Tooltip("Drag your Ho Bon Quan FBX/Prefab here. If left empty, it will auto-load from Assets in Editor.")]
     public GameObject hoBonQuanPrefab;
     public Vector3 modelRotationOffset = new Vector3(0f, 0f, 0f); // default to 0 for ModelQuanLinh, user can adjust
-    public Vector3 modelPositionOffset = new Vector3(0f, 0f, 0f);
+    public Vector3 modelPositionOffset = new Vector3(0f, 0.03f, 0f);
     public float modelScale = 15.0f;
     public float capsuleScale = 15f; // Scale up the capsules to be clearly visible
     public bool autoAlignBottom = true;
@@ -209,7 +212,7 @@ public class GameManager : MonoBehaviour
     [Tooltip("Drag your Archer FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/animation_cung_quan_ta.fbx in Editor.")]
     public GameObject archerModelPrefab;
     public Vector3 archerRotationOffset = new Vector3(0f, 0f, 0f); // default to 0 for animation_ban_cung_quan_ta to face forward
-    public Vector3 archerPositionOffset = new Vector3(0f, 0f, 0f);
+    public Vector3 archerPositionOffset = new Vector3(0f, 0.03f, 0f);
     public float archerScale = 60.0f;
     [Tooltip("Drag the texture JPEG/PNG for Archer here. If left empty, it will auto-detect from .fbm folders in Editor.")]
     public Texture2D archerBaseColorTexture;
@@ -229,17 +232,21 @@ public class GameManager : MonoBehaviour
     [Header("King Model Settings")]
     [Tooltip("Drag your King FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx in Editor.")]
     public GameObject kingModelPrefab;
-    public Vector3 kingRotationOffset = new Vector3(0f, 90f, 0f);
-    public Vector3 kingPositionOffset = new Vector3(-0.5f, 0f, 0f);
+    public Vector3 kingRotationOffset = new Vector3(0f, 0f, 0f);
+    public Vector3 kingPositionOffset = new Vector3(0f, 0.03f, 0f);
     public float kingScale = 72.0f;
     [Tooltip("Assign your Animator Controller for the King here.")]
     public RuntimeAnimatorController kingAnimatorController;
+    [Tooltip("Local position of the king's weapon mesh (meshes[0].001) relative to mixamorig:RightHand. Tune in Inspector to fix sword offset. Z = negative to push sword back toward palm.")]
+    public Vector3 kingWeaponPositionOffset = new Vector3(0f, 0f, -0.0003f);
+    [Tooltip("Local rotation (euler) of the king's weapon mesh relative to mixamorig:RightHand. Tune in Inspector to fix sword offset.")]
+    public Vector3 kingWeaponRotationOffset = new Vector3(0f, 0f, 0f);
 
     [Header("Enemy King/General Model Settings")]
     [Tooltip("Drag your Enemy General FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx in Editor.")]
     public GameObject enemyKingModelPrefab;
-    public Vector3 enemyKingRotationOffset = new Vector3(0f, -90f, 0f); // Symmetrical to player king (facing opposite direction)
-    public Vector3 enemyKingPositionOffset = new Vector3(0.5f, 0f, 0f); // Symmetrical to player king
+    public Vector3 enemyKingRotationOffset = new Vector3(0f, 0f, 0f);
+    public Vector3 enemyKingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
     public float enemyKingScale = 72.0f;
     [Tooltip("Assign your Animator Controller for the Enemy General here.")]
     public RuntimeAnimatorController enemyKingAnimatorController;
@@ -350,6 +357,34 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
+#else
+        // Build path: use serialized prefab references directly
+        if (!isCapsule)
+        {
+            if (isPlayer)
+            {
+                if (unitTypeIndex == 0)
+                {
+                    if (SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
+                        loadedModel = hoBonQuanPrefab;
+                    else
+                        loadedModel = unitModelPrefab;
+                }
+                else if (unitTypeIndex == 1)
+                    loadedModel = archerModelPrefab;
+                else if (unitTypeIndex == 4)
+                    loadedModel = kingModelPrefab;
+            }
+            else
+            {
+                if (unitTypeIndex == 0)
+                    loadedModel = enemyUnitModelPrefab;
+                else if (unitTypeIndex == 1)
+                    loadedModel = enemyArcherModelPrefab;
+                else if (unitTypeIndex == 4)
+                    loadedModel = enemyKingModelPrefab;
+            }
+        }
 #endif
         if (loadedModel == null)
         {
@@ -402,13 +437,17 @@ public class GameManager : MonoBehaviour
                     rotationOffset = enemyKingRotationOffset;
                     positionOffset = enemyKingPositionOffset;
                     scaleVal = enemyKingScale;
-                    animController = enemyKingAnimatorController != null ? enemyKingAnimatorController : kingAnimatorController;
+                    animController = enemyKingAnimatorController;
 #if UNITY_EDITOR
                     if (animController == null)
                     {
-                        animController = UnityEditor.AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Art/Animations/QuanVuaAnimatorController.controller");
+                        animController = UnityEditor.AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>("Assets/Art/Animations/QuanTuongDichAnimatorController.controller");
                     }
 #endif
+                    if (animController == null)
+                    {
+                        animController = kingAnimatorController;
+                    }
                 }
             }
 
@@ -436,7 +475,10 @@ public class GameManager : MonoBehaviour
                 animator.runtimeAnimatorController = animController;
             }
 
-            if (unitTypeIndex == 1 && animator.runtimeAnimatorController != null)
+            // Force all units to start at neutral Idle frame 0 to prevent animation root curves
+            // from snapping the skeleton to a sunk Y position before the first rendered frame.
+            // (Previously only archer/king had this — now applied to all units to prevent sinking.)
+            if (animator.runtimeAnimatorController != null)
             {
                 animator.ResetTrigger("Attack");
                 animator.ResetTrigger("Die");
@@ -543,7 +585,7 @@ public class GameManager : MonoBehaviour
                 foreach (var r in rends)
                 {
                     // Skip weapon renderers (like the King's sword meshes[0].001) so they don't get overwritten with the body texture
-                    if (r.name.Contains("meshes[0].001") || r.name.ToLower().Contains("sword") || r.name.ToLower().Contains("weapon") || r.name.ToLower().Contains("bow") || r.name.ToLower().Contains("shield") || r.name.ToLower().Contains("arrow"))
+                    if (r.name.ToLower().Contains("sword") || r.name.ToLower().Contains("weapon") || r.name.ToLower().Contains("bow") || r.name.ToLower().Contains("shield") || r.name.ToLower().Contains("arrow"))
                     {
                         continue;
                     }
@@ -555,28 +597,56 @@ public class GameManager : MonoBehaviour
                 }
             }
 
-            // For the Player King: parent sword bone (Armature/Bone) to RightHand at runtime.
-            // All animation curves for Armature/Bone are stripped in AnimatorSetupTool,
-            // so the sword won't fight between animation and parenting.
-            // For the Enemy General: the axe (meshes[0].001) is already parented to
-            // mixamorig:RightHand in the FBX hierarchy, so no extra parenting is needed.
-            if (unitTypeIndex == 4 && isPlayer)
+            // King/General weapon: "meshes[0].001" is a MeshRenderer child of "Bone".
+            // "Bone" is a standalone bone (not connected to Mixamo skeleton).
+            // Strategy: parent "Bone" to mixamorig:RightHand via WeaponAttacher.
+            // Since AnimatorSetupTool strips all "Bone" animation curves, the Animator
+            // won't fight with the parenting — the sword follows the hand through all
+            // animations (idle, walk, attack, death) with zero drift.
+            if (unitTypeIndex == 4)
             {
-                Transform bone = graphics.transform.Find("Armature/Bone");
-                Transform hand = null;
+                Transform boneToSnap = null; // "Bone" — parent of weapon mesh
+                Transform hand       = null; // "mixamorig:RightHand"
+
+                string[] handCandidates = { "mixamorig:RightHand", "RightHand", "Bip001 R Hand" };
+
                 foreach (var t in graphics.GetComponentsInChildren<Transform>(true))
                 {
-                    if (t.name == "mixamorig:RightHand")
+                    // "Bone" is the direct parent of "meshes[0].001" in the FBX
+                    if (t.name == "Bone" && boneToSnap == null) boneToSnap = t;
+                    foreach (var hn in handCandidates)
+                        if (t.name == hn && hand == null) { hand = t; break; }
+                }
+
+                if (boneToSnap == null || hand == null)
+                {
+                    var sb2 = new System.Text.StringBuilder();
+                    sb2.AppendLine($"[KingWeapon] Cannot find 'Bone' or hand for {(isPlayer ? "Player" : "Enemy")} General.");
+                    foreach (var t in graphics.GetComponentsInChildren<Transform>(true))
+                        sb2.AppendLine($"  '{t.name}'  parent='{t.parent?.name}'");
+                    Debug.LogWarning(sb2.ToString());
+                }
+                else
+                {
+                    Debug.Log($"[KingWeapon] Snapping '{boneToSnap.name}' → '{hand.name}' ({(isPlayer ? "Player" : "Enemy")} General)");
+
+                    WeaponAttacher attacher  = rootObj.AddComponent<WeaponAttacher>();
+                    attacher.weaponTransform = boneToSnap; // snap Bone (not the mesh)
+                    attacher.handBone        = hand;
+                    attacher.gripPivot       = null; // no grip pivot needed when snapping Bone directly
+                    attacher.debugLogInterval = 1f; // Log offsets every 1s for Inspector tuning
+
+                    if (isPlayer)
                     {
-                        hand = t;
-                        break;
+                        attacher.positionOffset = kingWeaponPositionOffset;
+                        attacher.rotationOffset = kingWeaponRotationOffset;
                     }
                 }
-                if (bone != null && hand != null)
-                {
-                    bone.SetParent(hand, true);
-                }
             }
+
+
+
+
 
 
             // Tint the enemy archer red-ish to differentiate from player archers
@@ -606,7 +676,8 @@ public class GameManager : MonoBehaviour
                     if (r.name.ToLower().Contains("sword") || 
                         r.name.ToLower().Contains("bow") || 
                         r.name.ToLower().Contains("shield") || 
-                        r.name.ToLower().Contains("arrow")) continue;
+                        r.name.ToLower().Contains("arrow") ||
+                        r.name.Contains("meshes[0]")) continue;
                     validRenderers.Add(r);
                 }
 
@@ -620,14 +691,18 @@ public class GameManager : MonoBehaviour
                     Bounds b = validRenderers[0].bounds;
                     for (int i = 1; i < validRenderers.Count; i++) b.Encapsulate(validRenderers[i].bounds);
 
+                    // Center Y (ground alignment) — must happen before root rotation
                     float lowestY = b.min.y;
                     float offsetY = rootObj.transform.position.y - lowestY;
                     graphics.transform.position += new Vector3(0, offsetY, 0);
+
+                    // X/Z centering is deferred to after root rotation (see below)
+                    // because rootObj.rotation changes graphics' world-space X/Z position
                 }
             }
             
-            // Apply manual offset for fine-tuning
-            graphics.transform.localPosition += positionOffset;
+            // Re-apply Y offset after auto-grounding
+            graphics.transform.localPosition += new Vector3(0, positionOffset.y, 0);
         }
         else
         {
@@ -669,7 +744,7 @@ public class GameManager : MonoBehaviour
         // Freeze all rotations and Y position to prevent capsule climbing/floating
         rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
         rb.mass = 1f;
-        rb.linearDamping = 1f;
+        rb.linearDamping = 2f;
         rb.isKinematic = true; // Kinematic during placement phase to prevent sliding/offsetting
         
         CapsuleCollider col = rootObj.AddComponent<CapsuleCollider>();
@@ -722,7 +797,7 @@ public class GameManager : MonoBehaviour
 
         col.height = colHeight;
         col.center = colCenter;
-        col.radius = colRadius;
+        col.radius = colRadius * 1.6f; // 1.6x from spawn to prevent overlap jitter during combat
         col.isTrigger = true; // Use triggers to prevent physics stutters and allow smooth bypassing
 
         Unit unit = rootObj.AddComponent<Unit>();
@@ -781,12 +856,14 @@ public class GameManager : MonoBehaviour
         // Enforce base stats for each unit type as specified by the user
         if (unitTypeIndex == 0) // Bộ
         {
+            unit.speed = 64f;
             if (isPlayer && SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
             {
-                unit.hp = 120f;
-                unit.maxHp = 120f;
-                unit.atk = 15f;
-                unit.def = 8f;
+                // Hổ Bôn quân
+                unit.hp = 150f;
+                unit.maxHp = 150f;
+                unit.atk = 12f;
+                unit.def = 5f;
             }
             else
             {
@@ -798,6 +875,7 @@ public class GameManager : MonoBehaviour
         }
         else if (unitTypeIndex == 1) // Cung
         {
+            unit.speed = 64f;
             unit.hp = 80f;
             unit.maxHp = 80f;
             unit.atk = 15f;
@@ -805,10 +883,21 @@ public class GameManager : MonoBehaviour
         }
         else if (unitTypeIndex == 4) // Tướng
         {
-            unit.hp = 200f;
-            unit.maxHp = 200f;
-            unit.atk = 13f;
-            unit.def = 6f;
+            unit.speed = 64f;
+            if (isPlayer)
+            {
+                unit.hp = 300f;
+                unit.maxHp = 300f;
+                unit.atk = 15f;
+                unit.def = 6f;
+            }
+            else
+            {
+                unit.hp = 500f;
+                unit.maxHp = 500f;
+                unit.atk = 15f;
+                unit.def = 6f;
+            }
         }
 
         if (unitTypeIndex == 1) // Archer
@@ -844,33 +933,91 @@ public class GameManager : MonoBehaviour
 
         unit.speed *= scale;
 
-        // Scale range but ensure it exceeds physical contact distance (colRadius * 2.2f)
-        float baseRange = Mathf.Max(unit.attackRange * scale, colRadius * 2.2f);
+        // Scale attackRange by spawn scale for all unit types
+        float scaledRange = unit.attackRange * scale;
 
-        if (unitTypeIndex == 1) // Cung (scales from 133.3757 -> 210 final range under normal scale)
+        if (unitTypeIndex == 1) // Cung
         {
             unit.attackRange = 210f * scale;
         }
-        else if (unitTypeIndex == 4) // Tướng (give slightly more range so he can easily reach and hit enemies)
+        else // Bộ binh + Tướng
         {
-            unit.attackRange = baseRange * 1.25f;
-        }
-        else // Bộ
-        {
-            unit.attackRange = baseRange;
+            unit.attackRange = scaledRange;
+            // Ensure attack range is at least 3x the collider radius so melee units can
+            // physically reach their slot positions (slot radius = col.radius * 2.5).
+            // Without this, units with large colliders can never get close enough to attack.
+            float minMeleeRange = col.radius * 3.0f;
+            if (unit.attackRange < minMeleeRange)
+            {
+                unit.attackRange = minMeleeRange;
+            }
         }
 
+        // ── Per-unit-type spawn rotation ──
+        // Each unit type has a different bone-space forward direction.
+        // We choose root rotation so the model's head faces the enemy along ±X axis:
         if (isPlayer)
         {
             playerUnits.Add(unit);
-            // Rotate towards the enemy on the left (-X direction)
-            rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
+            switch (unitTypeIndex)
+            {
+                case 1: // Archer: spine faces +Z at identity → Q(270°) maps +Z → -X
+                    rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
+                    break;
+                case 4: // Player King: model_vua has -X forward → Q(270°) maps -X → -Z, offset in combat corrects to face target
+                    rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
+                    break;
+                default: // Infantry: head faces +Z at identity → Q(270°) maps head → -X (toward enemy)
+                    rootObj.transform.rotation = Quaternion.Euler(0, 270, 0);
+                    break;
+            }
         }
         else
         {
             enemyUnits.Add(unit);
-            // Rotate towards the player on the right (+X direction)
-            rootObj.transform.rotation = Quaternion.Euler(0, 90, 0);
+            switch (unitTypeIndex)
+            {
+                case 1: // Archer: spine faces +Z at identity → Q(90°) maps +Z → +X
+                    rootObj.transform.rotation = Quaternion.Euler(0, 90, 0);
+                    break;
+                case 4: // Enemy King: head faces +Z at identity → Q(90°) maps head → +X (toward player)
+                    rootObj.transform.rotation = Quaternion.Euler(0, 90, 0);
+                    break;
+                default: // Infantry: head faces +Z at identity → Q(90°) maps head → +X (toward player)
+                    rootObj.transform.rotation = Quaternion.Euler(0, 90, 0);
+                    break;
+            }
+        }
+
+        // X/Z centering in LOCAL space so it's rotation-independent.
+        // World-space offset would shift when LookRotation changes rootObj.rotation during movement.
+        // By computing the mesh's local-space bounds center and offsetting localPosition,
+        // the centering stays correct regardless of rootObj rotation.
+        if (!isCapsule && graphicsObj != null)
+        {
+            var postRenderers = graphicsObj.GetComponentsInChildren<Renderer>();
+            List<Renderer> postValid = new List<Renderer>();
+            foreach (var r in postRenderers)
+            {
+                string rn = r.name.ToLower();
+                if (rn.Contains("sword") || rn.Contains("bow") || rn.Contains("shield") || rn.Contains("arrow")) continue;
+                postValid.Add(r);
+            }
+            if (postValid.Count == 0) postValid.AddRange(postRenderers);
+
+            if (postValid.Count > 0)
+            {
+                Bounds pb = postValid[0].bounds;
+                for (int i = 1; i < postValid.Count; i++) pb.Encapsulate(postValid[i].bounds);
+
+                // Convert world-space bounds center to graphicsObj's local space
+                Vector3 localBoundsCenter = graphicsObj.transform.InverseTransformPoint(pb.center);
+                // Offset localPosition to negate the mesh's X/Z offset from origin
+                Vector3 lp = graphicsObj.transform.localPosition;
+                lp.x = -localBoundsCenter.x;
+                lp.z = -localBoundsCenter.z;
+                graphicsObj.transform.localPosition = lp;
+            }
         }
     }
 
@@ -968,6 +1115,7 @@ public class GameManager : MonoBehaviour
                     PlayerPrefs.SetInt("TutorialStep", 2);
                     PlayerPrefs.Save();
                     SkillManager.SkillPointsStatic += 1;
+                    SkillManager.SaveSkillDataStatic();
                     Debug.Log($"[GameManager] Hoan Châu (Tutorial) won! Awarded 1 skill point. Current points={SkillManager.SkillPointsStatic}");
                 }
             }
@@ -979,6 +1127,7 @@ public class GameManager : MonoBehaviour
                     PlayerPrefs.SetInt("MapProgression", 2);
                     PlayerPrefs.SetInt("DialogueAfter_Trại Yên_Pending", 1);
                     SkillManager.SkillPointsStatic += 1;
+                    SkillManager.SaveSkillDataStatic();
                     Debug.Log($"[GameManager] Trại Yên won! Awarded 1 skill point. Current points={SkillManager.SkillPointsStatic}");
                 }
                 else if (activeCastleName == "Thiên Trường" && currentProg == 2)
@@ -986,6 +1135,7 @@ public class GameManager : MonoBehaviour
                     PlayerPrefs.SetInt("MapProgression", 3);
                     PlayerPrefs.SetInt("DialogueAfter_Thiên Trường_Pending", 1);
                     SkillManager.SkillPointsStatic += 2;
+                    SkillManager.SaveSkillDataStatic();
                     Debug.Log($"[GameManager] Thiên Trường won! Awarded 2 skill points. Current points={SkillManager.SkillPointsStatic}");
                 }
                 else if (activeCastleName == "Thăng Long" && currentProg == 3)
@@ -1014,6 +1164,7 @@ public class GameManager : MonoBehaviour
             {
                 PlayerPrefs.SetInt("MapProgress", 4);
             }
+            SkillManager.SaveSkillDataStatic();
             PlayerPrefs.Save();
 
             if (UIManager.Instance != null) UIManager.Instance.ShowGameOver(true);

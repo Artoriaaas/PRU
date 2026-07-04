@@ -29,6 +29,13 @@ public class SkillManager : MonoBehaviour
     public static SkillManager Instance { get; private set; }
     public static System.Action<string> OnSkillUpgraded;
 
+    // PlayerPrefs keys for skill persistence
+    private const string PP_SKILL_POINTS = "SkillPoints";
+    private const string PP_BARRACKS_LEVEL = "BarracksLevel";
+    private const string PP_TROOP_LEVEL = "TroopLevel";
+    private const string PP_SCOUTING_LEVEL = "ScoutingLevel";
+    private const string PP_LOGISTICS_LEVEL = "LogisticsLevel";
+
     [Header("Skill Point State")]
     private static int _skillPoints = 0;
     public static int SkillPointsStatic
@@ -78,6 +85,28 @@ public class SkillManager : MonoBehaviour
         _troopLevel = 0;
         _scoutingLevel = 3;
         _logisticsLevel = 0;
+        SaveSkillDataStatic();
+    }
+
+    /// <summary>Save all skill data to PlayerPrefs so it persists across game sessions.</summary>
+    public static void SaveSkillDataStatic()
+    {
+        PlayerPrefs.SetInt(PP_SKILL_POINTS, _skillPoints);
+        PlayerPrefs.SetInt(PP_BARRACKS_LEVEL, _barracksLevel);
+        PlayerPrefs.SetInt(PP_TROOP_LEVEL, _troopLevel);
+        PlayerPrefs.SetInt(PP_SCOUTING_LEVEL, _scoutingLevel);
+        PlayerPrefs.SetInt(PP_LOGISTICS_LEVEL, _logisticsLevel);
+        PlayerPrefs.Save();
+    }
+
+    /// <summary>Restore all skill data from PlayerPrefs (called on game start / Continue).</summary>
+    public static void LoadSkillDataStatic()
+    {
+        _skillPoints = PlayerPrefs.GetInt(PP_SKILL_POINTS, 0);
+        _barracksLevel = PlayerPrefs.GetInt(PP_BARRACKS_LEVEL, 0);
+        _troopLevel = PlayerPrefs.GetInt(PP_TROOP_LEVEL, 0);
+        _scoutingLevel = PlayerPrefs.GetInt(PP_SCOUTING_LEVEL, 3);
+        _logisticsLevel = PlayerPrefs.GetInt(PP_LOGISTICS_LEVEL, 0);
     }
 
     [Header("UI References")]
@@ -96,6 +125,7 @@ public class SkillManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            LoadSkillDataStatic();
         }
         else
         {
@@ -120,7 +150,24 @@ public class SkillManager : MonoBehaviour
 
     public void ResetSkills()
     {
-        ResetSkillsStatic();
+        // Tính tổng điểm đã dùng để hoàn trả
+        int spentOnBarracks = barracksLevel;          // bắt đầu từ 0
+        int spentOnTroop = troopLevel;                // bắt đầu từ 0
+        int spentOnLogistics = logisticsLevel;        // bắt đầu từ 0
+        // Trinh thám bắt đầu từ cấp 3, getter luôn trả 3, nên không thể nâng — không tốn điểm
+        int totalSpent = spentOnBarracks + spentOnTroop + spentOnLogistics;
+
+        int currentUnspent = skillPoints;
+
+        // Reset các chỉ số về mặc định
+        _skillPoints = currentUnspent + totalSpent;   // hoàn trả điểm đã dùng
+        _barracksLevel = 0;
+        _troopLevel = 0;
+        _scoutingLevel = 3;
+        _logisticsLevel = 0;
+
+        SaveSkillDataStatic();
+
         UpdateUI();
         if (UIManager.Instance != null)
         {
@@ -163,6 +210,8 @@ public class SkillManager : MonoBehaviour
         {
             UIManager.Instance.UpdatePlacementUI();
         }
+
+        SaveSkillDataStatic();
 
         if (OnSkillUpgraded != null)
         {
@@ -363,7 +412,7 @@ public class SkillManager : MonoBehaviour
         Text titleText = titleObj.AddComponent<Text>();
         titleText.font = font;
         titleText.text = "BẢNG KỸ NĂNG";
-        titleText.fontSize = 20;
+        titleText.fontSize = 12;
         titleText.color = new Color(0.95f, 0.85f, 0.55f);
         titleText.alignment = TextAnchor.MiddleCenter;
         RectTransform rtTitle = titleText.rectTransform;
@@ -390,7 +439,7 @@ public class SkillManager : MonoBehaviour
         rtPoints.anchorMin = new Vector2(1f, 1f);
         rtPoints.anchorMax = new Vector2(1f, 1f);
         rtPoints.pivot = new Vector2(1f, 1f);
-        rtPoints.anchoredPosition = new Vector2(-15, -190);
+        rtPoints.anchoredPosition = new Vector2(-30, -190);
         rtPoints.sizeDelta = new Vector2(200, 25);
 
         GameObject resetBtnObj = new GameObject("ResetButton");

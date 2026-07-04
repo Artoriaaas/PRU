@@ -28,6 +28,9 @@ public class Unit : MonoBehaviour
     private Transform _leftHand;
     private Transform _graphicsTransform;
     private Quaternion _initialGraphicsRotation = Quaternion.identity;
+    private Transform _rootBone; // For king run animation root motion XZ fix
+    private float _defaultRootBoneLocalY; // Neutral Hips Y captured before animation plays
+    private bool _rootBoneYCaptured; // Whether _defaultRootBoneLocalY has been set from the bind pose
 
     public UnitState state = UnitState.Idle;
 
@@ -108,7 +111,7 @@ public class Unit : MonoBehaviour
     public Vector3 GetSlotWorldPosition(AttackSlot slot, Unit attacker = null)
     {
         CapsuleCollider col = GetComponent<CapsuleCollider>();
-        float radius = col != null ? col.radius * 3.5f : 15f;
+        float radius = col != null ? col.radius * 2.5f : 15f;
         
         Unit activeAttacker = attacker != null ? attacker : slot.reservedBy;
         if (activeAttacker != null)
@@ -222,6 +225,22 @@ public class Unit : MonoBehaviour
         }
         InitializeSlots();
 
+        // Cache the Hips bone immediately (before animation plays) so we can capture the
+        // neutral localPosition.Y and prevent animation root curves from sinking the character.
+        if (_animator != null)
+        {
+            foreach (Transform t in _animator.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name.ToLower().Contains("hips"))
+                {
+                    _rootBone = t;
+                    _defaultRootBoneLocalY = t.localPosition.y;
+                    _rootBoneYCaptured = true;
+                    break;
+                }
+            }
+        }
+
         // Cache the graphics model transform for archer alignment
         if (unitTypeIndex == 1)
         {
@@ -240,20 +259,6 @@ public class Unit : MonoBehaviour
     void Update()
     {
         if (state == UnitState.Dead) return;
-
-        // Dynamically adjust collider radius depending on combat/attack state.
-        // Cap the maximum absolute expansion to 0.5 units to prevent large scaled units
-        // (like King and Infantry) from massive pushback loops that break combat states.
-        if (_myCollider != null && _baseColliderRadius > 0)
-        {
-            float targetRadius = (state == UnitState.Attacking) 
-                ? Mathf.Min(_baseColliderRadius * 1.6f, _baseColliderRadius + 0.5f) 
-                : _baseColliderRadius;
-            if (!Mathf.Approximately(_myCollider.radius, targetRadius))
-            {
-                _myCollider.radius = targetRadius;
-            }
-        }
 
         // Sync animator state variables
         if (_animator != null)
@@ -336,6 +341,8 @@ public class Unit : MonoBehaviour
                     if (direction != Vector3.zero)
                     {
                         Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
+                        // No extra offset needed: king graphics child already has localRotation Euler(0,90,0)
+                        // which compensates for the -X bind-pose forward. LookRotation maps +Z→dir directly.
                         transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
                     }
 
@@ -428,6 +435,8 @@ public class Unit : MonoBehaviour
                     if (faceDir != Vector3.zero)
                     {
                         Quaternion toRotation = Quaternion.LookRotation(faceDir, Vector3.up);
+                        // No extra offset needed: king graphics child already has localRotation Euler(0,90,0)
+                        // which compensates for the -X bind-pose forward.
                         transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 8f);
                     }
                 }
@@ -436,7 +445,7 @@ public class Unit : MonoBehaviour
             {
                 transform.position += _rvoVelocity * Time.deltaTime;
             }
-
+            
             if (Time.frameCount % 60 == 0)
             {
                 Debug.Log($"[RVO Diagnostic] {name} moving. RVO Velocity: {_rvoVelocity}");
@@ -571,6 +580,8 @@ public class Unit : MonoBehaviour
                 if (faceDir != Vector3.zero)
                 {
                     Quaternion toRotation = Quaternion.LookRotation(faceDir, Vector3.up);
+                    // No extra offset needed: king graphics child already has localRotation Euler(0,90,0)
+                    // which compensates for the -X bind-pose forward.
                     transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
                 }
             }
@@ -622,6 +633,10 @@ public class Unit : MonoBehaviour
 
             if (dist >= minSafeDistance) return;
 
+            // Skip push for very small overlaps (< 20% of safe distance) to prevent micro-jitter
+            float overlap = minSafeDistance - dist;
+            if (overlap < minSafeDistance * 0.2f) return;
+
             if (pushDir == Vector3.zero)
             {
                 pushDir = new Vector3(Random.Range(-0.1f, 0.1f), 0, Random.Range(-0.1f, 0.1f));
@@ -641,16 +656,20 @@ public class Unit : MonoBehaviour
             }
             Vector3 lateralPushDir = tangent * Mathf.Sign(dot);
             
-            // Gently push them apart by modifying position.
-            // Since they are triggers, this is extremely smooth and won't conflict with physics solver!
-            CapsuleCollider col = GetComponent<CapsuleCollider>();
-            float scaleFactor = col != null ? col.radius / 0.4f : 1.0f;
+            // Scale push amount based on overlap, but much gentler to prevent oscillation.
+            // Use Rigidbody.position to avoid desyncing Unity's physics state.
+            float scaleFactor = myRadius / 0.4f;
+            float pushAmount = 0.015f * scaleFactor * (overlap / minSafeDistance);
             
-            // Scale push amount based on how much they overlap to make it even smoother (proportional pushing)
-            float overlap = minSafeDistance - dist;
-            float pushAmount = 0.04f * scaleFactor * (overlap / minSafeDistance) * Time.deltaTime * 60f; // framerate independent
-            
-            transform.position += lateralPushDir * pushAmount;
+            Vector3 newPos = transform.position + lateralPushDir * pushAmount;
+            if (_rb != null)
+            {
+                _rb.position = newPos;
+            }
+            else
+            {
+                transform.position = newPos;
+            }
 
             // Clamp immediately to prevent push from exceeding boundaries
             ClampToBoundaries();
@@ -666,6 +685,47 @@ public class Unit : MonoBehaviour
             // Final clamp to prevent any physics/OnTriggerStay push from pushing units past the boundaries
             ClampToBoundaries();
         }
+
+        // Fallback root bone find: if Awake didn't find it (e.g. graphics model parented after Awake),
+        // retry on the first LateUpdate here and capture Y immediately.
+        if (_rootBone == null && _animator != null)
+        {
+            foreach (var t in _animator.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name.ToLower().Contains("hips"))
+                {
+                    _rootBone = t;
+                    if (!_rootBoneYCaptured)
+                    {
+                        _animator.Play("Idle", 0, 0f);
+                        _animator.Update(0f);
+                        _defaultRootBoneLocalY = t.localPosition.y;
+                        _rootBoneYCaptured = true;
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Root bone position drift fix: reset Hips to neutral Y position to prevent animation
+        // root curves from sinking the character. Only reset Y during Idle to avoid fighting
+        // with attack/death animations that have intentional Y movement.
+        // Reset XZ during Moving for king only to prevent sliding.
+        if (_rootBone != null)
+        {
+            Vector3 pos = _rootBone.localPosition;
+            if (state == UnitState.Moving && unitTypeIndex == 4)
+            {
+                pos.x = 0;
+                pos.z = 0;
+            }
+            if (state == UnitState.Idle)
+            {
+                pos.y = _defaultRootBoneLocalY;
+            }
+            _rootBone.localPosition = pos;
+        }
+
 
         // Align archer bow dynamically based on combat state
         if (unitTypeIndex == 1)
@@ -987,7 +1047,7 @@ public class Unit : MonoBehaviour
     private bool IsPathBlockedByTeammate(Vector3 targetPos)
     {
         // Ranged units (Archers) can attack over teammates, so they are never blocked
-        if (isPlayer && unitTypeIndex == 1) return false;
+        if (unitTypeIndex == 1) return false;
         
         if (GameManager.Instance == null) return false;
 

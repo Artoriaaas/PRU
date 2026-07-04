@@ -169,6 +169,14 @@ public class MainMenuController : MonoBehaviour
     {
         if (continueButton == null) return;
 
+        // Compute hasSaveData dynamically from PlayerPrefs
+        int mapProgress = PlayerPrefs.GetInt("MapProgress", 0);
+        int tutorialStep = PlayerPrefs.GetInt("TutorialStep", 0);
+        int mapProgression = PlayerPrefs.GetInt("MapProgression", 0);
+        hasSaveData = mapProgress > 0 || tutorialStep > 0 || mapProgression > 0;
+
+        continueEnabled = hasSaveData;
+
         continueButton.interactable = continueEnabled;
         var group = continueButton.GetComponent<CanvasGroup>();
         if (group != null)
@@ -182,6 +190,7 @@ public class MainMenuController : MonoBehaviour
         if (!menuReady) return;
         PlayerPrefs.DeleteKey("TutorialStep");
         PlayerPrefs.DeleteKey("MapProgression");
+        PlayerPrefs.DeleteKey("MapProgress");
         
         string[] castles = { "Trại Yên", "Thiên Trường", "Thăng Long" };
         foreach (var c in castles)
@@ -248,7 +257,10 @@ public class MainMenuController : MonoBehaviour
         if (!hasSaveData)
         {
             ShowMessage("No Save Data");
+            return;
         }
+
+        StartCoroutine(StartGameRoutine());
     }
 
     public void OpenSettings()

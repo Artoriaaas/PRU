@@ -293,6 +293,14 @@ MonoBehaviour:
   rightMiniMapWidth: 360
   mapSize: {x: 997, y: 1577}
   openingDialogue: {fileID: 11400000, guid: bd42361e1ae75a547be766b083d09107, type: 2}
+  openingHoanChau: {fileID: 0}
+  tutorialUpgrade: {fileID: 0}
+  traiYenBeforeBattle: {fileID: 11400000, guid: 30afac2c793db9f44896f37f183af20d, type: 2}
+  traiYenAfterBattle: {fileID: 0}
+  thienTruongBeforeBattle: {fileID: 0}
+  thienTruongAfterBattle: {fileID: 0}
+  thangLongBeforeBattle: {fileID: 0}
+  thangLongAfterBattle: {fileID: 0}
   mapObjects:
   - name: "Th\u0103ng Long"
     spriteName: Castle

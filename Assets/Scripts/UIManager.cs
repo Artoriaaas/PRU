@@ -140,7 +140,28 @@ public class UIManager : MonoBehaviour
                     }
                 }
                 
-                _unitsText = _canvasObj.transform.Find("UnitsText")?.GetComponent<Text>();
+                GameObject unitsTextObj = _canvasObj.transform.Find("UnitsText")?.gameObject;
+                if (unitsTextObj == null && _bottomPanel != null)
+                {
+                    unitsTextObj = _bottomPanel.transform.Find("UnitsText")?.gameObject;
+                }
+                if (unitsTextObj != null && _bottomPanel != null)
+                {
+                    unitsTextObj.transform.SetParent(_bottomPanel.transform, false);
+                    _unitsText = unitsTextObj.GetComponent<Text>();
+                    if (_unitsText != null)
+                    {
+                        RectTransform rtUnits = _unitsText.rectTransform;
+                        rtUnits.anchorMin = new Vector2(0f, 0.5f);
+                        rtUnits.anchorMax = new Vector2(0f, 0.5f);
+                        rtUnits.pivot = new Vector2(0.5f, 0.5f);
+                        rtUnits.anchoredPosition = new Vector2(63f, 70f);
+                        rtUnits.sizeDelta = new Vector2(100f, 100f);
+                        _unitsText.alignment = TextAnchor.MiddleCenter;
+                        _unitsText.fontSize = 40;
+                        _unitsText.fontStyle = FontStyle.Bold;
+                    }
+                }
                 _placementHint = _canvasObj.transform.Find("PlacementHint")?.GetComponent<Text>();
                 _scoutingReportText = _canvasObj.transform.Find("ScoutingReportText")?.GetComponent<Text>();
                 _backToMapBtn = _canvasObj.transform.Find("BackToMapButton")?.gameObject;
@@ -573,6 +594,10 @@ public class UIManager : MonoBehaviour
         _bottomPanel    = _canvasObj.transform.Find("BottomPanel")?.gameObject;
         _panelContent   = _bottomPanel?.transform.Find("PanelContent")?.gameObject;
         _unitsText      = _canvasObj.transform.Find("UnitsText")?.GetComponent<Text>();
+        if (_unitsText == null && _bottomPanel != null)
+        {
+            _unitsText  = _bottomPanel.transform.Find("UnitsText")?.GetComponent<Text>();
+        }
         _placementHint  = _canvasObj.transform.Find("PlacementHint")?.GetComponent<Text>();
         _scoutingReportText = _canvasObj.transform.Find("ScoutingReportText")?.GetComponent<Text>();
 
@@ -660,21 +685,6 @@ public class UIManager : MonoBehaviour
         if (arial == null) arial = Resources.GetBuiltinResource<Font>("Arial.ttf");
         if (arial == null) arial = Font.CreateDynamicFontFromOSFont("Arial", 24);
 
-        // Units Text
-        GameObject textObj = new GameObject("UnitsText");
-        textObj.transform.SetParent(_canvasObj.transform, false);
-        _unitsText = textObj.AddComponent<Text>();
-        _unitsText.font = arial;
-        _unitsText.fontSize = 24;
-        _unitsText.color = Color.white;
-        _unitsText.alignment = TextAnchor.UpperLeft;
-        RectTransform rtText = _unitsText.rectTransform;
-        rtText.anchorMin = new Vector2(0, 1);
-        rtText.anchorMax = new Vector2(0, 1);
-        rtText.pivot = new Vector2(0, 1);
-        rtText.anchoredPosition = new Vector2(20, -20);
-        rtText.sizeDelta = new Vector2(300, 50);
-
         // Hitbox Toggle Button
         CreateHitboxButton(_canvasObj.transform);
 
@@ -728,6 +738,22 @@ public class UIManager : MonoBehaviour
         rtPanel.pivot = new Vector2(0.5f, 0f);
         rtPanel.anchoredPosition = Vector2.zero;
         rtPanel.sizeDelta = new Vector2(0f, 350f);
+
+        // Units Text (inside BottomPanel circle)
+        GameObject textObj = new GameObject("UnitsText");
+        textObj.transform.SetParent(_bottomPanel.transform, false);
+        _unitsText = textObj.AddComponent<Text>();
+        _unitsText.font = arial;
+        _unitsText.fontSize = 40;
+        _unitsText.fontStyle = FontStyle.Bold;
+        _unitsText.color = Color.white;
+        _unitsText.alignment = TextAnchor.MiddleCenter;
+        RectTransform rtText = _unitsText.rectTransform;
+        rtText.anchorMin = new Vector2(0f, 0.5f);
+        rtText.anchorMax = new Vector2(0f, 0.5f);
+        rtText.pivot = new Vector2(0.5f, 0.5f);
+        rtText.anchoredPosition = new Vector2(63f, 70f);
+        rtText.sizeDelta = new Vector2(100f, 100f);
 
         // ShowArrowButton - uses show.png, anchored at top-center of BottomPanel
         // Always visible; clicking it toggles the panel
@@ -1225,11 +1251,11 @@ public class UIManager : MonoBehaviour
             _unitsText.gameObject.SetActive(isPlayer || isEditor);
             if (isPlayer)
             {
-                _unitsText.text = $"Available Units: {remaining}";
+                _unitsText.text = remaining.ToString();
             }
             else
             {
-                _unitsText.text = $"Enemy Units: {GameManager.Instance.placedEnemyUnits}/{GameManager.Instance.maxEnemyUnits}";
+                _unitsText.text = $"{GameManager.Instance.placedEnemyUnits}/{GameManager.Instance.maxEnemyUnits}";
             }
         }
 
@@ -1290,10 +1316,28 @@ public class UIManager : MonoBehaviour
             
             // Always show unit cards in setup scene
             bool showCards = true;
+            // Standard card dimensions - all cards must use the same size and scale
+            Vector2 standardCardSize = new Vector2(380f, 230f);
+            Vector3 standardCardScale = new Vector3(1.4f, 0.65f, 1f);
             foreach (Transform child in cardParent)
             {
                 if (child.name.StartsWith("UnitCard"))
                 {
+                    // Ensure all cards have consistent size and scale
+                    RectTransform rtCard = child.GetComponent<RectTransform>();
+                    if (rtCard != null)
+                    {
+                        rtCard.sizeDelta = standardCardSize;
+                    }
+                    child.localScale = standardCardScale;
+
+                    // Ensure preserveAspect is false so sprite fills the card uniformly
+                    Image cardImg = child.GetComponent<Image>();
+                    if (cardImg != null)
+                    {
+                        cardImg.preserveAspect = false;
+                    }
+
                     if (GameManager.activeCastleName == "Hoan Châu" && !isEditor)
                     {
                         child.gameObject.SetActive(showCards && child.name == "UnitCard_0");
@@ -1314,6 +1358,7 @@ public class UIManager : MonoBehaviour
                                 string sprName = troopLvl >= 2 ? "CustomUI/HoBonQuan" : "CustomUI/BoBinhCard";
                                 Sprite spr = Resources.Load<Sprite>(sprName);
                                 if (spr != null) img.sprite = spr;
+                                img.preserveAspect = false;
                             }
                         }
                         else if (child.name == "UnitCard_1")
