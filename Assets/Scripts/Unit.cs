@@ -256,6 +256,28 @@ public class Unit : MonoBehaviour
         }
     }
 
+    void Start()
+    {
+        if (_animator != null && _animator.runtimeAnimatorController != null)
+        {
+            if (unitTypeIndex == 0) // Infantry (Bộ binh)
+            {
+                float attackClipLength = 1f; // default fallback
+                foreach (var clip in _animator.runtimeAnimatorController.animationClips)
+                {
+                    if (clip.name.ToLower().Contains("attack") || clip.name.ToLower().Contains("atk") || clip.name.ToLower().Contains("slash"))
+                    {
+                        attackClipLength = clip.length;
+                        break;
+                    }
+                }
+                // Synchronize attackCooldown to match the animation length divided by animator speed during attack (which is 1.5f)
+                attackCooldown = attackClipLength / 1.5f;
+                Debug.Log($"[PRU Debug] {name} (Infantry) attackCooldown synchronized to {attackCooldown}s based on attack clip length {attackClipLength}s.");
+            }
+        }
+    }
+
     void Update()
     {
         if (state == UnitState.Dead) return;
@@ -289,16 +311,40 @@ public class Unit : MonoBehaviour
                 if (naturalSpeed < 0.01f) naturalSpeed = 0.01f;
 
                 float speedRatio = (currentSpeed / naturalSpeed) * animSpeedMultiplier;
-                _animator.speed = Mathf.Clamp(speedRatio, 0.15f, 3.0f);
+                float finalSpeed = Mathf.Clamp(speedRatio, 0.15f, 3.0f);
+                if (unitTypeIndex == 0) // Infantry on both sides
+                {
+                    finalSpeed *= 1.75f;
+                }
+                else if (unitTypeIndex == 4 && !isPlayer) // Enemy general
+                {
+                    finalSpeed *= 1.5f;
+                }
+                _animator.speed = finalSpeed;
             }
             else if (state == UnitState.Attacking)
             {
-                // Speed up King's attack animation visually by 1.6x so it doesn't look too slow
-                _animator.speed = (unitTypeIndex == 4) ? 1.6f : 1.0f;
+                if (unitTypeIndex == 0) // Infantry on both sides
+                {
+                    _animator.speed = 1.5f;
+                }
+                else
+                {
+                    // Speed up King's attack animation visually by 1.6x so it doesn't look too slow
+                    _animator.speed = (unitTypeIndex == 4) ? 1.6f : 1.0f;
+                }
             }
             else
             {
-                _animator.speed = 1.0f;
+                // Idle, Die, etc.
+                if (unitTypeIndex == 4 && !isPlayer) // Enemy general
+                {
+                    _animator.speed = 1.5f;
+                }
+                else
+                {
+                    _animator.speed = 1.0f;
+                }
             }
         }
 
@@ -830,7 +876,7 @@ public class Unit : MonoBehaviour
             if (unitTypeIndex == 1) // Archer
             {
                 float animSpeed = _animator != null ? _animator.speed : 1f;
-                float delay = 0.4f / Mathf.Max(0.1f, animSpeed);
+                float delay = 1.0f / Mathf.Max(0.1f, animSpeed);
                 StartCoroutine(SpawnArrowAfterDelay(delay, _target, atk));
             }
             else // Melee

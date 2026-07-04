@@ -672,19 +672,35 @@ public class GameManager : MonoBehaviour
 
 
 
-            // Tint the enemy archer and infantry red-ish to differentiate from player units
-            if (!isPlayer && (unitTypeIndex == 1 || unitTypeIndex == 0))
+            // Tint the enemy units to differentiate from player units
+            if (!isPlayer)
             {
-                var rends = graphics.GetComponentsInChildren<Renderer>();
-                foreach (var r in rends)
+                Color tintColor = Color.white;
+                bool shouldTint = false;
+
+                if (unitTypeIndex == 1 || unitTypeIndex == 0) // Archer and Infantry
                 {
-                    if (r.material != null)
+                    tintColor = new Color(1f, 0.4f, 0.4f);
+                    shouldTint = true;
+                }
+                else if (unitTypeIndex == 4) // Enemy General
+                {
+                    tintColor = new Color(1f, 0.7f, 0.7f); // Softer/lighter red tint
+                    shouldTint = true;
+                }
+
+                if (shouldTint)
+                {
+                    var rends = graphics.GetComponentsInChildren<Renderer>();
+                    foreach (var r in rends)
                     {
-                        Color tintColor = new Color(1f, 0.4f, 0.4f);
-                        r.material.color = tintColor;
-                        if (r.material.HasProperty("_BaseColor"))
+                        if (r.material != null)
                         {
-                            r.material.SetColor("_BaseColor", tintColor);
+                            r.material.color = tintColor;
+                            if (r.material.HasProperty("_BaseColor"))
+                            {
+                                r.material.SetColor("_BaseColor", tintColor);
+                            }
                         }
                     }
                 }
