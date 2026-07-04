@@ -13,24 +13,24 @@ MonoBehaviour:
   m_Name: Level4
   m_EditorClassIdentifier: Assembly-CSharp::LevelData
   enemyPlacements:
-  - row: 1
-    column: 3
-    unitTypeIndex: 0
-  - row: 3
-    column: 2
-    unitTypeIndex: 1
-  - row: 0
-    column: 2
-    unitTypeIndex: 1
-  - row: 1
-    column: 1
-    unitTypeIndex: 1
-  - row: 2
-    column: 3
-    unitTypeIndex: 0
   - row: 3
     column: 2
     unitTypeIndex: 4
   - row: 2
     column: 1
+    unitTypeIndex: 1
+  - row: 1
+    column: 1
+    unitTypeIndex: 1
+  - row: 1
+    column: 3
+    unitTypeIndex: 0
+  - row: 2
+    column: 3
+    unitTypeIndex: 0
+  - row: 0
+    column: 2
+    unitTypeIndex: 1
+  - row: 3
+    column: 2
     unitTypeIndex: 1
