@@ -672,8 +672,8 @@ public class GameManager : MonoBehaviour
 
 
 
-            // Tint the enemy archer red-ish to differentiate from player archers
-            if (!isPlayer && unitTypeIndex == 1)
+            // Tint the enemy archer and infantry red-ish to differentiate from player units
+            if (!isPlayer && (unitTypeIndex == 1 || unitTypeIndex == 0))
             {
                 var rends = graphics.GetComponentsInChildren<Renderer>();
                 foreach (var r in rends)
@@ -820,7 +820,7 @@ public class GameManager : MonoBehaviour
 
         col.height = colHeight;
         col.center = colCenter;
-        col.radius = colRadius * 1.6f; // 1.6x from spawn to prevent overlap jitter during combat
+        col.radius = colRadius * 1.2f; // 1.2x from spawn to prevent overlap jitter during combat
         col.isTrigger = true; // Use triggers to prevent physics stutters and allow smooth bypassing
 
         Unit unit = rootObj.AddComponent<Unit>();
