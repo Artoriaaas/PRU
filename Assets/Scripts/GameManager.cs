@@ -278,6 +278,21 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        // Ensure EnemyPad_3_2 (1) is instantiated if it is missing
+        Transform existingBigPad = enemyGrid.transform.Find("EnemyPad_3_2 (1)");
+        if (existingBigPad == null)
+        {
+            Transform templatePad = enemyGrid.transform.Find("EnemyPad_3_2");
+            if (templatePad != null)
+            {
+                GameObject newBigPadObj = Instantiate(templatePad.gameObject, enemyGrid.transform);
+                newBigPadObj.name = "EnemyPad_3_2 (1)";
+                newBigPadObj.transform.localPosition = new Vector3(225f, 0.03f, 35f);
+                newBigPadObj.transform.localScale = new Vector3(100f, 100f, 1f);
+                Debug.Log("[GameManager] Symmetrically instantiated EnemyPad_3_2 (1) on the far left during Level Load.");
+            }
+        }
+
         // Clean up any existing enemy units in the scene
         foreach (var unit in new List<Unit>(enemyUnits))
         {
@@ -289,7 +304,15 @@ public class GameManager : MonoBehaviour
         foreach (var placement in activeLevel.enemyPlacements)
         {
             string padName = $"EnemyPad_{placement.row}_{placement.column}";
-            Transform pad = enemyGrid.transform.Find(padName);
+            Transform pad = null;
+            if (placement.unitTypeIndex == 4 && padName == "EnemyPad_3_2")
+            {
+                pad = enemyGrid.transform.Find("EnemyPad_3_2 (1)");
+            }
+            if (pad == null)
+            {
+                pad = enemyGrid.transform.Find(padName);
+            }
             if (pad == null && padName == "EnemyPad_3_2")
             {
                 pad = enemyGrid.transform.Find("EnemyPad_3_2 (1)");
@@ -649,8 +672,8 @@ public class GameManager : MonoBehaviour
 
 
 
-            // Tint the enemy archer red-ish to differentiate from player archers
-            if (!isPlayer && unitTypeIndex == 1)
+            // Tint the enemy archer and infantry red-ish to differentiate from player units
+            if (!isPlayer && (unitTypeIndex == 1 || unitTypeIndex == 0))
             {
                 var rends = graphics.GetComponentsInChildren<Renderer>();
                 foreach (var r in rends)
@@ -797,7 +820,7 @@ public class GameManager : MonoBehaviour
 
         col.height = colHeight;
         col.center = colCenter;
-        col.radius = colRadius * 1.6f; // 1.6x from spawn to prevent overlap jitter during combat
+        col.radius = colRadius * 1.2f; // 1.2x from spawn to prevent overlap jitter during combat
         col.isTrigger = true; // Use triggers to prevent physics stutters and allow smooth bypassing
 
         Unit unit = rootObj.AddComponent<Unit>();

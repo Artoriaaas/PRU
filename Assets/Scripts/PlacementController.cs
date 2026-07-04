@@ -63,11 +63,14 @@ public class PlacementController : MonoBehaviour
             Transform templatePad = enemyGrid.transform.Find("EnemyPad_3_2");
             if (templatePad != null)
             {
-                GameObject newBigPadObj = Instantiate(templatePad.gameObject, enemyGrid.transform);
-                newBigPadObj.name = "EnemyPad_3_2 (1)";
-                newBigPadObj.transform.localPosition = new Vector3(225f, 0.03f, 35f);
-                newBigPadObj.transform.localScale = new Vector3(100f, 100f, 1f);
-                Debug.Log("[PlacementController] Symmetrically instantiated EnemyPad_3_2 (1) on the far left.");
+                if (enemyGrid.transform.Find("EnemyPad_3_2 (1)") == null)
+                {
+                    GameObject newBigPadObj = Instantiate(templatePad.gameObject, enemyGrid.transform);
+                    newBigPadObj.name = "EnemyPad_3_2 (1)";
+                    newBigPadObj.transform.localPosition = new Vector3(225f, 0.03f, 35f);
+                    newBigPadObj.transform.localScale = new Vector3(100f, 100f, 1f);
+                    Debug.Log("[PlacementController] Symmetrically instantiated EnemyPad_3_2 (1) on the far left.");
+                }
             }
         }
     }
