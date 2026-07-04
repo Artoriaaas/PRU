@@ -316,6 +316,8 @@ public class UIManager : MonoBehaviour
                         Image hbImg = existingBtn.GetComponent<Image>();
                         if (hbBtn != null && hbText != null && hbImg != null)
                         {
+                            hbText.text = ColliderVisualizer.ShowColliders ? "Hitbox: ON" : "Hitbox: OFF";
+                            hbImg.color = ColliderVisualizer.ShowColliders ? new Color(0.1f, 0.5f, 0.1f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.9f);
                             hbBtn.onClick.RemoveAllListeners();
                             hbBtn.onClick.AddListener(() => {
                                 ColliderVisualizer.ShowColliders = !ColliderVisualizer.ShowColliders;
@@ -965,7 +967,7 @@ public class UIManager : MonoBehaviour
         GameObject hitboxBtnObj = new GameObject("HitboxToggleButton");
         hitboxBtnObj.transform.SetParent(parent, false);
         Image hbImg = hitboxBtnObj.AddComponent<Image>();
-        hbImg.color = new Color(0.2f, 0.2f, 0.2f, 0.9f); // Dark background
+        hbImg.color = ColliderVisualizer.ShowColliders ? new Color(0.1f, 0.5f, 0.1f, 0.9f) : new Color(0.2f, 0.2f, 0.2f, 0.9f);
         
         Outline hbOutline = hitboxBtnObj.AddComponent<Outline>();
         hbOutline.effectColor = new Color(0.95f, 0.85f, 0.55f);
@@ -977,7 +979,7 @@ public class UIManager : MonoBehaviour
         hbTextObj.transform.SetParent(hitboxBtnObj.transform, false);
         Text hbText = hbTextObj.AddComponent<Text>();
         hbText.font = arial;
-        hbText.text = "Hitbox: OFF";
+        hbText.text = ColliderVisualizer.ShowColliders ? "Hitbox: ON" : "Hitbox: OFF";
         hbText.fontSize = 15;
         hbText.color = Color.white;
         hbText.alignment = TextAnchor.MiddleCenter;
@@ -1425,9 +1427,20 @@ public class UIManager : MonoBehaviour
             }
         }
 
+        if (_editorToggleBtn != null)
+        {
+            _editorToggleBtn.gameObject.SetActive(false);
+        }
+
         if (_saveLevelBtn != null)
         {
-            _saveLevelBtn.gameObject.SetActive(isEditor);
+            _saveLevelBtn.gameObject.SetActive(false);
+        }
+
+        Transform hitboxBtn = _canvasObj.transform.Find("HitboxToggleButton");
+        if (hitboxBtn != null)
+        {
+            hitboxBtn.gameObject.SetActive(false);
         }
 
         if (_backToMapBtn != null)

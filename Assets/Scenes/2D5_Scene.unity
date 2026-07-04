@@ -1126,13 +1126,15 @@ MonoBehaviour:
   arrowSpeed: 400
   arrowArcHeight: 15
   kingModelPrefab: {fileID: 919132149155446097, guid: 460c06e2da4f2bc4fb31b60cb8fa3851, type: 3}
-  kingRotationOffset: {x: 0, y: 90, z: 0}
-  kingPositionOffset: {x: -0.5, y: 0, z: 0}
+  kingRotationOffset: {x: 0, y: 0, z: 0}
+  kingPositionOffset: {x: 0, y: 0.03, z: 0}
   kingScale: 72
   kingAnimatorController: {fileID: 9100000, guid: acfc515454275e84a81dd0a8b172946b, type: 2}
+  kingWeaponPositionOffset: {x: 0, y: 0, z: -0.0003}
+  kingWeaponRotationOffset: {x: 0, y: 0, z: 0}
   enemyKingModelPrefab: {fileID: 919132149155446097, guid: 3723326f869bbb24d9a9548ee47cdcea, type: 3}
-  enemyKingRotationOffset: {x: 0, y: 90, z: 0}
-  enemyKingPositionOffset: {x: 0.5, y: 0, z: 0}
+  enemyKingRotationOffset: {x: 0, y: 0, z: 0}
+  enemyKingPositionOffset: {x: 0, y: 0.03, z: 0}
   enemyKingScale: 72
   enemyKingAnimatorController: {fileID: 9100000, guid: 732743b866d1f564cb72a6f610a065a4, type: 2}
   archerAttackCooldown: 2.5
@@ -8184,13 +8186,15 @@ MonoBehaviour:
   arrowSpeed: 400
   arrowArcHeight: 15
   kingModelPrefab: {fileID: 919132149155446097, guid: 460c06e2da4f2bc4fb31b60cb8fa3851, type: 3}
-  kingRotationOffset: {x: 0, y: 90, z: 0}
-  kingPositionOffset: {x: -0.5, y: 0, z: 0}
+  kingRotationOffset: {x: 0, y: 0, z: 0}
+  kingPositionOffset: {x: 0, y: 0.03, z: 0}
   kingScale: 72
   kingAnimatorController: {fileID: 9100000, guid: acfc515454275e84a81dd0a8b172946b, type: 2}
+  kingWeaponPositionOffset: {x: 0, y: 0, z: -0.0003}
+  kingWeaponRotationOffset: {x: 0, y: 0, z: 0}
   enemyKingModelPrefab: {fileID: 919132149155446097, guid: 3723326f869bbb24d9a9548ee47cdcea, type: 3}
-  enemyKingRotationOffset: {x: 0, y: 90, z: 0}
-  enemyKingPositionOffset: {x: 0.5, y: 0, z: 0}
+  enemyKingRotationOffset: {x: 0, y: 0, z: 0}
+  enemyKingPositionOffset: {x: 0, y: 0.03, z: 0}
   enemyKingScale: 72
   enemyKingAnimatorController: {fileID: 9100000, guid: 732743b866d1f564cb72a6f610a065a4, type: 2}
   archerAttackCooldown: 2.5
