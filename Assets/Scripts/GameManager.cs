@@ -52,7 +52,7 @@ public class GameManager : MonoBehaviour
         archerPositionOffset.y = 0.03f;
         kingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
         kingScale = 72.0f;
-        kingRotationOffset = new Vector3(0f, 0f, 0f); // Compensate for model bind pose: new model faces forward (no offset needed)
+        kingRotationOffset = new Vector3(0f, 90f, 0f); // Compensate for model bind pose: Generic rig needs 90 degree offset to face target
         // kingWeaponPositionOffset and kingWeaponRotationOffset are intentionally NOT force-reset here
         // so values tuned in the Inspector (Play Mode) are preserved between runs.
         enemyKingRotationOffset = new Vector3(0f, 90f, 0f); // Same bind pose compensation as player king
@@ -236,7 +236,7 @@ public class GameManager : MonoBehaviour
     [Header("King Model Settings")]
     [Tooltip("Drag your King FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân ta/Model_vua/model_vua.fbx in Editor.")]
     public GameObject kingModelPrefab;
-    public Vector3 kingRotationOffset = new Vector3(0f, 0f, 0f);
+    public Vector3 kingRotationOffset = new Vector3(0f, 90f, 0f);
     public Vector3 kingPositionOffset = new Vector3(0f, 0.03f, 0f);
     public float kingScale = 72.0f;
     [Tooltip("Assign your Animator Controller for the King here.")]
@@ -804,7 +804,8 @@ public class GameManager : MonoBehaviour
                 if (r.name.ToLower().Contains("sword") || 
                     r.name.ToLower().Contains("bow") || 
                     r.name.ToLower().Contains("shield") || 
-                    r.name.ToLower().Contains("arrow")) continue;
+                    r.name.ToLower().Contains("arrow") ||
+                    (graphicsObj != null && r.transform.parent != graphicsObj.transform)) continue;
                 validRenderers.Add(r);
             }
 

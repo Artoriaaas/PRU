@@ -57,6 +57,10 @@ public class Unit : MonoBehaviour
         if (_target == null) return transform.position;
 
         Vector3 targetPos = _target.transform.position;
+        if (unitTypeIndex == 4) // General runs straight to target
+        {
+            return targetPos;
+        }
         if (unitTypeIndex == 1) // Archer does not occupy slots and stands at 90% of attackRange
         {
             Vector3 dirFromTarget = (transform.position - _target.transform.position).normalized;
@@ -142,8 +146,8 @@ public class Unit : MonoBehaviour
         
         if (target == null) return;
 
-        // Archers do not occupy slots on their targets
-        if (unitTypeIndex == 1)
+        // Archers and Generals do not occupy slots on their targets
+        if (unitTypeIndex == 1 || unitTypeIndex == 4)
         {
             _currentAttackTarget = target;
             return;
@@ -382,7 +386,7 @@ public class Unit : MonoBehaviour
                     }
                     
                     // Rotate towards target during attack, but only if not too close to prevent spinning jitter
-                    if (Vector3.Distance(transform.position, _target.transform.position) > 0.8f)
+                    if (Vector3.Distance(transform.position, _target.transform.position) > 0.25f)
                     {
                         Vector3 direction = (_target.transform.position - transform.position).normalized;
                         direction.y = 0;
@@ -475,7 +479,7 @@ public class Unit : MonoBehaviour
                 _rb.linearVelocity = Vector3.Lerp(_rb.linearVelocity, targetVelocity, Time.deltaTime * 15f);
 
                 // Keep the model facing its target to prevent spinning jitter and side-facing behavior during avoidance, but only if not too close
-                if (_target != null && Vector3.Distance(transform.position, _target.transform.position) > 0.8f)
+                if (_target != null && Vector3.Distance(transform.position, _target.transform.position) > 0.25f)
                 {
                     Vector3 faceDir = (_target.transform.position - transform.position).normalized;
                     faceDir.y = 0;
@@ -618,7 +622,7 @@ public class Unit : MonoBehaviour
             _rb.linearVelocity = Vector3.Lerp(_rb.linearVelocity, targetVelocity, Time.deltaTime * 15f);
             
             // Keep the model facing its target to prevent spinning jitter and side-facing behavior during avoidance, but only if not too close
-            if (_target != null && Vector3.Distance(transform.position, _target.transform.position) > 0.8f)
+            if (_target != null && Vector3.Distance(transform.position, _target.transform.position) > 0.25f)
             {
                 Vector3 faceDir = (_target.transform.position - transform.position).normalized;
                 faceDir.y = 0;
@@ -770,11 +774,14 @@ public class Unit : MonoBehaviour
         }
 
 
-        // Align archer bow dynamically based on combat state
-        if (unitTypeIndex == 1)
+        // Align archer bow and general rotation dynamically based on combat state
+        if (unitTypeIndex == 1 || unitTypeIndex == 4)
         {
             UpdateGraphicsRotation();
-            UpdateBowAlignment();
+            if (unitTypeIndex == 1)
+            {
+                UpdateBowAlignment();
+            }
         }
     }
 
@@ -784,7 +791,7 @@ public class Unit : MonoBehaviour
         {
             foreach (Transform child in transform)
             {
-                if (child.name.Contains("cung") || child.name.Contains("Model"))
+                if (child.name.Contains("cung") || child.name.Contains("Model") || child.name.Contains("tuong"))
                 {
                     _graphicsTransform = child;
                     _initialGraphicsRotation = child.localRotation;
@@ -798,8 +805,9 @@ public class Unit : MonoBehaviour
         Quaternion targetLocalRot;
         if (state == UnitState.Attacking)
         {
-            // Rotate by 90 degrees on Y axis to align the animation's sideways shooting with the target forward direction
-            targetLocalRot = _initialGraphicsRotation * Quaternion.Euler(0f, 90f, 0f);
+            // Rotate to align animation's sideways slash/shooting with target direction
+            float rotY = (unitTypeIndex == 1) ? 90f : -90f;
+            targetLocalRot = _initialGraphicsRotation * Quaternion.Euler(0f, rotY, 0f);
         }
         else
         {
