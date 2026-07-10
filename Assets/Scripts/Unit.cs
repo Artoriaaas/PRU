@@ -320,7 +320,7 @@ public class Unit : MonoBehaviour
                 {
                     finalSpeed *= 1.75f;
                 }
-                else if (unitTypeIndex == 4 && !isPlayer) // Enemy general
+                else if (unitTypeIndex == 4) // Player and Enemy generals
                 {
                     finalSpeed *= 1.5f;
                 }
