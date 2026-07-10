@@ -18,6 +18,7 @@ public class InspectKingWeaponBones
         {
             "Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx",
             "Assets/Models/NewModel/Model quân ta/Model_vua/animation_idle_vua.fbx",
+            "Assets/Models/NewModel/Model quân ta/Model_tuong_quan_ta/animation_tuong_quan_ta.fbx",
         };
 
         StringBuilder sb = new StringBuilder();
@@ -39,6 +40,16 @@ public class InspectKingWeaponBones
             foreach (var r in prefab.GetComponentsInChildren<Renderer>(true))
             {
                 sb.AppendLine($"  Renderer: '{r.name}'  Type={r.GetType().Name}  Parent='{r.transform.parent?.name}'");
+            }
+
+            // Print all AnimationClips inside the FBX
+            sb.AppendLine($"\n--- AnimationClips in {System.IO.Path.GetFileName(path)} ---");
+            foreach (var sub in AssetDatabase.LoadAllAssetRepresentationsAtPath(path))
+            {
+                if (sub is AnimationClip)
+                {
+                    sb.AppendLine($"  AnimationClip: '{sub.name}'");
+                }
             }
 
             // Search for hand-related bones

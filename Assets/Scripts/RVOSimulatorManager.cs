@@ -251,7 +251,7 @@ public class RVOSimulatorManager : MonoBehaviour
 
         foreach (var teammate in teammates)
         {
-            if (teammate == unit || teammate.state == UnitState.Dead) continue;
+            if (teammate == null || teammate == unit || teammate.state == UnitState.Dead) continue;
 
             Vector3 toTeammate = teammate.transform.position - unit.transform.position;
             toTeammate.y = 0;

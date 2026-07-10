@@ -23,20 +23,12 @@ public class AnimatorSetupTool
     public static void SetupAnimator()
     {
         // Force King models to Generic so their animations can be imported properly
-        string kingModelPath = "Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx";
+        string kingModelPath = "Assets/Models/NewModel/Model quân ta/Model_tuong_quan_ta/animation_tuong_quan_ta.fbx";
         ModelImporter kingImporter = AssetImporter.GetAtPath(kingModelPath) as ModelImporter;
         if (kingImporter != null && kingImporter.animationType != ModelImporterAnimationType.Generic)
         {
             kingImporter.animationType = ModelImporterAnimationType.Generic;
             kingImporter.SaveAndReimport();
-        }
-
-        string kingIdlePath = "Assets/Models/NewModel/Model quân ta/Model_vua/animation_idle_vua.fbx";
-        ModelImporter kingIdleImporter = AssetImporter.GetAtPath(kingIdlePath) as ModelImporter;
-        if (kingIdleImporter != null && kingIdleImporter.animationType != ModelImporterAnimationType.Generic)
-        {
-            kingIdleImporter.animationType = ModelImporterAnimationType.Generic;
-            kingIdleImporter.SaveAndReimport();
         }
 
         // Force Enemy King/General models to Generic so their animations can be imported properly and extract textures
@@ -111,7 +103,7 @@ public class AnimatorSetupTool
                 manager.kingAnimatorController = kingController;
 
                 // Set King defaults in Inspector
-                manager.kingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx");
+                manager.kingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_tuong_quan_ta/animation_tuong_quan_ta.fbx");
                 manager.kingScale = 72f;
                 manager.kingRotationOffset = new Vector3(0f, 0f, 0f);
                 manager.kingPositionOffset = new Vector3(0f, 0.03f, 0f);
@@ -591,10 +583,9 @@ public class AnimatorSetupTool
         attackState.motion = null;
         dieState.motion = null;
 
-        // 1. Extract and fix curves from BOTH fbx files
+        // 1. Extract and fix curves from the fbx file
         string[] fbxPaths = new string[] {
-            "Assets/Models/NewModel/Model quân ta/Model_vua/animation_idle_vua.fbx",
-            "Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx"
+            "Assets/Models/NewModel/Model quân ta/Model_tuong_quan_ta/animation_tuong_quan_ta.fbx"
         };
         
         string outputDir = "Assets/Art/Animations/KingClips";
@@ -647,11 +638,14 @@ public class AnimatorSetupTool
                         }
 
                         // Strip rotation on root Armature or mixamorig:Hips to prevent tilting/sideways rotation
+                        // (Commented out to preserve correct animation on new general model)
+                        /*
                         bool isHipsOrRootRotation = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
                         if (isHipsOrRootRotation && newBinding.propertyName.Contains("m_LocalRotation"))
                         {
                             continue;
                         }
+                        */
 
                         // Strip X/Z root translation to prevent root motion sliding
                         bool isRootPath = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
@@ -693,11 +687,14 @@ public class AnimatorSetupTool
                         }
 
                         // Strip rotation on root Armature or mixamorig:Hips reference curves
+                        // (Commented out to preserve correct animation on new general model)
+                        /*
                         bool isHipsOrRootRotation = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
                         if (isHipsOrRootRotation && newBinding.propertyName.Contains("m_LocalRotation"))
                         {
                             continue;
                         }
+                        */
 
                         // Strip X/Z root translation reference curves
                         bool isRootPath = newBinding.path == "Armature" || newBinding.path == "Armature/mixamorig:Hips";
@@ -734,7 +731,7 @@ public class AnimatorSetupTool
 
             string clipName = clip.name.ToLower();
 
-            bool isIdle = clipName.Contains("idle") && clipName.Contains("idle_vua");
+            bool isIdle = clipName.Contains("idle");
             bool isRun = clipName.Contains("run");
             bool isAttack = clipName.Contains("attack") && !clipName.Contains("attack_2");
             bool isDie = clipName.Contains("dying") || clipName.Contains("death") || clipName.Contains("die");
@@ -871,6 +868,7 @@ public class AnimatorSetupTool
             if (path.Replace('\\', '/').Contains("Model_cung_quan_ta")) continue;
             if (path.Contains("animation_cung_quan_ta")) continue;
             if (path.Replace('\\', '/').Contains("Model_vua")) continue;
+            if (path.Contains("animation_tuong_quan_ta")) continue;
             if (path.Replace('\\', '/').Contains("model_tuong_quan_dich")) continue;
             if (path.Contains("animation_tuong_quan_dich")) continue;
             

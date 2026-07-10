@@ -381,15 +381,16 @@ public class Unit : MonoBehaviour
                         _rb.linearVelocity = new Vector3(0, _rb.linearVelocity.y, 0); // Stop horizontal movement but allow gravity
                     }
                     
-                    // Rotate towards target during attack
-                    Vector3 direction = (_target.transform.position - transform.position).normalized;
-                    direction.y = 0;
-                    if (direction != Vector3.zero)
+                    // Rotate towards target during attack, but only if not too close to prevent spinning jitter
+                    if (Vector3.Distance(transform.position, _target.transform.position) > 0.8f)
                     {
-                        Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
-                        // No extra offset needed: king graphics child already has localRotation Euler(0,90,0)
-                        // which compensates for the -X bind-pose forward. LookRotation maps +Z→dir directly.
-                        transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
+                        Vector3 direction = (_target.transform.position - transform.position).normalized;
+                        direction.y = 0;
+                        if (direction != Vector3.zero)
+                        {
+                            Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
+                            transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
+                        }
                     }
 
                     Attack();
@@ -422,7 +423,7 @@ public class Unit : MonoBehaviour
 
         foreach (var enemy in enemies)
         {
-            if (enemy.state == UnitState.Dead) continue;
+            if (enemy == null || enemy.state == UnitState.Dead) continue;
             
             float dist = Vector3.Distance(transform.position, enemy.transform.position);
             if (dist < minDistanceAny)
@@ -473,16 +474,14 @@ public class Unit : MonoBehaviour
                 Vector3 targetVelocity = new Vector3(_rvoVelocity.x, _rb.linearVelocity.y, _rvoVelocity.z);
                 _rb.linearVelocity = Vector3.Lerp(_rb.linearVelocity, targetVelocity, Time.deltaTime * 15f);
 
-                // Keep the model facing its target to prevent spinning jitter and side-facing behavior during avoidance
-                if (_target != null)
+                // Keep the model facing its target to prevent spinning jitter and side-facing behavior during avoidance, but only if not too close
+                if (_target != null && Vector3.Distance(transform.position, _target.transform.position) > 0.8f)
                 {
                     Vector3 faceDir = (_target.transform.position - transform.position).normalized;
                     faceDir.y = 0;
                     if (faceDir != Vector3.zero)
                     {
                         Quaternion toRotation = Quaternion.LookRotation(faceDir, Vector3.up);
-                        // No extra offset needed: king graphics child already has localRotation Euler(0,90,0)
-                        // which compensates for the -X bind-pose forward.
                         transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 8f);
                     }
                 }
@@ -543,7 +542,7 @@ public class Unit : MonoBehaviour
             List<Unit> teammates = isPlayer ? GameManager.Instance.playerUnits : GameManager.Instance.enemyUnits;
             foreach (var teammate in teammates)
             {
-                if (teammate == this || teammate.state == UnitState.Dead) continue;
+                if (teammate == null || teammate == this || teammate.state == UnitState.Dead) continue;
                 
                 float dist = Vector3.Distance(transform.position, teammate.transform.position);
                 if (dist < avoidanceRange)
@@ -618,16 +617,14 @@ public class Unit : MonoBehaviour
             // Smoothly interpolate velocity to eliminate high-frequency jitter/stutters
             _rb.linearVelocity = Vector3.Lerp(_rb.linearVelocity, targetVelocity, Time.deltaTime * 15f);
             
-            // Keep the model facing its target to prevent spinning jitter and side-facing behavior during avoidance
-            if (_target != null)
+            // Keep the model facing its target to prevent spinning jitter and side-facing behavior during avoidance, but only if not too close
+            if (_target != null && Vector3.Distance(transform.position, _target.transform.position) > 0.8f)
             {
                 Vector3 faceDir = (_target.transform.position - transform.position).normalized;
                 faceDir.y = 0;
                 if (faceDir != Vector3.zero)
                 {
                     Quaternion toRotation = Quaternion.LookRotation(faceDir, Vector3.up);
-                    // No extra offset needed: king graphics child already has localRotation Euler(0,90,0)
-                    // which compensates for the -X bind-pose forward.
                     transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, Time.deltaTime * 10f);
                 }
             }
@@ -1120,7 +1117,7 @@ public class Unit : MonoBehaviour
         List<Unit> teammates = isPlayer ? GameManager.Instance.playerUnits : GameManager.Instance.enemyUnits;
         foreach (var teammate in teammates)
         {
-            if (teammate == this || teammate.state == UnitState.Dead) continue;
+            if (teammate == null || teammate == this || teammate.state == UnitState.Dead) continue;
 
             Vector3 C = teammate.transform.position;
             C.y = 0;

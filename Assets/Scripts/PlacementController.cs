@@ -513,7 +513,7 @@ public class PlacementController : MonoBehaviour
         var units = checkPlayer ? GameManager.Instance.playerUnits : GameManager.Instance.enemyUnits;
         foreach (var unit in units)
         {
-            if (unit == ignoreUnit) continue;
+            if (unit == null || unit == ignoreUnit) continue;
             Vector3 unitPos = unit.transform.position;
             unitPos.y = position.y; // ignore height difference
             if (Vector3.Distance(unitPos, position) < 0.5f)

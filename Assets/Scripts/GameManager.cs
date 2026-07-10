@@ -35,6 +35,10 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        // Clean up any null/destroyed references in the serialized lists at startup
+        playerUnits.RemoveAll(u => u == null);
+        enemyUnits.RemoveAll(u => u == null);
+
         // Force forceCapsuleForTesting to false to override Unity Inspector's serialized value
         forceCapsuleForTesting = false;
 
@@ -48,7 +52,7 @@ public class GameManager : MonoBehaviour
         archerPositionOffset.y = 0.03f;
         kingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
         kingScale = 72.0f;
-        kingRotationOffset = new Vector3(0f, 90f, 0f); // Compensate for model bind pose: without offset model faces 90° LEFT
+        kingRotationOffset = new Vector3(0f, 0f, 0f); // Compensate for model bind pose: new model faces forward (no offset needed)
         // kingWeaponPositionOffset and kingWeaponRotationOffset are intentionally NOT force-reset here
         // so values tuned in the Inspector (Play Mode) are preserved between runs.
         enemyKingRotationOffset = new Vector3(0f, 90f, 0f); // Same bind pose compensation as player king
@@ -245,7 +249,7 @@ public class GameManager : MonoBehaviour
     [Header("Enemy King/General Model Settings")]
     [Tooltip("Drag your Enemy General FBX/Prefab here. If left empty, it will auto-load from Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx in Editor.")]
     public GameObject enemyKingModelPrefab;
-    public Vector3 enemyKingRotationOffset = new Vector3(0f, 0f, 0f);
+    public Vector3 enemyKingRotationOffset = new Vector3(0f, 90f, 0f);
     public Vector3 enemyKingPositionOffset = new Vector3(0f, 0.03f, 0f); // Center on pad
     public float enemyKingScale = 72.0f;
     [Tooltip("Assign your Animator Controller for the Enemy General here.")]
@@ -361,7 +365,7 @@ public class GameManager : MonoBehaviour
                 }
                 else if (unitTypeIndex == 4)
                 {
-                    loadedModel = kingModelPrefab != null ? kingModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_vua/model_vua_after_update.fbx");
+                    loadedModel = kingModelPrefab != null ? kingModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_tuong_quan_ta/animation_tuong_quan_ta.fbx");
                 }
             }
             else
@@ -1063,6 +1067,10 @@ public class GameManager : MonoBehaviour
     public void StartBattle()
     {
         if (currentState != GameState.Placement) return;
+
+        // Clean up any null/destroyed references in the unit lists before proceeding
+        playerUnits.RemoveAll(u => u == null);
+        enemyUnits.RemoveAll(u => u == null);
 
         // If no enemy units were placed on the setup grid, generate random ones as fallback
         if (enemyUnits.Count == 0)
