@@ -1440,7 +1440,7 @@ public class UIManager : MonoBehaviour
         Transform hitboxBtn = _canvasObj.transform.Find("HitboxToggleButton");
         if (hitboxBtn != null)
         {
-            hitboxBtn.gameObject.SetActive(true);
+            hitboxBtn.gameObject.SetActive(false);
         }
 
         if (_backToMapBtn != null)

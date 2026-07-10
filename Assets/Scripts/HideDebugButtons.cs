@@ -6,7 +6,7 @@ public class HideDebugButtons : MonoBehaviour
     void Start()
     {
         var hitbox = GameObject.Find("HitboxToggleButton");
-        if (hitbox != null) hitbox.SetActive(true);
+        if (hitbox != null) hitbox.SetActive(false);
 
         var levelEditor = GameObject.Find("TogglePanelButton");
         if (levelEditor != null) levelEditor.SetActive(false);
