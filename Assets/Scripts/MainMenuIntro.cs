@@ -40,21 +40,9 @@ public class MainMenuIntro : MonoBehaviour
 
     private void Start()
     {
-        if (introOverlayGroup == null || menuLayers == null || menuLayers.Length == 0)
-        {
-            IntroFinished = true;
-            return;
-        }
-
-        if (hasSeenIntro)
-        {
-            IntroFinished = true;
-            SetMenuLayersAlpha(1f, true);
-            ResetIntroOverlay();
-            return;
-        }
-
-        StartCoroutine(PlayIntro());
+        IntroFinished = true;
+        SetMenuLayersAlpha(1f, true);
+        ResetIntroOverlay();
     }
 
     private void ResetIntroOverlay()
