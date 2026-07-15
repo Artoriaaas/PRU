@@ -148,60 +148,68 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
         // Color scheme depending on player vs enemy and type index
         Color previewColor = isPlayer ? GetColorForType(unitTypeIndex, 0.5f) : new Color(1f, 0.2f, 0.2f, 0.5f);
 
-        // Create capsule preview shadow
-        _previewCapsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        _previewCapsule.name = "DragPlacementPreviewCapsule";
-        var previewCol = _previewCapsule.GetComponent<Collider>();
-        if (previewCol != null) Destroy(previewCol);
-        
-        var previewRend = _previewCapsule.GetComponent<Renderer>();
-        if (previewRend != null)
-        {
-            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
-            if (shader == null || shader.name == "Hidden/InternalErrorShader")
-            {
-                shader = Shader.Find("Standard");
-            }
-            if (shader == null || shader.name == "Hidden/InternalErrorShader")
-            {
-                shader = Shader.Find("Sprites/Default");
-            }
-
-            Material previewMat = new Material(shader);
-            previewMat.color = previewColor;
-
-            // Configure transparent rendering settings based on shader type
-            if (previewMat.shader.name.Contains("Universal Render Pipeline"))
-            {
-                previewMat.SetFloat("_Surface", 1f); // 1 = Transparent
-                previewMat.SetFloat("_Blend", 0f); // 0 = Alpha blend
-                previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                previewMat.SetInt("_ZWrite", 0);
-                previewMat.DisableKeyword("_ALPHATEST_ON");
-                previewMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                previewMat.EnableKeyword("_BLENDMODE_ALPHA");
-            }
-            else if (previewMat.shader.name.Contains("Standard"))
-            {
-                previewMat.SetFloat("_Mode", 3f); // 3 = Transparent
-                previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                previewMat.SetInt("_ZWrite", 0);
-                previewMat.DisableKeyword("_ALPHATEST_ON");
-                previewMat.EnableKeyword("_ALPHABLEND_ON");
-                previewMat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-            }
-
-            previewMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent; // 3000
-            previewRend.sharedMaterial = previewMat;
-        }
-        float capScale = 15f;
+        // Create model preview with a primitive capsule fallback
         if (GameManager.Instance != null)
         {
-            capScale = GameManager.Instance.capsuleScale;
+            _previewCapsule = GameManager.Instance.CreatePreviewModel(isPlayer, unitTypeIndex);
         }
-        _previewCapsule.transform.localScale = new Vector3(capScale * 0.8f, capScale * 0.8f, capScale * 0.8f);
+
+        if (_previewCapsule == null)
+        {
+            _previewCapsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            _previewCapsule.name = "DragPlacementPreviewCapsule";
+            var previewCol = _previewCapsule.GetComponent<Collider>();
+            if (previewCol != null) Destroy(previewCol);
+            
+            var previewRend = _previewCapsule.GetComponent<Renderer>();
+            if (previewRend != null)
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+                if (shader == null || shader.name == "Hidden/InternalErrorShader")
+                {
+                    shader = Shader.Find("Standard");
+                }
+                if (shader == null || shader.name == "Hidden/InternalErrorShader")
+                {
+                    shader = Shader.Find("Sprites/Default");
+                }
+
+                Material previewMat = new Material(shader);
+                previewMat.color = previewColor;
+
+                // Configure transparent rendering settings based on shader type
+                if (previewMat.shader.name.Contains("Universal Render Pipeline"))
+                {
+                    previewMat.SetFloat("_Surface", 1f); // 1 = Transparent
+                    previewMat.SetFloat("_Blend", 0f); // 0 = Alpha blend
+                    previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    previewMat.SetInt("_ZWrite", 0);
+                    previewMat.DisableKeyword("_ALPHATEST_ON");
+                    previewMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                    previewMat.EnableKeyword("_BLENDMODE_ALPHA");
+                }
+                else if (previewMat.shader.name.Contains("Standard"))
+                {
+                    previewMat.SetFloat("_Mode", 3f); // 3 = Transparent
+                    previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    previewMat.SetInt("_ZWrite", 0);
+                    previewMat.DisableKeyword("_ALPHATEST_ON");
+                    previewMat.EnableKeyword("_ALPHABLEND_ON");
+                    previewMat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                }
+
+                previewMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent; // 3000
+                previewRend.sharedMaterial = previewMat;
+            }
+            float capScale = 15f;
+            if (GameManager.Instance != null)
+            {
+                capScale = GameManager.Instance.capsuleScale;
+            }
+            _previewCapsule.transform.localScale = new Vector3(capScale * 0.8f, capScale * 0.8f, capScale * 0.8f);
+        }
         _previewCapsule.SetActive(false);
     }
 
@@ -211,12 +219,19 @@ public class DragDropCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEnd
         {
             if (RaycastForWorldPos(eventData.position, out Vector3 worldPos))
             {
-                float capScale = 15f;
-                if (GameManager.Instance != null)
+                if (_previewCapsule.name == "DragPlacementPreviewCapsule")
                 {
-                    capScale = GameManager.Instance.capsuleScale;
+                    float capScale = 15f;
+                    if (GameManager.Instance != null)
+                    {
+                        capScale = GameManager.Instance.capsuleScale;
+                    }
+                    _previewCapsule.transform.position = worldPos + Vector3.up * capScale;
                 }
-                _previewCapsule.transform.position = worldPos + Vector3.up * capScale;
+                else
+                {
+                    _previewCapsule.transform.position = worldPos;
+                }
                 _previewCapsule.SetActive(true);
             }
             else

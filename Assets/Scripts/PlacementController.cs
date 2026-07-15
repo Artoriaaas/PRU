@@ -206,75 +206,90 @@ public class PlacementController : MonoBehaviour
         // Click-to-place logic & preview shadow management
         if (selectedCard != null)
         {
-            // Spawn preview capsule if it doesn't exist
+            // Spawn preview model if it doesn't exist
             if (_clickPreviewCapsule == null)
             {
-                _clickPreviewCapsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                _clickPreviewCapsule.name = "ClickPlacementPreviewCapsule";
-                
-                var col = _clickPreviewCapsule.GetComponent<Collider>();
-                if (col != null) Destroy(col);
-                
-                var rend = _clickPreviewCapsule.GetComponent<Renderer>();
-                if (rend != null)
-                {
-                    Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
-                    if (shader == null || shader.name == "Hidden/InternalErrorShader")
-                    {
-                        shader = Shader.Find("Standard");
-                    }
-                    if (shader == null || shader.name == "Hidden/InternalErrorShader")
-                    {
-                        shader = Shader.Find("Sprites/Default");
-                    }
-
-                    Material previewMat = new Material(shader);
-                    previewMat.color = GetColorForType(selectedCard.unitTypeIndex, 0.5f);
-
-                    // Configure transparent rendering settings based on shader type
-                    if (previewMat.shader.name.Contains("Universal Render Pipeline"))
-                    {
-                        previewMat.SetFloat("_Surface", 1f); // 1 = Transparent
-                        previewMat.SetFloat("_Blend", 0f); // 0 = Alpha blend
-                        previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                        previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                        previewMat.SetInt("_ZWrite", 0);
-                        previewMat.DisableKeyword("_ALPHATEST_ON");
-                        previewMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                        previewMat.EnableKeyword("_BLENDMODE_ALPHA");
-                    }
-                    else if (previewMat.shader.name.Contains("Standard"))
-                    {
-                        previewMat.SetFloat("_Mode", 3f); // 3 = Transparent
-                        previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                        previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                        previewMat.SetInt("_ZWrite", 0);
-                        previewMat.DisableKeyword("_ALPHATEST_ON");
-                        previewMat.EnableKeyword("_ALPHABLEND_ON");
-                        previewMat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                    }
-
-                    previewMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent; // 3000
-                    rend.sharedMaterial = previewMat;
-                }
-                float capScale = 15f;
                 if (GameManager.Instance != null)
                 {
-                    capScale = GameManager.Instance.capsuleScale;
+                    _clickPreviewCapsule = GameManager.Instance.CreatePreviewModel(isPlayer, selectedCard.unitTypeIndex);
                 }
-                _clickPreviewCapsule.transform.localScale = new Vector3(capScale * 0.8f, capScale * 0.8f, capScale * 0.8f);
+
+                if (_clickPreviewCapsule == null)
+                {
+                    _clickPreviewCapsule = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                    _clickPreviewCapsule.name = "ClickPlacementPreviewCapsule";
+                    
+                    var col = _clickPreviewCapsule.GetComponent<Collider>();
+                    if (col != null) Destroy(col);
+                    
+                    var rend = _clickPreviewCapsule.GetComponent<Renderer>();
+                    if (rend != null)
+                    {
+                        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+                        if (shader == null || shader.name == "Hidden/InternalErrorShader")
+                        {
+                            shader = Shader.Find("Standard");
+                        }
+                        if (shader == null || shader.name == "Hidden/InternalErrorShader")
+                        {
+                            shader = Shader.Find("Sprites/Default");
+                        }
+
+                        Material previewMat = new Material(shader);
+                        previewMat.color = GetColorForType(selectedCard.unitTypeIndex, 0.5f);
+
+                        // Configure transparent rendering settings based on shader type
+                        if (previewMat.shader.name.Contains("Universal Render Pipeline"))
+                        {
+                            previewMat.SetFloat("_Surface", 1f); // 1 = Transparent
+                            previewMat.SetFloat("_Blend", 0f); // 0 = Alpha blend
+                            previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                            previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                            previewMat.SetInt("_ZWrite", 0);
+                            previewMat.DisableKeyword("_ALPHATEST_ON");
+                            previewMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                            previewMat.EnableKeyword("_BLENDMODE_ALPHA");
+                        }
+                        else if (previewMat.shader.name.Contains("Standard"))
+                        {
+                            previewMat.SetFloat("_Mode", 3f); // 3 = Transparent
+                            previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                            previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                            previewMat.SetInt("_ZWrite", 0);
+                            previewMat.DisableKeyword("_ALPHATEST_ON");
+                            previewMat.EnableKeyword("_ALPHABLEND_ON");
+                            previewMat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                        }
+
+                        previewMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent; // 3000
+                        rend.sharedMaterial = previewMat;
+                    }
+                    float capScale = 15f;
+                    if (GameManager.Instance != null)
+                    {
+                        capScale = GameManager.Instance.capsuleScale;
+                    }
+                    _clickPreviewCapsule.transform.localScale = new Vector3(capScale * 0.8f, capScale * 0.8f, capScale * 0.8f);
+                }
             }
 
             // Update preview position
             Vector2 mousePos = GetMouseScreenPos();
             if (GetPreviewPosition(mousePos, out Vector3 previewWorldPos))
             {
-                float capScale = 15f;
-                if (GameManager.Instance != null)
+                if (_clickPreviewCapsule.name == "ClickPlacementPreviewCapsule")
                 {
-                    capScale = GameManager.Instance.capsuleScale;
+                    float capScale = 15f;
+                    if (GameManager.Instance != null)
+                    {
+                        capScale = GameManager.Instance.capsuleScale;
+                    }
+                    _clickPreviewCapsule.transform.position = previewWorldPos + Vector3.up * capScale;
                 }
-                _clickPreviewCapsule.transform.position = previewWorldPos + Vector3.up * capScale;
+                else
+                {
+                    _clickPreviewCapsule.transform.position = previewWorldPos;
+                }
                 _clickPreviewCapsule.SetActive(true);
             }
             else

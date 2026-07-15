@@ -646,7 +646,7 @@ public class MapSceneBootstrapper : MonoBehaviour
 
         CreateSettingsButton(menuBox.transform, "SaveButton", "Lưu", 100f, () => Debug.Log("Save Clicked"));
         CreateSettingsButton(menuBox.transform, "LoadButton", "Tải", 30f, () => Debug.Log("Load Clicked"));
-        CreateSettingsButton(menuBox.transform, "QuitButton", "Về trình đơn", -40f, () => UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenuScene"));
+        CreateSettingsButton(menuBox.transform, "QuitButton", "Về trang chủ", -40f, () => UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenuScene"));
 
         GameObject musicControl = new GameObject("MusicControl");
         RectTransform mcRT = musicControl.AddComponent<RectTransform>();

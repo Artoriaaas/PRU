@@ -1065,6 +1065,185 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public GameObject CreatePreviewModel(bool isPlayer, int unitTypeIndex)
+    {
+        GameObject loadedModel = null;
+        bool isCapsule = forceCapsuleForTesting || (isPlayer && unitTypeIndex > 1 && unitTypeIndex != 4);
+
+#if UNITY_EDITOR
+        if (!isCapsule)
+        {
+            if (isPlayer)
+            {
+                if (unitTypeIndex == 0)
+                {
+                    if (SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
+                        loadedModel = hoBonQuanPrefab != null ? hoBonQuanPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/model_ho_bon_quan/animation_ho_bon_quan.fbx");
+                    else
+                        loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_quan_ta.fbx");
+                }
+                else if (unitTypeIndex == 1)
+                    loadedModel = archerModelPrefab != null ? archerModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_cung_quan_ta/animation_ban_cung_quan_ta.fbx");
+                else if (unitTypeIndex == 4)
+                    loadedModel = kingModelPrefab != null ? kingModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân ta/Model_tuong_quan_ta/animation_tuong_quan_ta.fbx");
+            }
+            else
+            {
+                if (unitTypeIndex == 0)
+                    loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/Trang_thai_cho_quan_dich.fbx");
+                else if (unitTypeIndex == 1)
+                    loadedModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/model_quan_cung/animation_ban_cung_quan_dich.fbx");
+                else if (unitTypeIndex == 4)
+                    loadedModel = enemyKingModelPrefab != null ? enemyKingModelPrefab : UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Models/NewModel/Model quân địch/model_tuong_quan_dich/animation_tuong_quan_dich.fbx");
+            }
+        }
+#else
+        if (!isCapsule)
+        {
+            if (isPlayer)
+            {
+                if (unitTypeIndex == 0)
+                {
+                    if (SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2)
+                        loadedModel = hoBonQuanPrefab;
+                    else
+                        loadedModel = unitModelPrefab;
+                }
+                else if (unitTypeIndex == 1)
+                    loadedModel = archerModelPrefab;
+                else if (unitTypeIndex == 4)
+                    loadedModel = kingModelPrefab;
+            }
+            else
+            {
+                if (unitTypeIndex == 0)
+                    loadedModel = enemyUnitModelPrefab;
+                else if (unitTypeIndex == 1)
+                    loadedModel = enemyArcherModelPrefab;
+                else if (unitTypeIndex == 4)
+                    loadedModel = enemyKingModelPrefab;
+            }
+        }
+#endif
+
+        if (loadedModel == null)
+        {
+            if (unitTypeIndex == 1) loadedModel = isPlayer ? archerModelPrefab : enemyArcherModelPrefab;
+            else if (unitTypeIndex == 4) loadedModel = isPlayer ? kingModelPrefab : enemyKingModelPrefab;
+            else 
+            {
+                if (isPlayer && unitTypeIndex == 0 && SkillManager.Instance != null && SkillManager.Instance.troopLevel >= 2 && hoBonQuanPrefab != null)
+                    loadedModel = hoBonQuanPrefab;
+                else
+                    loadedModel = isPlayer ? unitModelPrefab : enemyUnitModelPrefab;
+            }
+        }
+
+        if (loadedModel == null) return null;
+
+        GameObject previewObj = Instantiate(loadedModel);
+        previewObj.name = "Preview_" + loadedModel.name;
+
+        // Disable Animators to prevent them from animating or throwing errors in bind pose
+        Animator[] animators = previewObj.GetComponentsInChildren<Animator>(true);
+        foreach (var anim in animators)
+        {
+            anim.enabled = false;
+        }
+
+        // Strip colliders from the preview model if any exist
+        Collider[] colliders = previewObj.GetComponentsInChildren<Collider>(true);
+        foreach (var col in colliders)
+        {
+            Destroy(col);
+        }
+
+        // Apply correct offsets and scale
+        Vector3 rotationOffset = modelRotationOffset;
+        Vector3 positionOffset = modelPositionOffset;
+        float scaleVal = modelScale;
+
+        if (unitTypeIndex == 1)
+        {
+            rotationOffset = archerRotationOffset;
+            positionOffset = archerPositionOffset;
+            scaleVal = archerScale;
+        }
+        else if (unitTypeIndex == 4)
+        {
+            rotationOffset = isPlayer ? kingRotationOffset : enemyKingRotationOffset;
+            positionOffset = isPlayer ? kingPositionOffset : enemyKingPositionOffset;
+            scaleVal = isPlayer ? kingScale : enemyKingScale;
+        }
+
+        GameObject pivotParent = new GameObject("UnitPreviewPivot_" + loadedModel.name);
+        previewObj.transform.SetParent(pivotParent.transform, false);
+        previewObj.transform.localPosition = positionOffset;
+        previewObj.transform.localRotation = Quaternion.Euler(rotationOffset);
+        previewObj.transform.localScale = new Vector3(scaleVal, scaleVal, scaleVal);
+
+        Color previewColor = isPlayer ? GetColorForType(unitTypeIndex, 0.4f) : new Color(1f, 0.2f, 0.2f, 0.4f);
+        ApplyTransparentShaderToPreview(previewObj, previewColor);
+
+        return pivotParent;
+    }
+
+    private Color GetColorForType(int typeIndex, float alpha = 0.5f)
+    {
+        if (typeIndex == 0) return new Color(0.1f, 0.4f, 0.8f, alpha);
+        if (typeIndex == 1) return new Color(0.1f, 0.6f, 0.2f, alpha);
+        if (typeIndex == 2) return new Color(0.5f, 0.1f, 0.7f, alpha);
+        if (typeIndex == 3) return new Color(0.85f, 0.5f, 0.1f, alpha);
+        if (typeIndex == 4) return new Color(0.5f, 0.1f, 0.7f, alpha); // Purple for General/King
+        return new Color(0.2f, 0.6f, 1f, alpha);
+    }
+
+    private void ApplyTransparentShaderToPreview(GameObject obj, Color color)
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null || shader.name == "Hidden/InternalErrorShader")
+        {
+            shader = Shader.Find("Standard");
+        }
+        if (shader == null || shader.name == "Hidden/InternalErrorShader")
+        {
+            shader = Shader.Find("Sprites/Default");
+        }
+
+        Material previewMat = new Material(shader);
+        previewMat.color = color;
+
+        if (previewMat.shader.name.Contains("Universal Render Pipeline"))
+        {
+            previewMat.SetFloat("_Surface", 1f); // 1 = Transparent
+            previewMat.SetFloat("_Blend", 0f); // 0 = Alpha blend
+            previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            previewMat.SetInt("_ZWrite", 0);
+            previewMat.DisableKeyword("_ALPHATEST_ON");
+            previewMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            previewMat.EnableKeyword("_BLENDMODE_ALPHA");
+        }
+        else if (previewMat.shader.name.Contains("Standard"))
+        {
+            previewMat.SetFloat("_Mode", 3f); // 3 = Transparent
+            previewMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            previewMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            previewMat.SetInt("_ZWrite", 0);
+            previewMat.DisableKeyword("_ALPHATEST_ON");
+            previewMat.EnableKeyword("_ALPHABLEND_ON");
+            previewMat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        }
+
+        previewMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+
+        var rends = obj.GetComponentsInChildren<Renderer>(true);
+        foreach (var r in rends)
+        {
+            r.sharedMaterial = previewMat;
+        }
+    }
+
     public void StartBattle()
     {
         if (currentState != GameState.Placement) return;
